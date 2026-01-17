@@ -16,10 +16,10 @@
 }
 
 /* =================================================================
-   Dashboard (Minimalist & Premium Edition)
+   Dashboard (Pro Edition)
    ================================================================= */
 .code-dashboard-root {
-    padding: 60px 40px; /* 增加留白 */
+    padding: 40px;
     height: 100%;
     overflow-y: auto;
     width: 100%;
@@ -28,25 +28,84 @@
 
 /* Header */
 .code-dashboard-header {
-    margin-bottom: 50px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 30px;
 }
 
 .code-dashboard-header h1 {
     margin: 0;
-    font-size: 36px;
-    font-weight: 300; /* 更细的字重显高级 */
+    font-size: 32px;
+    font-weight: 300;
     color: var(--text-normal);
     letter-spacing: -0.5px;
 }
 
 .code-dashboard-subtitle {
-    margin: 10px 0 0 0;
+    margin: 5px 0 0 0;
     color: var(--text-faint);
     font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+}
+
+/* Toolbar */
+.code-dashboard-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    align-items: center;
+    flex-wrap: wrap; /* 小屏幕自动换行 */
+}
+
+/* Search Box */
+.code-search-box {
+    flex: 1; /* 占据剩余空间 */
+    min-width: 200px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.code-search-box input {
+    width: 100%;
+    padding-left: 36px; /* 留出图标位置 */
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    height: 36px;
+    transition: all 0.2s;
+}
+
+.code-search-box input:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+.code-search-icon {
+    position: absolute;
+    left: 10px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+.code-search-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Dropdowns & Buttons */
+.code-dashboard-toolbar select,
+.code-dashboard-toolbar button {
+    height: 36px;
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 0 12px;
+    color: var(--text-normal);
+    cursor: pointer;
+}
+
+.code-dashboard-toolbar button.clickable-icon {
+    padding: 0 8px; /* 图标按钮窄一点 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* File Grid */
@@ -60,7 +119,7 @@
     display: flex;
     align-items: center;
     padding: 16px;
-    background-color: var(--background-primary); /* 与背景融为一体 */
+    background-color: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 10px;
     cursor: pointer;
@@ -70,10 +129,11 @@
 .code-file-item:hover {
     background-color: var(--background-secondary);
     border-color: var(--interactive-accent);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-s);
 }
 
-/* 1. Unified Icon */
+/* Icon */
 .code-file-icon-box {
     display: flex;
     align-items: center;
@@ -83,16 +143,16 @@
     background-color: var(--background-secondary);
     border-radius: 8px;
     margin-right: 16px;
-    color: var(--text-muted); /* 统一灰色，不喧宾夺主 */
+    color: var(--text-muted);
     flex-shrink: 0;
 }
 .code-file-icon-box svg {
     width: 20px;
     height: 20px;
-    stroke-width: 1.5px; /* 更细的线条 */
+    stroke-width: 1.5px;
 }
 
-/* 2. Info */
+/* Info */
 .code-file-info {
     flex: 1;
     overflow: hidden;
@@ -116,7 +176,7 @@
     text-overflow: ellipsis;
 }
 
-/* 3. Metadata */
+/* Metadata */
 .code-file-meta {
     display: flex;
     flex-direction: column;
@@ -138,8 +198,25 @@
     color: var(--text-faint);
 }
 
+/* Empty State */
+.code-empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 0;
+    color: var(--text-muted);
+}
+.code-empty-icon svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
 /* =================================================================
-   高亮方案 (保留原有设置...)
+   高亮配色方案 (CSS Mapping - Hardcoded Fallback)
    ================================================================= */
 .theme-light .cmt-keyword { color: var(--code-keyword, #af00db) !important; }
 .theme-light .cmt-variableName { color: var(--code-value, #001080) !important; }
@@ -151,6 +228,7 @@
 .theme-light .cmt-operator { color: var(--code-operator, #383838) !important; }
 .theme-light .cmt-punctuation { color: var(--code-punctuation, #383838) !important; }
 .theme-light .cmt-meta { color: #800000 !important; }
+
 .theme-dark .cmt-keyword { color: var(--code-keyword, #c678dd) !important; }
 .theme-dark .cmt-variableName { color: var(--code-value, #e06c75) !important; }
 .theme-dark .cmt-typeName { color: var(--code-class, #e5c07b) !important; }
@@ -161,8 +239,10 @@
 .theme-dark .cmt-operator { color: var(--code-operator, #56b6c2) !important; }
 .theme-dark .cmt-punctuation { color: var(--code-punctuation, #abb2bf) !important; }
 .theme-dark .cmt-meta { color: #c678dd !important; }
+
 .cmt-invalid { color: var(--text-error, #f00) !important; text-decoration: underline wavy; }
 .cmt-link { color: var(--text-accent, #2d7fba) !important; text-decoration: underline; }
+
 .theme-light .cm-content { caret-color: #000000; }
 .theme-dark .cm-content { caret-color: #ffffff; }
 .cm-selectionBackground { background-color: var(--text-selection) !important; }
