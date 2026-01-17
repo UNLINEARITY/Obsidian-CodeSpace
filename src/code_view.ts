@@ -48,8 +48,12 @@ const baseTheme = EditorView.theme({
 		color: "var(--text-normal)"
 	},
 	".cm-content": {
-		caretColor: "var(--text-normal)",
+		caretColor: "var(--text-accent) !important", // 使用强调色作为光标颜色
 		padding: "10px 0"
+	},
+	".cm-cursor, .cm-dropCursor": {
+		borderLeftWidth: "2px", // 加粗光标
+		borderLeftColor: "var(--text-accent) !important"
 	},
 	".cm-gutters": {
 		backgroundColor: "transparent !important",
