@@ -111,9 +111,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 	constructor(
 		containerEl: HTMLElement,
 		private content: string,
-		private extension: string,
-		private startLine: number | null,
-		private endLine: number | null
+		private extension: string
 	) {
 		super(containerEl);
 		this.languageCompartment = new Compartment();
@@ -124,20 +122,10 @@ class CodeEmbedChild extends MarkdownRenderChild {
 		const isDark = document.body.classList.contains("theme-dark");
 		const langExt = LANGUAGE_PACKAGES[this.extension] || [];
 
-		// Extract line range if specified
-		let lines = this.content.split("\n");
-		if (this.startLine !== null && this.endLine !== null) {
-			lines = lines.slice(Math.max(0, this.startLine - 1), this.endLine);
-		} else if (this.startLine !== null) {
-			lines = lines.slice(Math.max(0, this.startLine - 1));
-		}
-
-		const displayContent = lines.join("\n");
-
-		const startAt = this.startLine || 1;
+		console.log("Code Embed: CodeEmbedChild.onload - extension:", this.extension, "content length:", this.content.length);
 
 		const state = EditorState.create({
-			doc: displayContent,
+			doc: this.content,
 			extensions: [
 				this.languageCompartment.of(langExt),
 				this.themeCompartment.of(syntaxHighlighting(isDark ? darkHighlightStyle : lightHighlightStyle)),
@@ -235,23 +223,9 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 
 	if (!linkText) return;
 
-	// Parse line range (e.g., file.py#L10-L20)
-	const hashIndex = linkText.indexOf("#L");
+	// Remove any line range syntax if present (Obsidian doesn't support it for code files)
+	const hashIndex = linkText.indexOf("#");
 	const filePath = hashIndex !== -1 ? linkText.substring(0, hashIndex) : linkText;
-	const lineRange = hashIndex !== -1 ? linkText.substring(hashIndex + 2) : "";
-
-	let startLine: number | null = null;
-	let endLine: number | null = null;
-
-	if (lineRange) {
-		const dashIndex = lineRange.indexOf("-L");
-		if (dashIndex !== -1) {
-			startLine = parseInt(lineRange.substring(0, dashIndex));
-			endLine = parseInt(lineRange.substring(dashIndex + 2));
-		} else {
-			startLine = parseInt(lineRange);
-		}
-	}
 
 	// Try to find the file using multiple methods
 	let tFile = null;
@@ -314,10 +288,10 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	console.log("Code Embed: Reading file content...");
 
 	// Read file content and render
-	await renderCodeEmbed(embedEl, tFile, plugin, startLine, endLine);
+	await renderCodeEmbed(embedEl, tFile, plugin);
 }
 
-async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpacePlugin, startLine: number | null, endLine: number | null) {
+async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpacePlugin) {
 	console.log("Code Embed: Reading file content...");
 
 	// Read file content
@@ -336,19 +310,13 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpa
 
 	const header = embedContainer.createEl("div", { cls: "code-embed-header" });
 	header.createEl("span", { cls: "code-embed-filename", text: tFile.name });
-	if (startLine !== null) {
-		header.createEl("span", {
-			cls: "code-embed-linerange",
-			text: `Lines ${startLine}${endLine ? `-${endLine}` : ""}`
-		});
-	}
 
 	const editorContainer = embedContainer.createEl("div", {
 		cls: "code-embed-editor"
 	});
 
 	// Create the code editor
-	const child = new CodeEmbedChild(editorContainer, content, ext, startLine, endLine);
+	const child = new CodeEmbedChild(editorContainer, content, ext);
 
 	// Manually call onload since addChild is not available here
 	child.onload();
