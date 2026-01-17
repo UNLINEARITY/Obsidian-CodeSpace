@@ -2,11 +2,13 @@ import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
+import { registerCodeEmbedProcessor } from "./code_embed";
 
 export default class CodeSpacePlugin extends Plugin {
 	settings: CodeSpaceSettings;
 
 	async onload() {
+		console.log("Code Space: Plugin loading...");
 		await this.loadSettings();
 
 		this.addSettingTab(new CodeSpaceSettingTab(this.app, this));
@@ -23,6 +25,11 @@ export default class CodeSpacePlugin extends Plugin {
 
 		this.registerCodeExtensions();
 
+		console.log("Code Space: About to register code embed processor...");
+		// Register code embed processor
+		registerCodeEmbedProcessor(this);
+		console.log("Code Space: Code embed processor registered");
+
 		this.addRibbonIcon('code-glyph', 'Open Code Space Dashboard', () => {
 			this.activateDashboard();
 		});
@@ -34,6 +41,8 @@ export default class CodeSpacePlugin extends Plugin {
 				this.activateDashboard();
 			}
 		});
+
+		console.log("Code Space: Plugin fully loaded");
 	}
 
 	registerCodeExtensions() {

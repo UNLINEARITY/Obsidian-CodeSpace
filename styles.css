@@ -494,3 +494,70 @@
 .theme-dark .cm-content { caret-color: #ffffff; }
 .cm-selectionBackground { background-color: var(--text-selection) !important; }
 .cm-activeLine { background-color: var(--background-modifier-active-hover) !important; }
+
+/* =================================================================
+   Code Embed Styles
+   ================================================================= */
+.code-embed-container {
+	margin: 12px 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	overflow: hidden;
+	background-color: var(--background-secondary);
+}
+
+.code-embed-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	background-color: var(--background-modifier-border);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: 12px;
+}
+
+.code-embed-filename {
+	font-weight: 600;
+	color: var(--text-normal);
+	font-family: var(--font-monospace, 'Fira Code', 'JetBrains Mono', monospace);
+}
+
+.code-embed-linerange {
+	color: var(--text-muted);
+	font-size: 11px;
+}
+
+.code-embed-editor {
+	background-color: var(--background-primary);
+}
+
+.code-embed-editor .cm-editor {
+	height: auto;
+	max-height: 400px;
+	overflow: auto;
+}
+
+.code-embed-editor .cm-scroller {
+	overflow: auto;
+}
+
+/* Optimize embed editor scrollbar */
+.code-embed-editor .cm-scroller::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+.code-embed-editor .cm-scroller::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.code-embed-editor .cm-scroller::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border-hover);
+	border-radius: 5px;
+	border: 2px solid transparent;
+	background-clip: content-box;
+}
+
+.code-embed-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+	background: var(--text-muted);
+}
