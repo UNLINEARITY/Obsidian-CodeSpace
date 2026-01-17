@@ -66,21 +66,26 @@ const readOnlyTheme = EditorView.theme({
 		backgroundColor: "transparent",
 		fontFamily: "var(--font-monospace, 'Fira Code', 'JetBrains Mono', 'Cascadia Code', monospace)",
 		fontSize: "13px",
+		textAlign: "left",
 	},
 	".cm-content": {
 		padding: "8px 0",
+		textAlign: "left",
 	},
 	".cm-focused": {
 		outline: "none",
 	},
 	".cm-editor": {
 		borderRadius: "6px",
+		textAlign: "left",
 	},
 	".cm-scroller": {
 		overflow: "auto",
+		textAlign: "left",
 	},
 	".cm-line": {
 		padding: "0 8px",
+		textAlign: "left",
 	},
 	".cm-gutters": {
 		backgroundColor: "transparent !important",

@@ -504,6 +504,7 @@
 	border-radius: 8px;
 	overflow: hidden;
 	background-color: var(--background-secondary);
+	text-align: left; /* 确保左对齐 */
 }
 
 .code-embed-header {
@@ -514,6 +515,7 @@
 	background-color: var(--background-modifier-border);
 	border-bottom: 1px solid var(--background-modifier-border);
 	font-size: 12px;
+	text-align: left;
 }
 
 .code-embed-filename {
@@ -529,12 +531,19 @@
 
 .code-embed-editor {
 	background-color: var(--background-primary);
+	text-align: left; /* 确保左对齐 */
 }
 
 .code-embed-editor .cm-editor {
 	height: auto;
 	max-height: 400px;
 	overflow: auto;
+	text-align: left; /* 确保编辑器内容左对齐 */
+}
+
+.code-embed-editor .cm-content {
+	text-align: left; /* 确保内容左对齐 */
+	padding-left: 0; /* 移除额外 padding */
 }
 
 .code-embed-editor .cm-scroller {
