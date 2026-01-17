@@ -9,30 +9,24 @@ export default class CodeSpacePlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		// 1. 注册设置页
 		this.addSettingTab(new CodeSpaceSettingTab(this.app, this));
 
-		// 2. 注册编辑器视图
 		this.registerView(
 			VIEW_TYPE_CODE_SPACE,
 			(leaf) => new CodeSpaceView(leaf)
 		);
 
-		// 3. 注册仪表盘视图
 		this.registerView(
 			VIEW_TYPE_CODE_DASHBOARD,
 			(leaf) => new CodeDashboardView(leaf)
 		);
 
-		// 4. 动态注册文件后缀接管
 		this.registerCodeExtensions();
 
-		// 5. Ribbon Icon
 		this.addRibbonIcon('code-glyph', 'Open Code Space Dashboard', () => {
 			this.activateDashboard();
 		});
 
-		// 6. Command
 		this.addCommand({
 			id: 'open-code-dashboard',
 			name: 'Open Dashboard',
@@ -43,7 +37,6 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	registerCodeExtensions() {
-		// 解析用户设置的后缀字符串
 		const exts = this.settings.extensions
 			.split(',')
 			.map(s => s.trim())
@@ -51,14 +44,12 @@ export default class CodeSpacePlugin extends Plugin {
 		
 		try {
 			this.registerExtensions(exts, VIEW_TYPE_CODE_SPACE);
-			console.log("Code Space registered extensions:", exts);
 		} catch (e) {
 			console.log("Code Space extension registration warning:", e);
 		}
 	}
 
 	onunload() {
-		// 插件卸载
 	}
 
 	async loadSettings() {
@@ -68,11 +59,19 @@ export default class CodeSpacePlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 		
-		// 主动刷新所有已打开的 Dashboard
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_DASHBOARD);
-		leaves.forEach(leaf => {
+		// 1. 刷新 Dashboard (更新后缀列表)
+		const dashboardLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_DASHBOARD);
+		dashboardLeaves.forEach(leaf => {
 			if (leaf.view instanceof CodeDashboardView) {
 				leaf.view.render();
+			}
+		});
+
+		// 2. 刷新编辑器 (更新行号设置)
+		const editorLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_SPACE);
+		editorLeaves.forEach(leaf => {
+			if (leaf.view instanceof CodeSpaceView) {
+				leaf.view.refreshSettings();
 			}
 		});
 	}

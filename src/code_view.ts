@@ -1,6 +1,6 @@
 import { TextFileView, WorkspaceLeaf } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
-import { EditorState, Compartment } from "@codemirror/state";
+import { EditorState, Compartment, Extension } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
@@ -8,10 +8,16 @@ import { python } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
 import { javascript } from "@codemirror/lang-javascript";
 import { tags } from "@lezer/highlight";
+import CodeSpacePlugin from "./main";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
 
-// 亮色模式高亮
+// ... (HighlightStyle 和 Theme 定义略，此处省略以节省 tokens，但在写入时必须保留完整) ...
+// 为了避免重复定义导致代码被截断，我将只写入 CodeSpaceView 类和必要的 imports
+// 等等，write_file 是全量写入。我必须包含所有内容。
+// 好的，为了确保代码完整性，我再写一遍完整的。
+
+// 1. 定义亮色模式高亮 (VS Code Light 风格)
 const myLightHighlightStyle = HighlightStyle.define([
 	{ tag: tags.keyword, color: "#af00db" },
 	{ tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName], color: "#000000" },
@@ -26,7 +32,7 @@ const myLightHighlightStyle = HighlightStyle.define([
 	{ tag: tags.invalid, color: "#ff0000" },
 ]);
 
-// 暗色模式高亮
+// 2. 定义暗色模式高亮 (One Dark 风格)
 const myDarkHighlightStyle = HighlightStyle.define([
 	{ tag: tags.keyword, color: "#c678dd" },
 	{ tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName], color: "#abb2bf" },
@@ -41,6 +47,7 @@ const myDarkHighlightStyle = HighlightStyle.define([
 	{ tag: tags.invalid, color: "#f44747" },
 ]);
 
+// 3. 定义基础界面主题
 const baseTheme = EditorView.theme({
 	"&": {
 		height: "100%",
@@ -48,11 +55,11 @@ const baseTheme = EditorView.theme({
 		color: "var(--text-normal)"
 	},
 	".cm-content": {
-		caretColor: "var(--text-accent) !important", // 使用强调色作为光标颜色
+		caretColor: "var(--text-accent) !important",
 		padding: "10px 0"
 	},
 	".cm-cursor, .cm-dropCursor": {
-		borderLeftWidth: "2px", // 加粗光标
+		borderLeftWidth: "2px",
 		borderLeftColor: "var(--text-accent) !important"
 	},
 	".cm-gutters": {
@@ -72,10 +79,12 @@ const baseTheme = EditorView.theme({
 export class CodeSpaceView extends TextFileView {
 	editorView: EditorView;
 	themeCompartment: Compartment;
+	lineNumbersCompartment: Compartment;
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
 		this.themeCompartment = new Compartment();
+		this.lineNumbersCompartment = new Compartment();
 	}
 
 	getViewType(): string {
@@ -84,6 +93,11 @@ export class CodeSpaceView extends TextFileView {
 
 	getDisplayText(): string {
 		return this.file ? this.file.name : "Code Space";
+	}
+
+	getPlugin(): CodeSpacePlugin {
+		// @ts-ignore
+		return this.app.plugins.getPlugin("code-space") as CodeSpacePlugin;
 	}
 
 	getLanguageExtension() {
@@ -99,32 +113,45 @@ export class CodeSpaceView extends TextFileView {
 		return syntaxHighlighting(isDark ? myDarkHighlightStyle : myLightHighlightStyle);
 	}
 
+	getLineNumbersExtension(): Extension {
+		const plugin = this.getPlugin();
+		if (plugin && plugin.settings && plugin.settings.showLineNumbers) {
+			return [lineNumbers(), highlightActiveLineGutter()];
+		}
+		return [];
+	}
+
+	// 供外部调用的刷新方法
+	refreshSettings() {
+		this.editorView.dispatch({
+			effects: this.lineNumbersCompartment.reconfigure(this.getLineNumbersExtension())
+		});
+	}
+
 	async onOpen(): Promise<void> {
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();
 		
-		const rootEl = container.createDiv({ cls: "code-space-container" });
+		const root = container.createDiv({ cls: "code-space-container" });
 
 		const baseExtensions = [
 			baseTheme,
-			lineNumbers(),
-			highlightActiveLineGutter(),
+			this.lineNumbersCompartment.of(this.getLineNumbersExtension()),
 			highlightSpecialChars(),
 			history(),
 			foldGutter(),
 			drawSelection(),
 			indentOnInput(),
 			bracketMatching(),
-			closeBrackets(), // 自动闭合括号
+			closeBrackets(),
 			highlightActiveLine(),
-			indentUnit.of("    "), // 强制 4 空格缩进
+			indentUnit.of("    "),
 			keymap.of([
 				...defaultKeymap,
 				...historyKeymap,
-				indentWithTab // 启用 Tab 缩进
+				indentWithTab
 			]),
-			
 			this.getLanguageExtension(),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
@@ -143,7 +170,7 @@ export class CodeSpaceView extends TextFileView {
 
 		this.editorView = new EditorView({
 			state,
-			parent: rootEl
+			parent: root
 		});
 
 		this.registerEvent(this.app.workspace.on("css-change", () => {
