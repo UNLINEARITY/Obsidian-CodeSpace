@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, setIcon, moment } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu } from "obsidian";
 
 export const VIEW_TYPE_CODE_DASHBOARD = "code-space-dashboard";
 
@@ -58,9 +58,9 @@ export class CodeDashboardView extends ItemView {
 		files.forEach(file => {
 			const item = fileList.createDiv({ cls: "code-file-item" });
 			
-			// 1. Unified Minimalist Icon
+			// 1. Icon
 			const iconContainer = item.createDiv({ cls: "code-file-icon-box" });
-			setIcon(iconContainer, "file-code"); // 使用 Obsidian 原生最简约的代码文件图标
+			setIcon(iconContainer, "file-code");
 			
 			// 2. Info
 			const info = item.createDiv({ cls: "code-file-info" });
@@ -72,8 +72,53 @@ export class CodeDashboardView extends ItemView {
 			meta.createDiv({ cls: "code-file-tag", text: file.extension.toUpperCase() });
 			meta.createDiv({ cls: "code-file-time", text: moment(file.stat.mtime).fromNow() });
 
+			// 左键点击：在 Code Space 编辑器打开
 			item.addEventListener("click", () => {
 				this.openFile(file);
+			});
+
+			// 右键点击：上下文菜单
+			item.addEventListener("contextmenu", (event) => {
+				const menu = new Menu();
+
+				menu.addItem((item) =>
+					item
+						.setTitle("Open in default app")
+						.setIcon("external-link")
+						.onClick(() => {
+							// @ts-ignore (openWithDefaultApp is internal API but widely used)
+							this.app.openWithDefaultApp(file.path);
+						})
+				);
+
+				menu.addItem((item) =>
+					item
+						.setTitle("Reveal in navigation")
+						.setIcon("folder-open")
+						.onClick(() => {
+							// 自动在左侧文件树定位
+							const leaf = this.app.workspace.getLeavesOfType("file-explorer")[0];
+							if (leaf) {
+								this.app.workspace.revealLeaf(leaf);
+								// @ts-ignore
+								leaf.view.revealInFolder(file);
+							}
+						})
+				);
+
+				menu.addSeparator();
+
+				menu.addItem((item) =>
+					item
+						.setTitle("Delete")
+						.setIcon("trash")
+						.setWarning(true) // 红色警告样式
+						.onClick(async () => {
+							await this.app.vault.trash(file, true); // true = use system trash
+						})
+				);
+
+				menu.showAtPosition({ x: event.pageX, y: event.pageY });
 			});
 		});
 	}
