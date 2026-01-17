@@ -1,5 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
-import { VIEW_TYPE_CODE_SPACE } from "./code_view";
+import { ItemView, WorkspaceLeaf, TFile, setIcon, moment } from "obsidian";
 
 export const VIEW_TYPE_CODE_DASHBOARD = "code-space-dashboard";
 
@@ -13,19 +12,19 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Code Space Dashboard";
+		return "Code Space";
 	}
 
 	getIcon(): string {
-		return "code-glyph"; // Obsidian 内置图标
+		return "code-glyph";
 	}
 
 	async onOpen(): Promise<void> {
 		this.render();
-		// 监听文件变化，自动刷新列表
 		this.registerEvent(this.app.vault.on("create", () => this.render()));
 		this.registerEvent(this.app.vault.on("delete", () => this.render()));
 		this.registerEvent(this.app.vault.on("rename", () => this.render()));
+		this.registerEvent(this.app.vault.on("modify", () => this.render()));
 	}
 
 	render() {
@@ -34,57 +33,53 @@ export class CodeDashboardView extends ItemView {
 		container.empty();
 		
 		const root = container.createDiv({ cls: "code-dashboard-root" });
-		root.createEl("h2", { text: "Code Space Files" });
+		
+		// Header
+		const header = root.createDiv({ cls: "code-dashboard-header" });
+		header.createEl("h1", { text: "Code Space" });
+		
+		const codeExtensions = ['py', 'c', 'cpp', 'h', 'hpp', 'js', 'ts', 'jsx', 'tsx', 'json', 'css', 'html', 'rs', 'go', 'java', 'sql', 'php', 'rb'];
+		const files = this.app.vault.getFiles()
+			.filter(f => codeExtensions.includes(f.extension.toLowerCase()))
+			.sort((a, b) => b.stat.mtime - a.stat.mtime);
 
+		header.createEl("p", { text: `${files.length} code files managed by Code Space`, cls: "code-dashboard-subtitle" });
+
+		// File Grid
 		const fileList = root.createDiv({ cls: "code-file-list" });
 
-		// 获取所有代码文件
-		const codeExtensions = ['py', 'c', 'cpp', 'h', 'hpp', 'js', 'ts', 'jsx', 'tsx', 'json'];
-		const files = this.app.vault.getFiles().filter(f => codeExtensions.includes(f.extension.toLowerCase()));
-
 		if (files.length === 0) {
-			fileList.createDiv({ text: "No code files found.", cls: "code-empty-state" });
+			const empty = fileList.createDiv({ cls: "code-empty-state" });
+			setIcon(empty.createDiv({ cls: "code-empty-icon" }), "code");
+			empty.createDiv({ text: "No code files found." });
 			return;
 		}
 
-		// 渲染文件列表
 		files.forEach(file => {
 			const item = fileList.createDiv({ cls: "code-file-item" });
 			
-			// 图标
-			item.createSpan({ cls: "code-file-icon", text: this.getFileIcon(file.extension) });
+			// 1. Unified Minimalist Icon
+			const iconContainer = item.createDiv({ cls: "code-file-icon-box" });
+			setIcon(iconContainer, "file-code"); // 使用 Obsidian 原生最简约的代码文件图标
 			
-			// 文件名
-			const nameSpan = item.createSpan({ cls: "code-file-name", text: file.name });
-			
-			// 路径 (灰色小字)
-			item.createSpan({ cls: "code-file-path", text: file.parent?.path === "/" ? "" : ` (${file.parent?.path})` });
+			// 2. Info
+			const info = item.createDiv({ cls: "code-file-info" });
+			info.createDiv({ cls: "code-file-name", text: file.name });
+			info.createDiv({ cls: "code-file-path", text: file.parent?.path === "/" ? "" : file.parent?.path });
 
-			// 点击事件
+			// 3. Metadata
+			const meta = item.createDiv({ cls: "code-file-meta" });
+			meta.createDiv({ cls: "code-file-tag", text: file.extension.toUpperCase() });
+			meta.createDiv({ cls: "code-file-time", text: moment(file.stat.mtime).fromNow() });
+
 			item.addEventListener("click", () => {
 				this.openFile(file);
 			});
 		});
 	}
 
-	getFileIcon(ext: string): string {
-		switch(ext) {
-			case 'py': return '🐍 ';
-			case 'c': 
-			case 'cpp': return '🇨 ';
-			case 'js': 
-			case 'ts': return '📜 ';
-			default: return '📄 ';
-		}
-	}
-
 	async openFile(file: TFile) {
-		// 打开文件
 		const leaf = this.app.workspace.getLeaf(false);
 		await leaf.openFile(file);
-	}
-
-	async onClose(): Promise<void> {
-		// 清理工作
 	}
 }
