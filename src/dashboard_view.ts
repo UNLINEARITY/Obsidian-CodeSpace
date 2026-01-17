@@ -1,5 +1,6 @@
-import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, DropdownComponent, ButtonComponent } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent } from "obsidian";
 import CodeSpacePlugin from "./main"; // 导入插件类型
+import { CustomDropdown } from "./dropdown";
 
 export const VIEW_TYPE_CODE_DASHBOARD = "code-space-dashboard";
 
@@ -100,23 +101,25 @@ export class CodeDashboardView extends ItemView {
 
 		// 3. Filter
 		const existingExts = [...new Set(files.map(f => f.extension))].sort();
-		const filterDropdown = new DropdownComponent(toolbar);
+		const filterContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
+		const filterDropdown = new CustomDropdown(filterContainer);
 		filterDropdown.addOption("all", "All Languages");
 		existingExts.forEach(ext => filterDropdown.addOption(ext, ext.toUpperCase()));
 		filterDropdown.setValue(this.state.filterExt);
-		filterDropdown.onChange((value) => {
+		filterDropdown.onChange((value: string) => {
 			this.state.filterExt = value;
 			this.refreshFileList(fileListContainer, files);
 		});
 
 		// 4. Sort
-		const sortDropdown = new DropdownComponent(toolbar);
+		const sortContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
+		const sortDropdown = new CustomDropdown(sortContainer);
 		sortDropdown.addOption("date", "Date Modified");
 		sortDropdown.addOption("name", "Name");
 		sortDropdown.addOption("type", "Type");
 		sortDropdown.setValue(this.state.sortBy);
-		sortDropdown.onChange((value: any) => {
-			this.state.sortBy = value;
+		sortDropdown.onChange((value: string) => {
+			this.state.sortBy = value as 'date' | 'name' | 'type';
 			this.refreshFileList(fileListContainer, files);
 		});
 
@@ -209,7 +212,13 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	async openFile(file: TFile) {
-		const leaf = this.app.workspace.getLeaf(false);
-		await leaf.openFile(file);
+		// 在新的标签页中用 CodeSpaceView 打开文件
+		const leaf = this.app.workspace.getLeaf(true);
+		await leaf.setViewState({
+			type: "code-space-view",
+			active: true,
+			state: { file: file.path }
+		});
+		this.app.workspace.revealLeaf(leaf);
 	}
 }

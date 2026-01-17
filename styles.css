@@ -12,132 +12,327 @@
 
 .code-space-container .cm-editor {
     height: 100% !important;
-    font-family: var(--font-monospace, 'Fira Code', monospace);
+    font-family: var(--font-monospace, 'Fira Code', 'JetBrains Mono', 'Cascadia Code', monospace);
+    font-feature-settings: "liga" 0, "calt" 0;
+}
+
+/* 优化编辑器行号 */
+.code-space-container .cm-gutters {
+    background-color: transparent !important;
+    color: var(--text-muted);
+    border-right: 1px solid var(--background-modifier-border-hover);
+    min-width: 48px;
+    padding-right: 8px;
+}
+
+.code-space-container .cm-lineNumbers .cm-gutterElement {
+    padding: 0 4px 0 12px;
+    min-width: 24px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 优化光标 */
+.code-space-container .cm-cursor,
+.code-space-container .cm-dropCursor {
+    border-left-width: 2px;
+    border-left-color: var(--interactive-accent) !important;
+}
+
+/* 优化选区 */
+.code-space-container .cm-selectionBackground {
+    background-color: hsla(var(--interactive-accent-hsl), 0.2) !important;
+}
+
+/* 优化滚动条 */
+.code-space-container .cm-scroller {
+    overflow: auto;
+}
+
+.code-space-container .cm-scroller::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.code-space-container .cm-scroller::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.code-space-container .cm-scroller::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border-hover);
+    border-radius: 6px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+}
+
+.code-space-container .cm-scroller::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+    border: 3px solid transparent;
+    background-clip: content-box;
 }
 
 /* =================================================================
-   Dashboard (Native & Clean)
+   Dashboard
    ================================================================= */
 .code-dashboard-root {
-    padding: 32px 48px;
+    padding: 36px 52px;
     height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
     background-color: var(--background-primary);
 }
 
+/* 平滑滚动 */
+.code-dashboard-root {
+    scroll-behavior: smooth;
+}
+
+/* 优化 Dashboard 滚动条 */
+.code-dashboard-root::-webkit-scrollbar {
+    width: 10px;
+}
+
+.code-dashboard-root::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.code-dashboard-root::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border-hover);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.code-dashboard-root::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
 /* Header */
 .code-dashboard-header {
-    margin-bottom: 24px;
+    margin-bottom: 28px;
 }
 
 .code-dashboard-header h1 {
     margin: 0;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 600;
+    letter-spacing: -0.3px;
     color: var(--text-normal);
 }
 
 .code-dashboard-subtitle {
-    margin: 4px 0 0 0;
+    margin: 6px 0 0 0;
     color: var(--text-muted);
     font-size: 14px;
+    font-weight: 400;
 }
 
-/* Toolbar - 模仿 Obsidian 原生工具栏 */
+/* Toolbar */
 .code-dashboard-toolbar {
     display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
+    gap: 10px;
+    margin-bottom: 24px;
     align-items: center;
     flex-wrap: wrap;
-    padding-bottom: 12px;
+    padding: 16px 0;
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
 /* Search Box */
 .code-search-box {
     flex: 1;
-    min-width: 200px;
+    min-width: 220px;
+    max-width: 400px;
     position: relative;
 }
 
 .code-search-box input {
     width: 100%;
-    height: 30px;
-    padding-left: 28px;
+    height: 32px;
+    padding: 0 12px 0 32px;
     background-color: var(--background-modifier-form-field);
     border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 13px;
     color: var(--text-normal);
+    transition: border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+.code-search-box input:hover {
+    border-color: var(--background-modifier-border-hover);
 }
 
 .code-search-box input:focus {
     border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+    box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.15);
+    outline: none;
+}
+
+.code-search-box input::placeholder {
+    color: var(--text-faint);
 }
 
 .code-search-icon {
     position: absolute;
-    left: 8px;
+    left: 10px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
     display: flex;
+    pointer-events: none;
 }
+
 .code-search-icon svg {
     width: 14px;
     height: 14px;
 }
 
-/* Dropdowns & Buttons - 强力去箭头 */
-.code-dashboard-toolbar select,
+/* Custom Dropdown - 完全自定义的下拉组件 */
+.custom-dropdown-wrapper {
+	position: relative;
+}
+
+.custom-dropdown-select {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	height: 32px;
+	min-width: 120px;
+	padding: 0 14px;
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	cursor: pointer;
+	transition: border-color 0.1s ease, box-shadow 0.1s ease;
+	user-select: none;
+}
+
+.custom-dropdown-select:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.custom-dropdown-select.is-open {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.2);
+}
+
+.custom-dropdown-label {
+	flex: 1;
+	font-size: 13px;
+	font-weight: 400;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.custom-dropdown-arrow {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	color: var(--text-muted);
+}
+
+.custom-dropdown-select.is-open .custom-dropdown-arrow {
+	transform: rotate(180deg);
+}
+
+.custom-dropdown-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	right: 0;
+	z-index: 1000;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+	overflow: hidden;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.custom-dropdown-item {
+	padding: 8px 14px;
+	font-size: 13px;
+	color: var(--text-normal);
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.custom-dropdown-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.custom-dropdown-item.is-selected {
+	background-color: hsla(var(--interactive-accent-hsl), 0.15);
+	color: var(--interactive-accent);
+	font-weight: 500;
+}
+
+/* Dropdown 滚动条样式 */
+.custom-dropdown-menu::-webkit-scrollbar {
+	width: 8px;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border-hover);
+	border-radius: 4px;
+	border: 1px solid transparent;
+	background-clip: content-box;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar-thumb:hover {
+	background: var(--text-muted);
+}
+
+/* Buttons */
 .code-dashboard-toolbar button {
-    height: 30px;
-    background-color: transparent;
-    border: 1px solid transparent;
+    height: 32px;
+    background-color: var(--interactive-normal);
+    border: none;
     border-radius: 4px;
-    padding: 0 12px;
-    color: var(--text-muted);
+    padding: 0 14px;
+    color: var(--text-normal);
     font-size: 13px;
+    font-weight: 400;
     cursor: pointer;
-    transition: all 0.1s ease;
-    
-    /* 核心：暴力去除所有可能产生箭头的属性 */
-    appearance: none !important;
-    -webkit-appearance: none !important;
-    -moz-appearance: none !important;
-    background-image: none !important;
-    background: transparent; /* 确保没有背景图 */
-    
-    text-align: center;
-    text-align-last: center;
+    transition: background-color 0.1s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-/* 针对 IE/Edge 的特殊清除 */
-.code-dashboard-toolbar select::-ms-expand {
-    display: none;
-}
-
-/* Hover 状态 */
-.code-dashboard-toolbar select:hover,
 .code-dashboard-toolbar button:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
 }
 
-/* Focus 状态 */
-.code-dashboard-toolbar select:focus {
-    color: var(--text-normal);
-    outline: none;
-    background-color: var(--background-modifier-hover); /* 聚焦时也保持 hover 背景 */
-}
-
 .code-dashboard-toolbar button.clickable-icon {
-    padding: 0 8px;
+    padding: 0 10px;
+    background-color: transparent;
+    border: none;
     color: var(--text-muted);
 }
+
+.code-dashboard-toolbar button.clickable-icon:hover {
+    color: var(--interactive-accent);
+    background-color: var(--background-modifier-hover);
+}
+
 .code-dashboard-toolbar button.clickable-icon svg {
     width: 16px;
     height: 16px;
@@ -146,23 +341,24 @@
 /* File Grid */
 .code-file-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
 }
 
 .code-file-item {
     display: flex;
     align-items: center;
-    padding: 12px;
+    padding: 14px;
     background-color: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.1s ease, border-color 0.1s ease;
+    position: relative;
 }
 
 .code-file-item:hover {
-    background-color: var(--background-secondary-alt);
+    background-color: var(--background-modifier-hover);
     border-color: var(--background-modifier-border-hover);
 }
 
@@ -171,13 +367,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    background-color: transparent;
-    margin-right: 12px;
+    width: 36px;
+    height: 36px;
+    background-color: var(--background-modifier-border);
+    border-radius: 6px;
+    margin-right: 14px;
     color: var(--text-muted);
     flex-shrink: 0;
+    transition: background-color 0.1s ease, color 0.1s ease, transform 0.1s ease;
 }
+
+.code-file-item:hover .code-file-icon-box {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    transform: scale(1.02);
+}
+
 .code-file-icon-box svg {
     width: 20px;
     height: 20px;
@@ -193,6 +398,7 @@
 .code-file-name {
     font-size: 14px;
     font-weight: 500;
+    letter-spacing: -0.1px;
     color: var(--text-normal);
     white-space: nowrap;
     overflow: hidden;
@@ -200,12 +406,13 @@
 }
 
 .code-file-path {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    opacity: 0.8;
 }
 
 /* Metadata */
@@ -213,22 +420,25 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 4px;
+    gap: 6px;
     margin-left: 12px;
 }
 
 .code-file-tag {
     font-size: 10px;
     font-weight: 600;
-    padding: 1px 5px;
-    border-radius: 3px;
+    padding: 3px 6px;
+    border-radius: 4px;
     background-color: var(--background-modifier-border);
     color: var(--text-muted);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
 }
 
 .code-file-time {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
 }
 
 /* Empty State */
@@ -238,18 +448,25 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 80px 0;
+    padding: 100px 0;
     color: var(--text-muted);
 }
+
 .code-empty-icon svg {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 12px;
-    opacity: 0.3;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    opacity: 0.25;
+}
+
+.code-empty-state p {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 400;
 }
 
 /* =================================================================
-   高亮配色 (保留)
+   高亮配色
    ================================================================= */
 .theme-light .cmt-keyword { color: var(--code-keyword, #af00db) !important; }
 .theme-light .cmt-variableName { color: var(--code-value, #001080) !important; }
