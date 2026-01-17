@@ -58,7 +58,10 @@ export default class CodeSpacePlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-		
+
+		// 重新注册扩展名（必须在刷新视图之前）
+		this.registerCodeExtensions();
+
 		// 1. 刷新 Dashboard (更新后缀列表)
 		const dashboardLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_DASHBOARD);
 		dashboardLeaves.forEach(leaf => {

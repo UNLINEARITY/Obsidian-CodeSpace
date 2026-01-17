@@ -115,6 +115,23 @@ export class CodeSpaceView extends TextFileView {
 	lineNumbersCompartment: Compartment;
 	languageCompartment: Compartment;
 
+	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
+	static canAcceptExtension(extension: string): boolean {
+		const ext = extension.toLowerCase();
+		// 获取插件的扩展名配置
+		// @ts-ignore
+		const plugin = (window as any).app?.plugins?.getPlugin("code-space");
+		if (plugin && plugin.settings) {
+			const extensions = plugin.settings.extensions
+				.split(',')
+				.map((s: string) => s.trim().toLowerCase())
+				.filter((s: string) => s);
+			return extensions.includes(ext);
+		}
+		// 默认支持常见的代码文件扩展名
+		return ['py', 'c', 'cpp', 'h', 'hpp', 'js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'sql', 'php'].includes(ext);
+	}
+
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
 		this.themeCompartment = new Compartment();
