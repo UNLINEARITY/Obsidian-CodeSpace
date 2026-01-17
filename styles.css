@@ -1,17 +1,58 @@
-/* 容器填满整个可用空间 */
+/* =================================================================
+   Code Space 容器样式
+   ================================================================= */
 .code-space-container {
     height: 100%;
     width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background-color: var(--background-primary);
 }
 
-/* 确保 CodeMirror 占满容器 */
 .code-space-container .cm-editor {
-    height: 100%;
+    height: 100% !important;
+    font-family: var(--font-monospace, 'Fira Code', monospace);
 }
 
-.code-space-container .cm-scroller {
-    font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-}
+/* =================================================================
+   高亮配色方案 (CSS Mapping)
+   这里我们定义了两套硬编码颜色作为强力兜底。
+   优先级：CSS变量 > 硬编码颜色
+   ================================================================= */
+
+/* ------------------- 亮色模式 (Light Mode) ------------------- */
+.theme-light .cmt-keyword { color: var(--code-keyword, #af00db) !important; }      /* 紫色 */
+.theme-light .cmt-variableName { color: var(--code-value, #001080) !important; }   /* 深蓝 */
+.theme-light .cmt-typeName { color: var(--code-class, #267f99) !important; }       /* 青色 */
+.theme-light .cmt-function { color: var(--code-function, #795e26) !important; }    /* 褐色 */
+.theme-light .cmt-string { color: var(--code-string, #a31515) !important; }        /* 红色 */
+.theme-light .cmt-comment { color: var(--code-comment, #008000) !important; }      /* 绿色 */
+.theme-light .cmt-number { color: var(--code-value, #098658) !important; }         /* 墨绿 */
+.theme-light .cmt-operator { color: var(--code-operator, #383838) !important; }    /* 深灰 */
+.theme-light .cmt-punctuation { color: var(--code-punctuation, #383838) !important; }
+.theme-light .cmt-meta { color: #800000 !important; }                              /* 预处理指令 */
+
+/* ------------------- 暗色模式 (Dark Mode) ------------------- */
+.theme-dark .cmt-keyword { color: var(--code-keyword, #c678dd) !important; }       /* 紫粉 */
+.theme-dark .cmt-variableName { color: var(--code-value, #e06c75) !important; }    /* 红色 (One Dark风格) */
+.theme-dark .cmt-typeName { color: var(--code-class, #e5c07b) !important; }        /* 金色 */
+.theme-dark .cmt-function { color: var(--code-function, #61afef) !important; }     /* 蓝色 */
+.theme-dark .cmt-string { color: var(--code-string, #98c379) !important; }         /* 绿色 */
+.theme-dark .cmt-comment { color: var(--code-comment, #5c6370) !important; }       /* 灰色 */
+.theme-dark .cmt-number { color: var(--code-value, #d19a66) !important; }          /* 橙色 */
+.theme-dark .cmt-operator { color: var(--code-operator, #56b6c2) !important; }     /* 青色 */
+.theme-dark .cmt-punctuation { color: var(--code-punctuation, #abb2bf) !important; }
+.theme-dark .cmt-meta { color: #c678dd !important; }
+
+/* ------------------- 通用样式 ------------------- */
+.cmt-invalid { color: var(--text-error, #f00) !important; text-decoration: underline wavy; }
+.cmt-link { color: var(--text-accent, #2d7fba) !important; text-decoration: underline; }
+
+/* 光标颜色适配 */
+.theme-light .cm-content { caret-color: #000000; }
+.theme-dark .cm-content { caret-color: #ffffff; }
+
+/* 选中区域背景 */
+.cm-selectionBackground { background-color: var(--text-selection) !important; }
+.cm-activeLine { background-color: var(--background-modifier-active-hover) !important; }
