@@ -1,4 +1,5 @@
 import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, DropdownComponent, ButtonComponent } from "obsidian";
+import CodeSpacePlugin from "./main"; // 导入插件类型
 
 export const VIEW_TYPE_CODE_DASHBOARD = "code-space-dashboard";
 
@@ -10,6 +11,7 @@ interface DashboardState {
 }
 
 export class CodeDashboardView extends ItemView {
+	plugin: CodeSpacePlugin; // 引用插件实例
 	state: DashboardState = {
 		searchQuery: "",
 		filterExt: "all",
@@ -34,7 +36,10 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
-		console.log("CodeSpace: Dashboard opened");
+		// Hack: 获取插件实例 (通过 app.plugins 如果是公开 API，或者通过全局)
+		// 这里简单假设我们能通过 view 的 scope 访问，或者在 main.ts 传进来。
+		// 更稳妥的方式是：view 不直接持有 plugin，而是 app.plugins.getPlugin('code-space')
+		
 		this.render();
 		this.registerEvent(this.app.vault.on("create", () => this.render(true)));
 		this.registerEvent(this.app.vault.on("delete", () => this.render(true)));
@@ -42,24 +47,33 @@ export class CodeDashboardView extends ItemView {
 		this.registerEvent(this.app.vault.on("modify", () => this.render(true)));
 	}
 
+	// 获取配置的后缀列表
+	getManagedExtensions(): string[] {
+		// @ts-ignore
+		const plugin = this.app.plugins.getPlugin("code-space") as CodeSpacePlugin;
+		if (plugin && plugin.settings) {
+			return plugin.settings.extensions.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+		}
+		return ['py', 'js', 'c', 'cpp']; // Fallback
+	}
+
 	render(keepState = false) {
-		console.log("CodeSpace: Rendering Dashboard...");
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();
 		
 		const root = container.createDiv({ cls: "code-dashboard-root" });
 		
-		// 1. Header
+		// Header
 		const header = root.createDiv({ cls: "code-dashboard-header" });
 		header.createEl("h1", { text: "Code Space" });
 		
-		const codeExtensions = ['py', 'c', 'cpp', 'h', 'hpp', 'js', 'ts', 'jsx', 'tsx', 'json', 'css', 'html', 'rs', 'go', 'java', 'sql', 'php', 'rb'];
+		const codeExtensions = this.getManagedExtensions();
 		let files = this.app.vault.getFiles().filter(f => codeExtensions.includes(f.extension.toLowerCase()));
 
 		header.createEl("p", { text: `${files.length} code files managed`, cls: "code-dashboard-subtitle" });
 
-		// 2. Toolbar (关键部分)
+		// Toolbar
 		const toolbar = root.createDiv({ cls: "code-dashboard-toolbar" });
 		
 		// Search
@@ -67,7 +81,7 @@ export class CodeDashboardView extends ItemView {
 		const searchIcon = searchContainer.createDiv({ cls: "code-search-icon" });
 		setIcon(searchIcon, "search");
 		
-		const searchInput = new TextComponent(searchContainer)
+		new TextComponent(searchContainer)
 			.setPlaceholder("Search files...")
 			.setValue(this.state.searchQuery)
 			.onChange((value) => {
@@ -75,7 +89,7 @@ export class CodeDashboardView extends ItemView {
 				this.refreshFileList(fileListContainer, files);
 			});
 
-		// Filters
+		// Filter
 		const existingExts = [...new Set(files.map(f => f.extension))].sort();
 		const filterDropdown = new DropdownComponent(toolbar);
 		filterDropdown.addOption("all", "All Languages");
@@ -107,7 +121,7 @@ export class CodeDashboardView extends ItemView {
 				this.refreshFileList(fileListContainer, files);
 			});
 
-		// 3. File List Container
+		// List Container
 		const fileListContainer = root.createDiv({ cls: "code-file-list-container" });
 		this.refreshFileList(fileListContainer, files);
 	}
@@ -137,7 +151,7 @@ export class CodeDashboardView extends ItemView {
 
 		if (files.length === 0) {
 			const empty = grid.createDiv({ cls: "code-empty-state" });
-			setIcon(empty.createDiv({ cls: "code-empty-icon" }), "search-x"); // 改个图标
+			setIcon(empty.createDiv({ cls: "code-empty-icon" }), "search-x");
 			empty.createDiv({ text: "No matching files found." });
 			return;
 		}
