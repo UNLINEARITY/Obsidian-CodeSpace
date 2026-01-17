@@ -1,7 +1,8 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-codespace",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "A powerful, minimalist integrated development environment for managing and editing code snippets within Obsidian.",
+	"author": "unlinearity <unlinearity@gmail.com>",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

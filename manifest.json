@@ -3,9 +3,9 @@
 	"name": "Code Space",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "An integrated development environment for your code snippets within Obsidian.",
-	"author": "Gemini Agent",
-	"authorUrl": "https://obsidian.md",
+	"description": "A powerful, minimalist integrated development environment for managing and editing code snippets within Obsidian.",
+	"author": "unlinearity",
+	"authorUrl": "mailto:unlinearity@gmail.com",
 	"fundingUrl": "https://obsidian.md/pricing",
 	"isDesktopOnly": false
 }
