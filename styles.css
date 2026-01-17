@@ -16,6 +16,60 @@
 }
 
 /* =================================================================
+   Dashboard 样式
+   ================================================================= */
+.code-dashboard-root {
+    padding: 20px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.code-file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.code-file-item {
+    padding: 10px;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.code-file-item:hover {
+    background-color: var(--background-secondary-alt);
+    border-color: var(--text-accent);
+}
+
+.code-file-icon {
+    margin-right: 10px;
+    font-size: 1.2em;
+}
+
+.code-file-name {
+    font-weight: bold;
+    color: var(--text-normal);
+}
+
+.code-file-path {
+    margin-left: 10px;
+    color: var(--text-muted);
+    font-size: 0.8em;
+}
+
+.code-empty-state {
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 20px;
+}
+
+/* =================================================================
    高亮配色方案 (CSS Mapping)
    这里我们定义了两套硬编码颜色作为强力兜底。
    优先级：CSS变量 > 硬编码颜色
