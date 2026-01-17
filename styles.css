@@ -1,8 +1,17 @@
-/*
+/* 容器填满整个可用空间 */
+.code-space-container {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* 确保 CodeMirror 占满容器 */
+.code-space-container .cm-editor {
+    height: 100%;
+}
 
-If your plugin does not need CSS, delete this file.
-
-*/
+.code-space-container .cm-scroller {
+    font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+}
