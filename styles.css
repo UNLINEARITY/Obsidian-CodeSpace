@@ -16,10 +16,10 @@
 }
 
 /* =================================================================
-   Dashboard (Pro Edition)
+   Dashboard (Native & Clean)
    ================================================================= */
 .code-dashboard-root {
-    padding: 40px;
+    padding: 32px 48px;
     height: 100%;
     overflow-y: auto;
     width: 100%;
@@ -28,49 +28,49 @@
 
 /* Header */
 .code-dashboard-header {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .code-dashboard-header h1 {
     margin: 0;
-    font-size: 32px;
-    font-weight: 300;
+    font-size: 28px;
+    font-weight: 600;
     color: var(--text-normal);
-    letter-spacing: -0.5px;
 }
 
 .code-dashboard-subtitle {
-    margin: 5px 0 0 0;
-    color: var(--text-faint);
+    margin: 4px 0 0 0;
+    color: var(--text-muted);
     font-size: 14px;
 }
 
-/* Toolbar */
+/* Toolbar - 模仿 Obsidian 原生工具栏 */
 .code-dashboard-toolbar {
     display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
+    gap: 8px;
+    margin-bottom: 20px;
     align-items: center;
-    flex-wrap: wrap; /* 小屏幕自动换行 */
+    flex-wrap: wrap;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
 }
 
 /* Search Box */
 .code-search-box {
-    flex: 1; /* 占据剩余空间 */
+    flex: 1;
     min-width: 200px;
     position: relative;
-    display: flex;
-    align-items: center;
 }
 
 .code-search-box input {
     width: 100%;
-    padding-left: 36px; /* 留出图标位置 */
+    height: 30px;
+    padding-left: 28px;
     background-color: var(--background-modifier-form-field);
     border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
-    height: 36px;
-    transition: all 0.2s;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text-normal);
 }
 
 .code-search-box input:focus {
@@ -80,57 +80,90 @@
 
 .code-search-icon {
     position: absolute;
-    left: 10px;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--text-muted);
-    pointer-events: none;
+    display: flex;
 }
 .code-search-icon svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
 
-/* Dropdowns & Buttons */
+/* Dropdowns & Buttons - 强力去箭头 */
 .code-dashboard-toolbar select,
 .code-dashboard-toolbar button {
-    height: 36px;
-    background-color: var(--background-modifier-form-field);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
+    height: 30px;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
     padding: 0 12px;
-    color: var(--text-normal);
+    color: var(--text-muted);
+    font-size: 13px;
     cursor: pointer;
+    transition: all 0.1s ease;
+    
+    /* 核心：暴力去除所有可能产生箭头的属性 */
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: none !important;
+    background: transparent; /* 确保没有背景图 */
+    
+    text-align: center;
+    text-align-last: center;
+}
+
+/* 针对 IE/Edge 的特殊清除 */
+.code-dashboard-toolbar select::-ms-expand {
+    display: none;
+}
+
+/* Hover 状态 */
+.code-dashboard-toolbar select:hover,
+.code-dashboard-toolbar button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+/* Focus 状态 */
+.code-dashboard-toolbar select:focus {
+    color: var(--text-normal);
+    outline: none;
+    background-color: var(--background-modifier-hover); /* 聚焦时也保持 hover 背景 */
 }
 
 .code-dashboard-toolbar button.clickable-icon {
-    padding: 0 8px; /* 图标按钮窄一点 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 0 8px;
+    color: var(--text-muted);
+}
+.code-dashboard-toolbar button.clickable-icon svg {
+    width: 16px;
+    height: 16px;
 }
 
 /* File Grid */
 .code-file-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
 }
 
 .code-file-item {
     display: flex;
     align-items: center;
-    padding: 16px;
-    background-color: var(--background-primary);
+    padding: 12px;
+    background-color: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
-    border-radius: 10px;
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.15s ease-out;
+    transition: background-color 0.1s ease, border-color 0.1s ease;
 }
 
 .code-file-item:hover {
-    background-color: var(--background-secondary);
-    border-color: var(--interactive-accent);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-s);
+    background-color: var(--background-secondary-alt);
+    border-color: var(--background-modifier-border-hover);
 }
 
 /* Icon */
@@ -138,11 +171,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    background-color: var(--background-secondary);
-    border-radius: 8px;
-    margin-right: 16px;
+    width: 32px;
+    height: 32px;
+    background-color: transparent;
+    margin-right: 12px;
     color: var(--text-muted);
     flex-shrink: 0;
 }
@@ -159,7 +191,7 @@
 }
 
 .code-file-name {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--text-normal);
     white-space: nowrap;
@@ -169,8 +201,8 @@
 
 .code-file-path {
     font-size: 11px;
-    color: var(--text-faint);
-    margin-top: 3px;
+    color: var(--text-muted);
+    margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -181,14 +213,15 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 6px;
+    gap: 4px;
+    margin-left: 12px;
 }
 
 .code-file-tag {
-    font-size: 9px;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
     background-color: var(--background-modifier-border);
     color: var(--text-muted);
 }
@@ -205,18 +238,18 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 100px 0;
+    padding: 80px 0;
     color: var(--text-muted);
 }
 .code-empty-icon svg {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+    opacity: 0.3;
 }
 
 /* =================================================================
-   高亮配色方案 (CSS Mapping - Hardcoded Fallback)
+   高亮配色 (保留)
    ================================================================= */
 .theme-light .cmt-keyword { color: var(--code-keyword, #af00db) !important; }
 .theme-light .cmt-variableName { color: var(--code-value, #001080) !important; }
@@ -228,7 +261,6 @@
 .theme-light .cmt-operator { color: var(--code-operator, #383838) !important; }
 .theme-light .cmt-punctuation { color: var(--code-punctuation, #383838) !important; }
 .theme-light .cmt-meta { color: #800000 !important; }
-
 .theme-dark .cmt-keyword { color: var(--code-keyword, #c678dd) !important; }
 .theme-dark .cmt-variableName { color: var(--code-value, #e06c75) !important; }
 .theme-dark .cmt-typeName { color: var(--code-class, #e5c07b) !important; }
@@ -239,10 +271,8 @@
 .theme-dark .cmt-operator { color: var(--code-operator, #56b6c2) !important; }
 .theme-dark .cmt-punctuation { color: var(--code-punctuation, #abb2bf) !important; }
 .theme-dark .cmt-meta { color: #c678dd !important; }
-
 .cmt-invalid { color: var(--text-error, #f00) !important; text-decoration: underline wavy; }
 .cmt-link { color: var(--text-accent, #2d7fba) !important; text-decoration: underline; }
-
 .theme-light .cm-content { caret-color: #000000; }
 .theme-dark .cm-content { caret-color: #ffffff; }
 .cm-selectionBackground { background-color: var(--text-selection) !important; }
