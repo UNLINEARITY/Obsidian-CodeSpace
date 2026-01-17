@@ -28,6 +28,9 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outfile: "main.js",
 	minify: prod,
+	// Preserve language packages to prevent tree-shaking
+	legalComments: "external",
+	allowOverwrite: true,
 });
 
 if (prod) {

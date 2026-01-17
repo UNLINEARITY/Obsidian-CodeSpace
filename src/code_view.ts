@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf } from "obsidian";
+import { TextFileView, WorkspaceLeaf, TFile } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment, Extension } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
@@ -7,15 +7,48 @@ import { closeBrackets } from "@codemirror/autocomplete";
 import { python } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
 import { javascript } from "@codemirror/lang-javascript";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { sql } from "@codemirror/lang-sql";
+import { php } from "@codemirror/lang-php";
 import { tags } from "@lezer/highlight";
 import CodeSpacePlugin from "./main";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
 
-// ... (HighlightStyle 和 Theme 定义略，此处省略以节省 tokens，但在写入时必须保留完整) ...
-// 为了避免重复定义导致代码被截断，我将只写入 CodeSpaceView 类和必要的 imports
-// 等等，write_file 是全量写入。我必须包含所有内容。
-// 好的，为了确保代码完整性，我再写一遍完整的。
+// Language package mapping to ensure proper bundling
+const LANGUAGE_PACKAGES: Record<string, Extension> = {
+	// Python
+	'py': python(),
+	// C/C++
+	'c': cpp(),
+	'cpp': cpp(),
+	'h': cpp(),
+	'hpp': cpp(),
+	'cc': cpp(),
+	'cxx': cpp(),
+	// JavaScript/TypeScript/JSON
+	'js': javascript({ jsx: true }),
+	'ts': javascript({ jsx: true }),
+	'jsx': javascript({ jsx: true }),
+	'tsx': javascript({ jsx: true }),
+	'json': javascript({ jsx: true }),
+	'mjs': javascript({ jsx: true }),
+	'cjs': javascript({ jsx: true }),
+	// HTML
+	'html': html(),
+	'htm': html(),
+	'xhtml': html(),
+	// CSS
+	'css': css(),
+	'scss': css(),
+	'sass': css(),
+	'less': css(),
+	// SQL
+	'sql': sql(),
+	// PHP
+	'php': php(),
+};
 
 // 1. 定义亮色模式高亮 (VS Code Light 风格)
 const myLightHighlightStyle = HighlightStyle.define([
@@ -80,11 +113,13 @@ export class CodeSpaceView extends TextFileView {
 	editorView: EditorView;
 	themeCompartment: Compartment;
 	lineNumbersCompartment: Compartment;
+	languageCompartment: Compartment;
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
 		this.themeCompartment = new Compartment();
 		this.lineNumbersCompartment = new Compartment();
+		this.languageCompartment = new Compartment();
 	}
 
 	getViewType(): string {
@@ -102,10 +137,10 @@ export class CodeSpaceView extends TextFileView {
 
 	getLanguageExtension() {
 		const ext = this.file?.extension.toLowerCase();
-		if (ext === 'py') return python();
-		if (['c', 'cpp', 'h', 'hpp'].includes(ext || '')) return cpp();
-		if (['js', 'ts', 'jsx', 'tsx', 'json'].includes(ext || '')) return javascript();
-		return [];
+		if (!ext) return [];
+
+		// Return the language extension from the mapping
+		return LANGUAGE_PACKAGES[ext] || [];
 	}
 
 	getThemeExtension() {
@@ -128,16 +163,35 @@ export class CodeSpaceView extends TextFileView {
 		});
 	}
 
+	async onLoadFile(file: TFile): Promise<void> {
+		await super.onLoadFile(file);
+		// Update language extension when file is loaded
+		if (this.editorView) {
+			const ext = file.extension.toLowerCase();
+			console.log("Code Space: File loaded:", file.name, "extension:", ext);
+			const langExt = LANGUAGE_PACKAGES[ext] || [];
+			console.log("Code Space: Applying language extension:", langExt);
+			this.editorView.dispatch({
+				effects: this.languageCompartment.reconfigure(langExt)
+			});
+		}
+	}
+
 	async onOpen(): Promise<void> {
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();
-		
+
 		const root = container.createDiv({ cls: "code-space-container" });
+
+		// Debug: Log file extension and language extension
+		const ext = this.file?.extension.toLowerCase();
+		console.log("Code Space: Opening file", this.file?.name, "with extension:", ext);
 
 		const baseExtensions = [
 			baseTheme,
 			this.lineNumbersCompartment.of(this.getLineNumbersExtension()),
+			this.languageCompartment.of([]), // Start with empty, will be updated in onLoadFile
 			highlightSpecialChars(),
 			history(),
 			foldGutter(),
@@ -152,7 +206,6 @@ export class CodeSpaceView extends TextFileView {
 				...historyKeymap,
 				indentWithTab
 			]),
-			this.getLanguageExtension(),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
 					this.requestSave();
@@ -172,6 +225,8 @@ export class CodeSpaceView extends TextFileView {
 			state,
 			parent: root
 		});
+
+		console.log("Code Space: Editor created with state");
 
 		this.registerEvent(this.app.workspace.on("css-change", () => {
 			this.editorView.dispatch({
