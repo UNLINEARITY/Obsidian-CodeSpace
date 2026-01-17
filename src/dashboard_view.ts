@@ -11,7 +11,7 @@ interface DashboardState {
 }
 
 export class CodeDashboardView extends ItemView {
-	plugin: CodeSpacePlugin; // 引用插件实例
+	plugin: CodeSpacePlugin; 
 	state: DashboardState = {
 		searchQuery: "",
 		filterExt: "all",
@@ -36,10 +36,6 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
-		// Hack: 获取插件实例 (通过 app.plugins 如果是公开 API，或者通过全局)
-		// 这里简单假设我们能通过 view 的 scope 访问，或者在 main.ts 传进来。
-		// 更稳妥的方式是：view 不直接持有 plugin，而是 app.plugins.getPlugin('code-space')
-		
 		this.render();
 		this.registerEvent(this.app.vault.on("create", () => this.render(true)));
 		this.registerEvent(this.app.vault.on("delete", () => this.render(true)));
@@ -54,7 +50,7 @@ export class CodeDashboardView extends ItemView {
 		if (plugin && plugin.settings) {
 			return plugin.settings.extensions.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
 		}
-		return ['py', 'js', 'c', 'cpp']; // Fallback
+		return ['py', 'js', 'c', 'cpp'];
 	}
 
 	render(keepState = false) {
@@ -76,7 +72,20 @@ export class CodeDashboardView extends ItemView {
 		// Toolbar
 		const toolbar = root.createDiv({ cls: "code-dashboard-toolbar" });
 		
-		// Search
+		// 1. Settings Button (新增)
+		new ButtonComponent(toolbar)
+			.setIcon("settings")
+			.setTooltip("Open Settings")
+			.setClass("clickable-icon")
+			.onClick(() => {
+				// 打开设置并定位到本插件
+				// @ts-ignore
+				this.app.setting.open();
+				// @ts-ignore
+				this.app.setting.openTabById("code-space");
+			});
+
+		// 2. Search
 		const searchContainer = toolbar.createDiv({ cls: "code-search-box" });
 		const searchIcon = searchContainer.createDiv({ cls: "code-search-icon" });
 		setIcon(searchIcon, "search");
@@ -89,7 +98,7 @@ export class CodeDashboardView extends ItemView {
 				this.refreshFileList(fileListContainer, files);
 			});
 
-		// Filter
+		// 3. Filter
 		const existingExts = [...new Set(files.map(f => f.extension))].sort();
 		const filterDropdown = new DropdownComponent(toolbar);
 		filterDropdown.addOption("all", "All Languages");
@@ -100,7 +109,7 @@ export class CodeDashboardView extends ItemView {
 			this.refreshFileList(fileListContainer, files);
 		});
 
-		// Sort
+		// 4. Sort
 		const sortDropdown = new DropdownComponent(toolbar);
 		sortDropdown.addOption("date", "Date Modified");
 		sortDropdown.addOption("name", "Name");
@@ -111,7 +120,7 @@ export class CodeDashboardView extends ItemView {
 			this.refreshFileList(fileListContainer, files);
 		});
 
-		// Sort Button
+		// 5. Sort Order
 		const sortBtn = new ButtonComponent(toolbar)
 			.setIcon(this.state.sortDesc ? "arrow-down-narrow-wide" : "arrow-up-narrow-wide")
 			.setTooltip("Toggle Order")
