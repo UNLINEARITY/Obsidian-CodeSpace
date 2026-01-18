@@ -112,6 +112,7 @@ export class CodeSpaceView extends TextFileView {
 	languageCompartment: Compartment;
 	fontSizeCompartment: Compartment; // 新增：管理字体大小
 	fontSize: number = 15; // 默认字体大小（px）
+	private isDirty: boolean = false; // 新增：跟踪是否有未保存的修改
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -201,6 +202,43 @@ export class CodeSpaceView extends TextFileView {
 		});
 	}
 
+	// 手动保存方法（Ctrl+S 触发）
+	async save() {
+		if (!this.file) return;
+
+		try {
+			// 保存到磁盘
+			await this.app.vault.modify(this.file, this.editorView.state.doc.toString());
+
+			// 更新缓存
+			this.data = this.editorView.state.doc.toString();
+
+			// 清除 dirty 状态
+			this.isDirty = false;
+			this.updateTitle();
+
+			console.log("Code Space: File saved");
+		} catch (error) {
+			console.error("Code Space: Failed to save file:", error);
+			new Notice("Failed to save file");
+		}
+	}
+
+	// 更新标题显示未保存状态
+	updateTitle() {
+		if (!this.file) return;
+
+		// 在文件名后添加 ● 表示未保存
+		const title = this.isDirty ? `${this.file.name} ●` : this.file.name;
+		this.leaf.setViewState({ type: VIEW_TYPE_CODE_SPACE, active: true, state: { file: this.file.path } });
+
+		// 尝试更新 tab 标题（Obsidian 可能不直接支持，但我们可以尝试）
+		const titleEl = this.containerEl.querySelector('.view-header-title');
+		if (titleEl) {
+			titleEl.textContent = title;
+		}
+	}
+
 	async onLoadFile(file: TFile): Promise<void> {
 		await super.onLoadFile(file);
 
@@ -250,6 +288,10 @@ export class CodeSpaceView extends TextFileView {
 				effects: this.languageCompartment.reconfigure(langExt)
 			});
 		}
+
+		// 文件加载完成，清除 dirty 状态
+		this.isDirty = false;
+		this.updateTitle();
 	}
 
 	async onOpen(): Promise<void> {
@@ -280,11 +322,22 @@ export class CodeSpaceView extends TextFileView {
 			keymap.of([
 				...defaultKeymap,
 				...historyKeymap,
-				indentWithTab
+				indentWithTab,
+				{
+					key: "Mod-s",
+					run: () => {
+						this.save();
+						return true;
+					}
+				}
 			]),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
-					this.requestSave();
+					// 标记为有未保存修改，但不自动保存
+					if (!this.isDirty) {
+						this.isDirty = true;
+						this.updateTitle();
+					}
 				}
 			})
 		];
@@ -339,19 +392,16 @@ export class CodeSpaceView extends TextFileView {
 		this.registerEvent(this.app.vault.on("modify", (file: TFile) => {
 			// 检查修改的文件是否是当前打开的文件
 			if (this.file && file.path === this.file.path) {
-				// 检查编辑器是否有未保存的修改
-				const currentContent = this.editorView.state.doc.toString();
-				const hasUnsavedChanges = currentContent !== this.data;
-
-				if (!hasUnsavedChanges) {
-					// 没有未保存的修改，直接刷新
-					console.log("Code Space: File modified externally, reloading...");
-					this.loadFileContent();
-				} else {
-					// 有未保存的修改，显示通知
+				// 如果有未保存的修改，不要重新加载（保护用户的编辑）
+				if (this.isDirty) {
 					console.log("Code Space: File modified externally but has unsaved changes");
 					new Notice("File modified externally. You have unsaved changes.", 5000);
+					return;
 				}
+
+				// 没有未保存的修改，直接刷新
+				console.log("Code Space: File modified externally, reloading...");
+				this.loadFileContent();
 			}
 		}));
 	}
@@ -374,6 +424,10 @@ export class CodeSpaceView extends TextFileView {
 
 			// 更新缓存的文件内容
 			this.data = content;
+
+			// 清除 dirty 状态（因为内容已经从磁盘重新加载）
+			this.isDirty = false;
+			this.updateTitle();
 
 			console.log("Code Space: File content reloaded from disk");
 		} catch (error) {
