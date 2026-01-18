@@ -113,6 +113,7 @@ export class CodeSpaceView extends TextFileView {
 	fontSizeCompartment: Compartment; // 新增：管理字体大小
 	fontSize: number = 15; // 默认字体大小（px）
 	private isDirty: boolean = false; // 新增：跟踪是否有未保存的修改
+	private isSettingData: boolean = false; // 新增：标记是否正在设置数据
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -150,6 +151,13 @@ export class CodeSpaceView extends TextFileView {
 	getDisplayText(): string {
 		return this.file ? this.file.name : "Code Space";
 	}
+
+	// 重写 canSave，只有真正有未保存修改时才返回 true
+	canSave(): boolean {
+		return this.isDirty;
+	}
+
+	// 重写 getViewData，确保返回最新的内容
 
 	getPlugin(): CodeSpacePlugin {
 		// @ts-ignore
@@ -202,8 +210,13 @@ export class CodeSpaceView extends TextFileView {
 		});
 	}
 
-	// 手动保存方法（Ctrl+S 触发）
-	async save() {
+	// 重写 save 方法，只在真正有未保存修改时才保存
+	async save(): Promise<void> {
+		// 如果没有未保存修改，直接返回，不修改文件
+		if (!this.isDirty) {
+			return;
+		}
+
 		if (!this.file) return;
 
 		try {
@@ -216,8 +229,6 @@ export class CodeSpaceView extends TextFileView {
 
 			// 更新缓存
 			this.data = this.editorView.state.doc.toString();
-
-			console.log("Code Space: File saved");
 		} catch (error) {
 			// 保存失败，恢复 dirty 状态
 			this.isDirty = true;
@@ -231,14 +242,14 @@ export class CodeSpaceView extends TextFileView {
 	updateTitle() {
 		if (!this.file) return;
 
-		// 在文件名后添加 ● 表示未保存
-		const title = this.isDirty ? `${this.file.name} ●` : this.file.name;
-		this.leaf.setViewState({ type: VIEW_TYPE_CODE_SPACE, active: true, state: { file: this.file.path } });
-
-		// 尝试更新 tab 标题（Obsidian 可能不直接支持，但我们可以尝试）
+		// 只在状态改变时更新 DOM
 		const titleEl = this.containerEl.querySelector('.view-header-title');
 		if (titleEl) {
-			titleEl.textContent = title;
+			const title = this.isDirty ? `${this.file.name} ●` : this.file.name;
+			// 只在标题真的改变时才更新 DOM
+			if (titleEl.textContent !== title) {
+				titleEl.textContent = title;
+			}
 		}
 	}
 
@@ -336,17 +347,29 @@ export class CodeSpaceView extends TextFileView {
 			]),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
-					// 直接比较当前内容和缓存的 this.data
-					const currentContent = update.state.doc.toString();
-					const contentChanged = currentContent !== this.data;
+					// 如果正在设置数据，不标记为 dirty
+					if (this.isSettingData) {
+						return;
+					}
 
-					if (contentChanged) {
+					// 比较新旧内容，只有真的改变了才标记为 dirty
+					const oldContent = update.startState.doc.toString();
+					const newContent = update.state.doc.toString();
+
+					if (oldContent !== newContent) {
 						// 只有内容真的改变了才标记为 dirty
 						if (!this.isDirty) {
 							this.isDirty = true;
-							this.updateTitle();
+						}
+					} else {
+						// 内容没变，确保不是 dirty
+						if (this.isDirty) {
+							this.isDirty = false;
 						}
 					}
+
+					// 只在状态改变时更新标题
+					this.updateTitle();
 				}
 			})
 		];
@@ -455,14 +478,21 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	setViewData(data: string, clear: boolean): void {
-		// 先更新缓存，再更新编辑器
-		// 这样 updateListener 触发时 this.data 已经是新值了
+		// 先更新缓存
 		this.data = data;
 
 		if (clear && this.editorView) {
+			// 标记为正在设置数据，避免触发 dirty
+			this.isSettingData = true;
+
 			this.editorView.dispatch({
 				changes: { from: 0, to: this.editorView.state.doc.length, insert: data }
 			});
+
+			// dispatch 完成后清除标志（使用 setTimeout 确保在事件循环中执行）
+			setTimeout(() => {
+				this.isSettingData = false;
+			}, 0);
 		}
 	}
 
