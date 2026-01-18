@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf, TFile } from "obsidian";
+import { TextFileView, WorkspaceLeaf, TFile, Notice } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment, Extension } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
@@ -293,6 +293,51 @@ export class CodeSpaceView extends TextFileView {
 				effects: this.themeCompartment.reconfigure(this.getThemeExtension())
 			});
 		}));
+
+		// 监听文件修改事件（外部编辑）
+		this.registerEvent(this.app.vault.on("modify", (file: TFile) => {
+			// 检查修改的文件是否是当前打开的文件
+			if (this.file && file.path === this.file.path) {
+				// 检查编辑器是否有未保存的修改
+				const currentContent = this.editorView.state.doc.toString();
+				const hasUnsavedChanges = currentContent !== this.data;
+
+				if (!hasUnsavedChanges) {
+					// 没有未保存的修改，直接刷新
+					console.log("Code Space: File modified externally, reloading...");
+					this.loadFileContent();
+				} else {
+					// 有未保存的修改，显示通知
+					console.log("Code Space: File modified externally but has unsaved changes");
+					new Notice("File modified externally. You have unsaved changes.", 5000);
+				}
+			}
+		}));
+	}
+
+	async loadFileContent() {
+		if (!this.file) return;
+
+		try {
+			// 读取文件内容
+			const content = await this.app.vault.read(this.file);
+
+			// 更新编辑器内容
+			this.editorView.dispatch({
+				changes: {
+					from: 0,
+					to: this.editorView.state.doc.length,
+					insert: content
+				}
+			});
+
+			// 更新缓存的文件内容
+			this.data = content;
+
+			console.log("Code Space: File content reloaded from disk");
+		} catch (error) {
+			console.error("Code Space: Failed to reload file content:", error);
+		}
 	}
 
 	async onClose(): Promise<void> {
