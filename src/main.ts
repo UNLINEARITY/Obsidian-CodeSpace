@@ -151,7 +151,7 @@ export default class CodeSpacePlugin extends Plugin {
 		// 重新注册扩展名（必须在刷新视图之前）
 		this.registerCodeExtensions();
 
-		// 1. 刷新 Dashboard (更新后缀列表)
+		// 刷新 Dashboard (更新后缀列表)
 		const dashboardLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_DASHBOARD);
 		dashboardLeaves.forEach(leaf => {
 			if (leaf.view instanceof CodeDashboardView) {
@@ -159,24 +159,11 @@ export default class CodeSpacePlugin extends Plugin {
 			}
 		});
 
-		// 2. 刷新编辑器 (更新行号设置)
+		// 刷新编辑器 (更新行号设置)
 		const editorLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_SPACE);
 		editorLeaves.forEach(leaf => {
 			if (leaf.view instanceof CodeSpaceView) {
 				leaf.view.refreshSettings();
-			}
-		});
-
-		// 3. 刷新所有 Markdown 视图（更新代码嵌入的行数限制）
-		const markdownLeaves = this.app.workspace.getLeavesOfType("markdown");
-		markdownLeaves.forEach(leaf => {
-			// 通过重新设置状态来触发重新渲染
-			const state = leaf.getViewState();
-			if (state) {
-				// @ts-ignore
-				leaf.setViewState({ ...state, active: false });
-				// @ts-ignore
-				leaf.setViewState({ ...state, active: leaf === this.app.workspace.activeLeaf });
 			}
 		});
 	}
