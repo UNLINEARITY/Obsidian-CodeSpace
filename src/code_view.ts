@@ -85,16 +85,11 @@ const baseTheme = EditorView.theme({
 	"&": {
 		height: "100%",
 		backgroundColor: "transparent !important",
-		color: "var(--text-normal)",
-		fontSize: "14px" // 默认字体大小
+		color: "var(--text-normal)"
 	},
 	".cm-content": {
 		caretColor: "var(--text-accent) !important",
 		padding: "10px 0"
-	},
-	".cm-cursor, .cm-dropCursor": {
-		borderLeftWidth: "2px",
-		borderLeftColor: "var(--text-accent) !important"
 	},
 	".cm-gutters": {
 		backgroundColor: "transparent !important",
@@ -115,7 +110,8 @@ export class CodeSpaceView extends TextFileView {
 	themeCompartment: Compartment;
 	lineNumbersCompartment: Compartment;
 	languageCompartment: Compartment;
-	fontSize: number = 14; // 默认字体大小（px）
+	fontSizeCompartment: Compartment; // 新增：管理字体大小
+	fontSize: number = 15; // 默认字体大小（px）
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -139,6 +135,7 @@ export class CodeSpaceView extends TextFileView {
 		this.themeCompartment = new Compartment();
 		this.lineNumbersCompartment = new Compartment();
 		this.languageCompartment = new Compartment();
+		this.fontSizeCompartment = new Compartment();
 	}
 
 	getViewType(): string {
@@ -175,6 +172,24 @@ export class CodeSpaceView extends TextFileView {
 		return [];
 	}
 
+	getFontSizeExtension(): Extension {
+		// 使用 EditorView.theme 统一设置所有元素的字体大小
+		return EditorView.theme({
+			"&": {
+				fontSize: `${this.fontSize}px`
+			},
+			".cm-content": {
+				fontSize: `${this.fontSize}px`
+			},
+			".cm-gutters": {
+				fontSize: `${this.fontSize}px`
+			},
+			".cm-line": {
+				fontSize: `${this.fontSize}px`
+			}
+		});
+	}
+
 	// 供外部调用的刷新方法
 	refreshSettings() {
 		this.editorView.dispatch({
@@ -209,6 +224,7 @@ export class CodeSpaceView extends TextFileView {
 
 		const baseExtensions = [
 			baseTheme,
+			this.fontSizeCompartment.of(this.getFontSizeExtension()), // 字体大小管理
 			this.lineNumbersCompartment.of(this.getLineNumbersExtension()),
 			this.languageCompartment.of([]), // Start with empty, will be updated in onLoadFile
 			highlightSpecialChars(),
@@ -256,12 +272,17 @@ export class CodeSpaceView extends TextFileView {
 				// 计算缩放方向
 				const delta = event.deltaY > 0 ? -1 : 1;
 
-				// 调整字体大小（每次变化 1px，范围 8-32px）
-				const newSize = Math.max(8, Math.min(32, this.fontSize + delta));
+				// 调整字体大小（每次变化 1px，范围 9-36px）
+				const newSize = Math.max(9, Math.min(36, this.fontSize + delta));
 
 				if (newSize !== this.fontSize) {
 					this.fontSize = newSize;
-					this.editorView.dom.style.fontSize = `${this.fontSize}px`;
+
+					// 使用 Compartment 重新配置字体大小扩展
+					this.editorView.dispatch({
+						effects: this.fontSizeCompartment.reconfigure(this.getFontSizeExtension())
+					});
+
 					console.log(`Code Space: Font size changed to ${this.fontSize}px`);
 				}
 			}
