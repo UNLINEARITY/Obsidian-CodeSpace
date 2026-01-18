@@ -85,7 +85,8 @@ const baseTheme = EditorView.theme({
 	"&": {
 		height: "100%",
 		backgroundColor: "transparent !important",
-		color: "var(--text-normal)"
+		color: "var(--text-normal)",
+		fontSize: "14px" // 默认字体大小
 	},
 	".cm-content": {
 		caretColor: "var(--text-accent) !important",
@@ -114,6 +115,7 @@ export class CodeSpaceView extends TextFileView {
 	themeCompartment: Compartment;
 	lineNumbersCompartment: Compartment;
 	languageCompartment: Compartment;
+	fontSize: number = 14; // 默认字体大小（px）
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -244,6 +246,26 @@ export class CodeSpaceView extends TextFileView {
 		});
 
 		console.log("Code Space: Editor created with state");
+
+		// 添加 Ctrl+滚轮缩放功能
+		this.registerDomEvent(root, "wheel", (event: WheelEvent) => {
+			// 检测是否按下了 Ctrl 或 Cmd 键
+			if (event.ctrlKey || event.metaKey) {
+				event.preventDefault();
+
+				// 计算缩放方向
+				const delta = event.deltaY > 0 ? -1 : 1;
+
+				// 调整字体大小（每次变化 1px，范围 8-32px）
+				const newSize = Math.max(8, Math.min(32, this.fontSize + delta));
+
+				if (newSize !== this.fontSize) {
+					this.fontSize = newSize;
+					this.editorView.dom.style.fontSize = `${this.fontSize}px`;
+					console.log(`Code Space: Font size changed to ${this.fontSize}px`);
+				}
+			}
+		}, { passive: false });
 
 		this.registerEvent(this.app.workspace.on("css-change", () => {
 			this.editorView.dispatch({
