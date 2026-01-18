@@ -207,18 +207,22 @@ export class CodeSpaceView extends TextFileView {
 		if (!this.file) return;
 
 		try {
-			// 保存到磁盘
+			// 先清除 dirty 状态，避免保存时触发 modify 事件被误判为外部修改
+			const wasDirty = this.isDirty;
+			this.isDirty = false;
+			this.updateTitle();
+
+			// 使用 Obsidian 的标准保存方法
 			await this.app.vault.modify(this.file, this.editorView.state.doc.toString());
 
 			// 更新缓存
 			this.data = this.editorView.state.doc.toString();
 
-			// 清除 dirty 状态
-			this.isDirty = false;
-			this.updateTitle();
-
 			console.log("Code Space: File saved");
 		} catch (error) {
+			// 保存失败，恢复 dirty 状态
+			this.isDirty = true;
+			this.updateTitle();
 			console.error("Code Space: Failed to save file:", error);
 			new Notice("Failed to save file");
 		}
