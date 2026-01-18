@@ -166,6 +166,16 @@ export default class CodeSpacePlugin extends Plugin {
 				leaf.view.refreshSettings();
 			}
 		});
+
+		// 3. 刷新所有 Markdown 视图（更新代码嵌入的行数限制）
+		const markdownLeaves = this.app.workspace.getLeavesOfType("markdown");
+		markdownLeaves.forEach(leaf => {
+			// 触发 Markdown 视图重新渲染
+			const view = leaf.view as any;
+			if (view && view.render) {
+				view.render();
+			}
+		});
 	}
 
 	async activateDashboard() {

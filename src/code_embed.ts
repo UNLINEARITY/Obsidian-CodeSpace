@@ -298,7 +298,11 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpa
 	const content = await plugin.app.vault.read(tFile);
 	const ext = tFile.extension.toLowerCase();
 
-	console.log("Code Embed: Content loaded, length:", content.length);
+	// 计算文件的行数
+	const lineCount = content.split('\n').length;
+	const maxLines = plugin.settings.maxEmbedLines || 0;
+
+	console.log("Code Embed: Content loaded, length:", content.length, "lines:", lineCount, "maxLines:", maxLines);
 
 	// Replace the embed content with our custom code embed
 	embedEl.empty();
@@ -311,9 +315,30 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpa
 	const header = embedContainer.createEl("div", { cls: "code-embed-header" });
 	header.createEl("span", { cls: "code-embed-filename", text: tFile.name });
 
+	// 如果有行数限制，显示行数信息
+	if (maxLines > 0 && lineCount > maxLines) {
+		header.createEl("span", {
+			cls: "code-embed-linerange",
+			text: `Showing ${maxLines} of ${lineCount} lines`
+		});
+	} else {
+		header.createEl("span", {
+			cls: "code-embed-linerange",
+			text: `${lineCount} lines`
+		});
+	}
+
 	const editorContainer = embedContainer.createEl("div", {
 		cls: "code-embed-editor"
 	});
+
+	// 根据行数和设置动态设置高度
+	if (maxLines > 0 && lineCount > maxLines) {
+		// 估算每行高度约为 21px（行高 20px + 行间距 1px）
+		const maxHeight = maxLines * 21; // 精确计算，避免多显示一行
+		editorContainer.style.maxHeight = `${maxHeight}px`;
+		console.log("Code Embed: Setting max height to", maxHeight, "px for", maxLines, "lines");
+	}
 
 	// Create the code editor
 	const child = new CodeEmbedChild(editorContainer, content, ext);

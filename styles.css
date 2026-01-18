@@ -536,7 +536,6 @@
 
 .code-embed-editor .cm-editor {
 	height: auto;
-	max-height: 400px;
 	overflow: auto;
 	text-align: left; /* 确保编辑器内容左对齐 */
 }

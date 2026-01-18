@@ -5,11 +5,14 @@ export interface CodeSpaceSettings {
 	extensions: string;
 	// 是否显示行号
 	showLineNumbers: boolean;
+	// 代码嵌入最大显示行数（0 表示不限制）
+	maxEmbedLines: number;
 }
 
 export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	extensions: "py, c, cpp, h, hpp, js, ts, jsx, tsx, json, mjs, cjs, css, scss, sass, less, html, htm, rs, go, java, sql, php, rb, sh, yaml, xml",
-	showLineNumbers: true
+	showLineNumbers: true,
+	maxEmbedLines: 30 // 默认最大显示 30 行
 };
 
 export class CodeSpaceSettingTab extends PluginSettingTab {
@@ -48,6 +51,22 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.showLineNumbers = value;
 						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Max Embed Lines")
+			.setDesc("Maximum number of lines to display in embedded code previews (0 for unlimited). If the file has fewer lines, all content is shown.")
+			.addText((text) =>
+				text
+					.setPlaceholder("30")
+					.setValue(String(this.plugin.settings.maxEmbedLines))
+					.onChange(async (value) => {
+						const num = parseInt(value);
+						if (!isNaN(num) && num >= 0) {
+							this.plugin.settings.maxEmbedLines = num;
+							await this.plugin.saveSettings();
+						}
 					})
 			);
 	}
