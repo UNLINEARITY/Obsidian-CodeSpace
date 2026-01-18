@@ -1,6 +1,83 @@
-import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal } from "obsidian";
 import CodeSpacePlugin from "./main"; // 导入插件类型
 import { CustomDropdown } from "./dropdown";
+
+// 创建一个简单的输入对话框
+class RenameModal extends Modal {
+	private result: string | null = null;
+	private onSubmit: (result: string) => void;
+
+	constructor(app: any, title: string, placeholder: string, defaultValue: string, onSubmit: (result: string) => void) {
+		super(app);
+		this.onSubmit = onSubmit;
+		this.setTitle(title);
+
+		const input = new TextComponent(this.contentEl);
+		input.setValue(defaultValue);
+		input.setPlaceholder(placeholder);
+		input.inputEl.style.width = "100%";
+
+		const buttonContainer = this.contentEl.createDiv({ cls: "modal-button-container" });
+		const submitBtn = new ButtonComponent(buttonContainer);
+		submitBtn.setButtonText("OK");
+		submitBtn.onClick(() => {
+			this.result = input.getValue();
+			this.close();
+		});
+
+		const cancelBtn = new ButtonComponent(buttonContainer);
+		cancelBtn.setButtonText("Cancel");
+		cancelBtn.onClick(() => {
+			this.close();
+		});
+
+		// 聚焦到输入框
+		setTimeout(() => input.inputEl.focus(), 10);
+	}
+
+	onClose() {
+		super.onClose();
+		if (this.result !== null && this.result.trim() !== "") {
+			this.onSubmit(this.result.trim());
+		}
+	}
+}
+
+// 文件夹选择模态框
+class FolderSuggestModal extends SuggestModal<string> {
+	private folders: string[] = [];
+	private onSubmit: (folder: string) => void;
+
+	constructor(app: any, onSubmit: (folder: string) => void) {
+		super(app);
+		this.onSubmit = onSubmit;
+		this.setPlaceholder("Type a folder");
+
+		// 获取所有文件夹
+		// @ts-ignore
+		this.folders = this.app.vault.getAllLoadedFiles()
+			.filter((f: any) => f.children !== undefined) // 只保留文件夹
+			.map((f: any) => f.path);
+	}
+
+	getSuggestions(query: string): string[] {
+		if (!query) {
+			return this.folders.slice(0, 20); // 默认显示前20个
+		}
+		const lowerQuery = query.toLowerCase();
+		return this.folders.filter(folder =>
+			folder.toLowerCase().includes(lowerQuery)
+		);
+	}
+
+	renderSuggestion(folder: string, el: HTMLElement) {
+		el.setText(folder);
+	}
+
+	onChooseSuggestion(folder: string, evt: MouseEvent | KeyboardEvent) {
+		this.onSubmit(folder);
+	}
+}
 
 export const VIEW_TYPE_CODE_DASHBOARD = "code-space-dashboard";
 
@@ -192,10 +269,59 @@ export class CodeDashboardView extends ItemView {
 
 	showContextMenu(event: MouseEvent, file: TFile) {
 		const menu = new Menu();
+
+		// Rename
+		menu.addItem((item) => item.setTitle("Rename").setIcon("pencil").onClick(() => {
+			new RenameModal(
+				this.app,
+				"Rename file",
+				"Enter new name (without extension)",
+				file.basename,
+				async (newName: string) => {
+					try {
+						const newPath = file.parent?.path === "/" ?
+							`/${newName}.${file.extension}` :
+							`${file.parent?.path}/${newName}.${file.extension}`;
+						// @ts-ignore
+						await this.app.fileManager.renameFile(file, newPath);
+						new Notice(`Renamed to ${newName}.${file.extension}`);
+						this.render(true);
+					} catch (error) {
+						console.error("Failed to rename file:", error);
+						new Notice("Failed to rename file");
+					}
+				}
+			).open();
+		}));
+
+		// Move file to - 使用文件夹选择器
+		menu.addItem((item) => item.setTitle("Move file to").setIcon("folder-input").onClick(() => {
+			new FolderSuggestModal(
+				this.app,
+				async (folderPath: string) => {
+					try {
+						const newPath = folderPath === "/" ?
+							`/${file.name}` :
+							`${folderPath}/${file.name}`;
+						// @ts-ignore
+						await this.app.fileManager.renameFile(file, newPath);
+						new Notice(`Moved to ${newPath}`);
+						this.render(true);
+					} catch (error) {
+						console.error("Failed to move file:", error);
+						new Notice("Failed to move file");
+					}
+				}
+			).open();
+		}));
+
+		menu.addSeparator();
+
 		menu.addItem((item) => item.setTitle("Open in default app").setIcon("external-link").onClick(() => {
 			// @ts-ignore
 			this.app.openWithDefaultApp(file.path);
 		}));
+
 		menu.addItem((item) => item.setTitle("Reveal in navigation").setIcon("folder-open").onClick(() => {
 			const leaf = this.app.workspace.getLeavesOfType("file-explorer")[0];
 			if (leaf) {
@@ -204,10 +330,18 @@ export class CodeDashboardView extends ItemView {
 				leaf.view.revealInFolder(file);
 			}
 		}));
+
 		menu.addSeparator();
+
 		menu.addItem((item) => item.setTitle("Delete").setIcon("trash").setWarning(true).onClick(async () => {
-			await this.app.vault.trash(file, true);
+			try {
+				await this.app.vault.trash(file, true);
+				this.render(true);
+			} catch (error) {
+				console.error("Failed to delete file:", error);
+			}
 		}));
+
 		menu.showAtPosition({ x: event.pageX, y: event.pageY });
 	}
 
