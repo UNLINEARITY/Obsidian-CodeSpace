@@ -130,7 +130,7 @@ export default class CodeSpacePlugin extends Plugin {
 			.split(',')
 			.map(s => s.trim())
 			.filter(s => s.length > 0);
-		
+
 		try {
 			this.registerExtensions(exts, VIEW_TYPE_CODE_SPACE);
 		} catch (e) {

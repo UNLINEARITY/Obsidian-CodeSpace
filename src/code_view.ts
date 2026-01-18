@@ -116,9 +116,12 @@ export class CodeSpaceView extends TextFileView {
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
 		const ext = extension.toLowerCase();
-		// 获取插件的扩展名配置
+
+		// 检查用户是否在管理列表中添加了这个扩展名
 		// @ts-ignore
-		const plugin = (window as any).app?.plugins?.getPlugin("code-space");
+		const app = (window as any).app;
+		// @ts-ignore
+		const plugin = app?.plugins?.getPlugin("code-space");
 		if (plugin && plugin.settings) {
 			const extensions = plugin.settings.extensions
 				.split(',')
@@ -126,6 +129,7 @@ export class CodeSpaceView extends TextFileView {
 				.filter((s: string) => s);
 			return extensions.includes(ext);
 		}
+
 		// 默认支持常见的代码文件扩展名
 		return ['py', 'c', 'cpp', 'h', 'hpp', 'js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'sql', 'php'].includes(ext);
 	}
@@ -199,9 +203,46 @@ export class CodeSpaceView extends TextFileView {
 
 	async onLoadFile(file: TFile): Promise<void> {
 		await super.onLoadFile(file);
+
+		// Obsidian 原生支持的二进制文件类型列表
+		const nativeBinaryExtensions = [
+			// 图片
+			'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'psd',
+			// PDF
+			'pdf',
+			// 音频
+			'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma',
+			// 视频
+			'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'm4v',
+			// 压缩文件
+			'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz',
+			// Office 文档
+			'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+			// 其他二进制文件
+			'exe', 'dll', 'so', 'dylib', 'bin', 'dat'
+		];
+
+		// 检查当前文件是否是二进制文件
+		const ext = file.extension.toLowerCase();
+		if (nativeBinaryExtensions.includes(ext)) {
+			console.log(`Code Space: Detected binary file .${ext}, opening with native viewer`);
+
+			// 先销毁编辑器，防止它保存二进制内容
+			if (this.editorView) {
+				this.editorView.destroy();
+				this.editorView = null as any;
+			}
+
+			// 使用 Obsidian 原生方式打开文件
+			await this.app.workspace.openLinkText(file.path, '', true);
+
+			// 关闭当前的 Code Space 视图（因为已经用原生查看器打开了）
+			this.leaf.detach();
+			return;
+		}
+
 		// Update language extension when file is loaded
 		if (this.editorView) {
-			const ext = file.extension.toLowerCase();
 			console.log("Code Space: File loaded:", file.name, "extension:", ext);
 			const langExt = LANGUAGE_PACKAGES[ext] || [];
 			console.log("Code Space: Applying language extension:", langExt);
