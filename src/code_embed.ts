@@ -334,10 +334,12 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpa
 
 	// 根据行数和设置动态设置高度
 	if (maxLines > 0 && lineCount > maxLines) {
-		// 估算每行高度约为 21px（行高 20px + 行间距 1px）
-		const maxHeight = maxLines * 21; // 精确计算，避免多显示一行
-		editorContainer.style.maxHeight = `${maxHeight}px`;
-		console.log("Code Embed: Setting max height to", maxHeight, "px for", maxLines, "lines");
+		// 计算高度：每行约 20px
+		// 减去 8px 确保不显示额外的部分行
+		const totalHeight = maxLines * 20 - 8;
+
+		editorContainer.style.maxHeight = `${totalHeight}px`;
+		console.log("Code Embed: Setting max height to", totalHeight, "px for", maxLines, "lines");
 	}
 
 	// Create the code editor
