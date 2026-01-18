@@ -208,7 +208,6 @@ export class CodeSpaceView extends TextFileView {
 
 		try {
 			// 先清除 dirty 状态，避免保存时触发 modify 事件被误判为外部修改
-			const wasDirty = this.isDirty;
 			this.isDirty = false;
 			this.updateTitle();
 
@@ -337,10 +336,16 @@ export class CodeSpaceView extends TextFileView {
 			]),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
-					// 标记为有未保存修改，但不自动保存
-					if (!this.isDirty) {
-						this.isDirty = true;
-						this.updateTitle();
+					// 直接比较当前内容和缓存的 this.data
+					const currentContent = update.state.doc.toString();
+					const contentChanged = currentContent !== this.data;
+
+					if (contentChanged) {
+						// 只有内容真的改变了才标记为 dirty
+						if (!this.isDirty) {
+							this.isDirty = true;
+							this.updateTitle();
+						}
 					}
 				}
 			})
@@ -450,12 +455,15 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	setViewData(data: string, clear: boolean): void {
+		// 先更新缓存，再更新编辑器
+		// 这样 updateListener 触发时 this.data 已经是新值了
+		this.data = data;
+
 		if (clear && this.editorView) {
 			this.editorView.dispatch({
 				changes: { from: 0, to: this.editorView.state.doc.length, insert: data }
 			});
 		}
-		this.data = data;
 	}
 
 	clear(): void {

@@ -122,14 +122,69 @@ export default class CodeSpacePlugin extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'reload-code-space-plugin',
+			name: 'Reload Code Space Plugin',
+			callback: async () => {
+				await this.reloadPlugin();
+			}
+		});
+
 		console.log("Code Space: Plugin fully loaded");
 	}
 
+	async reloadPlugin() {
+		const pluginId = 'code-space';
+		const pluginName = 'Code Space';
+
+		try {
+			console.log(`Code Space: Reloading plugin...`);
+			new Notice(`Reloading ${pluginName}...`, 2000);
+
+			// 获取插件管理器
+			// @ts-ignore
+			const plugins = this.app.plugins;
+
+			// 禁用插件
+			await plugins.disablePlugin(pluginId);
+			console.log(`Code Space: Plugin disabled`);
+
+			// 启用插件
+			await plugins.enablePlugin(pluginId);
+			console.log(`Code Space: Plugin enabled`);
+
+			new Notice(`${pluginName} reloaded successfully!`, 3000);
+		} catch (error) {
+			console.error('Code Space: Failed to reload plugin:', error);
+			new Notice(`Failed to reload ${pluginName}: ${error}`, 5000);
+		}
+	}
+
 	registerCodeExtensions() {
+		// Obsidian 原生支持的二进制文件类型列表
+		// 这些文件类型应该使用 Obsidian 的原生查看器，而不是 Code Space
+		const binaryExtensions = [
+			// 图片
+			'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'psd',
+			// PDF
+			'pdf',
+			// 音频
+			'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma',
+			// 视频
+			'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'm4v',
+			// 压缩文件
+			'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz',
+			// Office 文档
+			'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+			// 其他二进制文件
+			'exe', 'dll', 'so', 'dylib', 'bin', 'dat'
+		];
+
 		const exts = this.settings.extensions
 			.split(',')
 			.map(s => s.trim())
-			.filter(s => s.length > 0);
+			.filter(s => s.length > 0)
+			.filter(ext => !binaryExtensions.includes(ext.toLowerCase())); // 过滤掉二进制文件扩展名
 
 		try {
 			this.registerExtensions(exts, VIEW_TYPE_CODE_SPACE);
