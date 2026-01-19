@@ -120,9 +120,9 @@ export class CodeSpaceView extends TextFileView {
 		const ext = extension.toLowerCase();
 
 		// 检查用户是否在管理列表中添加了这个扩展名
-		// @ts-ignore
-		const app = (window as any).app;
-		// @ts-ignore
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const app = (window as any).app as { plugins: { getPlugin: (id: string) => CodeSpacePlugin } } | undefined;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const plugin = app?.plugins?.getPlugin("code-space");
 		if (plugin && plugin.settings) {
 			const extensions = plugin.settings.extensions
@@ -277,7 +277,7 @@ export class CodeSpaceView extends TextFileView {
 		// 检查当前文件是否是二进制文件
 		const ext = file.extension.toLowerCase();
 		if (nativeBinaryExtensions.includes(ext)) {
-			console.log(`Code Space: Detected binary file .${ext}, opening with native viewer`);
+			console.debug(`Code Space: Detected binary file .${ext}, opening with native viewer`);
 
 			// 先销毁编辑器，防止它保存二进制内容
 			if (this.editorView) {
@@ -295,9 +295,9 @@ export class CodeSpaceView extends TextFileView {
 
 		// Update language extension when file is loaded
 		if (this.editorView) {
-			console.log("Code Space: File loaded:", file.name, "extension:", ext);
+			console.debug("Code Space: File loaded:", file.name, "extension:", ext);
 			const langExt = LANGUAGE_PACKAGES[ext] || [];
-			console.log("Code Space: Applying language extension:", langExt);
+			console.debug("Code Space: Applying language extension:", langExt);
 			this.editorView.dispatch({
 				effects: this.languageCompartment.reconfigure(langExt)
 			});
@@ -317,7 +317,7 @@ export class CodeSpaceView extends TextFileView {
 
 		// Debug: Log file extension and language extension
 		const ext = this.file?.extension.toLowerCase();
-		console.log("Code Space: Opening file", this.file?.name, "with extension:", ext);
+		console.debug("Code Space: Opening file", this.file?.name, "with extension:", ext);
 
 		const baseExtensions = [
 			baseTheme,
@@ -387,7 +387,7 @@ export class CodeSpaceView extends TextFileView {
 			parent: root
 		});
 
-		console.log("Code Space: Editor created with state");
+		console.debug("Code Space: Editor created with state");
 
 		// 添加 Ctrl+滚轮缩放功能
 		this.registerDomEvent(root, "wheel", (event: WheelEvent) => {
@@ -409,7 +409,7 @@ export class CodeSpaceView extends TextFileView {
 						effects: this.fontSizeCompartment.reconfigure(this.getFontSizeExtension())
 					});
 
-					console.log(`Code Space: Font size changed to ${this.fontSize}px`);
+					console.debug(`Code Space: Font size changed to ${this.fontSize}px`);
 				}
 			}
 		}, { passive: false });
@@ -426,13 +426,13 @@ export class CodeSpaceView extends TextFileView {
 			if (this.file && file.path === this.file.path) {
 				// 如果有未保存的修改，不要重新加载（保护用户的编辑）
 				if (this.isDirty) {
-					console.log("Code Space: File modified externally but has unsaved changes");
+					console.debug("Code Space: File modified externally but has unsaved changes");
 					new Notice("File modified externally. You have unsaved changes.", 5000);
 					return;
 				}
 
 				// 没有未保存的修改，直接刷新
-				console.log("Code Space: File modified externally, reloading...");
+				console.debug("Code Space: File modified externally, reloading...");
 				this.loadFileContent();
 			}
 		}));
@@ -461,7 +461,7 @@ export class CodeSpaceView extends TextFileView {
 			this.isDirty = false;
 			this.updateTitle();
 
-			console.log("Code Space: File content reloaded from disk");
+			console.debug("Code Space: File content reloaded from disk");
 		} catch (error) {
 			console.error("Code Space: Failed to reload file content:", error);
 		}

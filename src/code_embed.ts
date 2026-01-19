@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, MarkdownRenderChild } from "obsidian";
+import { MarkdownRenderChild, TFile } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { lineNumbers } from "@codemirror/view";
@@ -118,11 +118,11 @@ class CodeEmbedChild extends MarkdownRenderChild {
 		this.themeCompartment = new Compartment();
 	}
 
-	async onload() {
+	onload() {
 		const isDark = document.body.classList.contains("theme-dark");
 		const langExt = LANGUAGE_PACKAGES[this.extension] || [];
 
-		console.log("Code Embed: CodeEmbedChild.onload - extension:", this.extension, "content length:", this.content.length);
+		console.debug("Code Embed: CodeEmbedChild.onload - extension:", this.extension, "content length:", this.content.length);
 
 		const state = EditorState.create({
 			doc: this.content,
@@ -149,7 +149,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 }
 
 export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
-	console.log("Code Embed: Registering code embed processor...");
+	console.debug("Code Embed: Registering code embed processor...");
 
 	// Approach: Use MutationObserver to watch for file-embed elements
 	const observer = new MutationObserver((mutations) => {
@@ -160,21 +160,20 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 
 					// Check if this is a file-embed or contains one
 					if (elem.classList.contains('file-embed') || elem.querySelector('.file-embed')) {
-						console.log("Code Embed: Found file-embed via MutationObserver!", elem);
+						console.debug("Code Embed: Found file-embed via MutationObserver!", elem);
 
 						const embedEl = elem.classList.contains('file-embed') ? elem : elem.querySelector('.file-embed');
 
 						if (embedEl) {
 							// Get source path from the active file
 							let sourcePath = "";
-							// @ts-ignore
 							const activeFile = plugin.app.workspace.getActiveFile();
 							if (activeFile?.path) {
 								sourcePath = activeFile.path;
 							}
 
-							console.log("Code Embed: Using sourcePath:", sourcePath);
-							processCodeEmbed(embedEl as HTMLElement, plugin, sourcePath);
+							console.debug("Code Embed: Using sourcePath:", sourcePath);
+							void processCodeEmbed(embedEl as HTMLElement, plugin, sourcePath);
 						}
 					}
 				}
@@ -188,16 +187,16 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 		subtree: true
 	});
 
-	console.log("Code Embed: MutationObserver started");
+	console.debug("Code Embed: MutationObserver started");
 
 	// Also register the markdown post processor as a backup
 	plugin.registerMarkdownPostProcessor(async (el, ctx) => {
-		console.log("Code Embed: Post processor called!", "element:", el);
+		console.debug("Code Embed: Post processor called!", "element:", el);
 
 		// Obsidian renders embedded code files as div.file-embed with div.file-embed-title
 		const embeds = el.querySelectorAll('div.file-embed');
 
-		console.log("Code Embed: Processing element", el.className, "found", embeds.length, "file-embed elements");
+		console.debug("Code Embed: Processing element", el.className, "found", embeds.length, "file-embed elements");
 
 		for (let i = 0; i < embeds.length; i++) {
 			const embedEl = embeds[i] as HTMLElement;
@@ -219,7 +218,7 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 
 	linkText = linkText.trim();
 
-	console.log("Code Embed: Processing file-embed", linkText, "title:", titleEl?.textContent, "sourcePath:", sourcePath);
+	console.debug("Code Embed: Processing file-embed", linkText, "title:", titleEl?.textContent, "sourcePath:", sourcePath);
 
 	if (!linkText) return;
 
@@ -228,71 +227,68 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	const filePath = hashIndex !== -1 ? linkText.substring(0, hashIndex) : linkText;
 
 	// Try to find the file using multiple methods
-	let tFile = null;
+	let tFile: TFile | null = null;
 
 	// Method 1: Use sourcePath if it's a valid file in the vault
 	if (sourcePath && !sourcePath.startsWith("Untitled")) {
 		tFile = plugin.app.metadataCache.getFirstLinkpathDest(filePath, sourcePath);
-		console.log("Code Embed: Tried with sourcePath:", sourcePath, "result:", tFile?.path);
+		console.debug("Code Embed: Tried with sourcePath:", sourcePath, "result:", tFile?.path);
 	}
 
 	// Method 2: Try without sourcePath (for absolute paths or files in root)
 	if (!tFile) {
 		tFile = plugin.app.metadataCache.getFirstLinkpathDest(filePath, "");
-		console.log("Code Embed: Tried without sourcePath, result:", tFile?.path);
+		console.debug("Code Embed: Tried without sourcePath, result:", tFile?.path);
 	}
 
 	// Method 3: Try to get file directly by path
 	if (!tFile) {
-		// @ts-ignore
-		tFile = plugin.app.vault.getAbstractFileByPath(filePath);
-		console.log("Code Embed: Tried direct path, result:", tFile?.path);
+		const abstractFile = plugin.app.vault.getAbstractFileByPath(filePath);
+		tFile = abstractFile instanceof TFile ? abstractFile : null;
+		console.debug("Code Embed: Tried direct path, result:", tFile?.path);
 	}
 
 	// Method 4: Search all files with matching name
 	if (!tFile) {
 		const allFiles = plugin.app.vault.getFiles();
-		tFile = allFiles.find(f => f.name === filePath || f.path === filePath);
-		console.log("Code Embed: Tried file search, result:", tFile?.path);
+		tFile = allFiles.find(f => f.name === filePath || f.path === filePath) ?? null;
+		console.debug("Code Embed: Tried file search, result:", tFile?.path);
 	}
 
 	if (!tFile) {
-		console.log("Code Embed: File not found", filePath, "tried all methods");
+		console.debug("Code Embed: File not found", filePath, "tried all methods");
 		return;
 	}
 
 	// Check if it's a TFile (not a folder)
-	// @ts-ignore
 	if (!tFile.extension) {
-		console.log("Code Embed: Not a file", tFile.path);
+		console.debug("Code Embed: Not a file", tFile.path);
 		return;
 	}
 
-	// @ts-ignore
-	console.log("Code Embed: File found", tFile.path, "extension:", tFile.extension);
+	console.debug("Code Embed: File found", tFile.path, "extension:", tFile.extension);
 
-	// @ts-ignore
 	const ext = tFile.extension.toLowerCase();
 	const extensions = plugin.settings.extensions
 		.split(',')
 		.map((s: string) => s.trim().toLowerCase())
 		.filter((s: string) => s);
 
-	console.log("Code Embed: Checking extension", ext, "against", extensions);
+	console.debug("Code Embed: Checking extension", ext, "against", extensions);
 
 	if (!extensions.includes(ext)) {
-		console.log("Code Embed: Extension not supported", ext);
+		console.debug("Code Embed: Extension not supported", ext);
 		return;
 	}
 
-	console.log("Code Embed: Reading file content...");
+	console.debug("Code Embed: Reading file content...");
 
 	// Read file content and render
 	await renderCodeEmbed(embedEl, tFile, plugin);
 }
 
 async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpacePlugin) {
-	console.log("Code Embed: Reading file content...");
+	console.debug("Code Embed: Reading file content...");
 
 	// Read file content
 	const content = await plugin.app.vault.read(tFile);
@@ -302,7 +298,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpa
 	const lineCount = content.split('\n').length;
 	const maxLines = plugin.settings.maxEmbedLines || 0;
 
-	console.log("Code Embed: Content loaded, length:", content.length, "lines:", lineCount, "maxLines:", maxLines);
+	console.debug("Code Embed: Content loaded, length:", content.length, "lines:", lineCount, "maxLines:", maxLines);
 
 	// Replace the embed content with our custom code embed
 	embedEl.empty();
@@ -339,7 +335,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpa
 		const totalHeight = maxLines * 20 - 8;
 
 		editorContainer.style.maxHeight = `${totalHeight}px`;
-		console.log("Code Embed: Setting max height to", totalHeight, "px for", maxLines, "lines");
+		console.debug("Code Embed: Setting max height to", totalHeight, "px for", maxLines, "lines");
 	}
 
 	// Create the code editor

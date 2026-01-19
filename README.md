@@ -1,90 +1,198 @@
-# Obsidian Sample Plugin
+# Code Space
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+A professional code editor plugin for Obsidian, providing advanced code editing, management, and preview capabilities.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Obsidian](https://img.shields.io/badge/Obsidian-compatible-brightgreen.svg)](https://obsidian.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)](https://github.com/unlinearity/obsidian-codespace/releases)
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+## Overview
 
-## First time developing plugins?
+Code Space is a comprehensive code editor plugin designed for Obsidian, featuring syntax highlighting for multiple programming languages, code embedding, and a visual dashboard for managing code files.
 
-Quick starting guide for new plugin devs:
+## Features
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+### Professional Code Editing
+- **Syntax Highlighting**: High-quality syntax highlighting powered by CodeMirror 6
+- **Smart Indentation**: Automatic indentation and bracket matching
+- **Code Folding**: Support for code block folding to improve readability
+- **Line Numbers**: Configurable line number display
+- **Custom Font Size**: Adjust font size using `Ctrl + Mouse Wheel`
 
-## Releasing new releases
+### Code Management
+- **Multi-language Support**: Python, C/C++, JavaScript/TypeScript, HTML, CSS, SQL, PHP, and more
+- **Code Dashboard**: Visual management interface for all code files
+- **Quick Creation**: One-click creation of new code files
+- **Manual Save**: `Ctrl+S` to save changes, avoiding auto-save interruptions
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+### Code Embedding
+- **Markdown Integration**: Embed code previews in Markdown using `![[filename]]` syntax
+- **Automatic Height**: Preview height adjusts automatically based on line count
+- **Configurable Limits**: Set maximum display lines to prevent excessive space usage
+- **One-click Open**: Click embedded preview to open full editor
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+### Keyboard Shortcuts
+| Shortcut | Function |
+|----------|----------|
+| `Ctrl+S` | Save file |
+| `Ctrl + Mouse Wheel` | Adjust font size |
+| `Ctrl+Shift+P` → "Reload Code Space Plugin" | Reload plugin |
 
-## Adding your plugin to the community plugin list
+## Installation
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+### Method 1: Via Obsidian Community Plugins (Coming Soon)
 
-## How to use
+1. Open Obsidian Settings
+2. Navigate to "Community Plugins"
+3. Search for "Code Space"
+4. Click "Install" and enable the plugin
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+### Method 2: Manual Installation
 
-## Manually installing the plugin
+1. Download the latest [main.js](https://github.com/unlinearity/obsidian-codespace/releases/latest), [manifest.json](https://github.com/unlinearity/obsidian-codespace/raw/main/manifest.json), and [styles.css](https://github.com/unlinearity/obsidian-codespace/raw/main/styles.css)
+2. Create plugin directory in your vault: `.obsidian/plugins/code-space/`
+3. Copy downloaded files to this directory
+4. Enable "Code Space" in Obsidian Settings
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## Usage
 
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+### Editing Code Files
 
-## Funding URL
+1. **Open Code Files**
+   - Double-click code files in file tree (e.g., `.py`, `.js`)
+   - Or execute "Open Dashboard" in command palette to browse all code files
 
-You can include funding URLs where people who use your plugin can financially support it.
+2. **Edit Code**
+   - Use familiar keyboard shortcuts for editing
+   - Press `Ctrl+S` to save changes
+   - Unsaved files display a `●` marker
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+3. **Adjust Font Size**
+   - Hold `Ctrl` key and scroll mouse wheel
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+### Embedding Code in Markdown
+
+Use the following syntax in Markdown files:
+
+```
+![[my-script.py]]
 ```
 
-If you have multiple URLs, you can also do:
+Embedded code displays as a preview box containing:
+- Filename and path
+- Line count statistics
+- Scrollable code preview
+- Click preview area to open full editor
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+### Configuration Options
+
+In "Settings > Code Space", you can configure:
+
+- **Managed Extensions**: Specify file extensions for Code Space to manage (default: `py, c, cpp, h, hpp, js, ts, jsx, tsx, json, mjs, cjs, css, scss, sass, less, html, htm, rs, go, java, sql, php, rb, sh, yaml, xml`)
+- **Show Line Numbers**: Toggle line number display (default: enabled)
+- **Max Embed Lines**: Maximum lines for embedded preview (default: 30 lines, 0 for unlimited)
+
+## Supported Languages
+
+| Language | Extensions |
+|----------|------------|
+| Python | `.py` |
+| C/C++ | `.c`, `.cpp`, `.h`, `.hpp` |
+| JavaScript/TypeScript | `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs` |
+| Web | `.html`, `.htm`, `.css`, `.scss`, `.sass`, `.less` |
+| Rust | `.rs` |
+| Go | `.go` |
+| SQL | `.sql` |
+| PHP | `.php` |
+| Ruby | `.rb` |
+| Shell | `.sh` |
+| Config Files | `.yaml`, `.yml`, `.xml`, `.json` |
+
+*More languages can be added via "Managed Extensions" in settings*
+
+## Development
+
+### Requirements
+
+- Node.js >= 16
+- npm or yarn
+
+### Build Steps
+
+```bash
+# Clone repository
+git clone https://github.com/unlinearity/obsidian-codespace.git
+cd obsidian-codespace
+
+# Install dependencies
+npm install
+
+# Development mode (hot reload)
+npm run dev
+
+# Production build
+npm run build
+
+# Lint code
+npm run lint
 ```
 
-## API Documentation
+### Project Structure
 
-See https://docs.obsidian.md
+```
+obsidian-codespace/
+├── src/
+│   ├── main.ts              # Plugin entry point
+│   ├── code_view.ts         # Code editor view
+│   ├── code_embed.ts        # Code embed processor
+│   ├── code_dashboard.ts    # Code dashboard
+│   └── settings.ts          # Settings page
+├── styles.css               # Plugin styles
+├── manifest.json            # Plugin manifest
+├── package.json
+└── README.md
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+1. Fork this repository
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
+
+## Changelog
+
+### [1.0.0] - 2026-01-18
+
+#### Added
+- Initial release
+- Syntax highlighting for multiple programming languages
+- Code embedding preview functionality
+- Code dashboard view
+- Manual save (Ctrl+S)
+- Font size adjustment (Ctrl + Mouse Wheel)
+- Configurable display options
+
+#### Known Issues
+- Code file content not yet searchable via Obsidian global search
+- Some advanced editing features (such as search and replace) not yet implemented
+
+## License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details
+
+## Acknowledgments
+
+- [Obsidian](https://obsidian.md) - Powerful knowledge management tool
+- [CodeMirror](https://codemirror.net/) - Excellent code editor component
+- All contributors and testers in the community
+
+## Contact
+
+- Author: unlinearity
+- Email: unlinearity@gmail.com
+- GitHub: [@unlinearity](https://github.com/unlinearity)
+- Issue Tracker: [GitHub Issues](https://github.com/unlinearity/obsidian-codespace/issues)
