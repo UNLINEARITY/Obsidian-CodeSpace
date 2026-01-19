@@ -545,6 +545,10 @@
 	padding-left: 0; /* 移除额外 padding */
 }
 
+.code-embed-editor .cm-line {
+	line-height: 20px; /* 确保每行精确为 20px 高度 */
+}
+
 .code-embed-editor .cm-scroller {
 	overflow: auto;
 }

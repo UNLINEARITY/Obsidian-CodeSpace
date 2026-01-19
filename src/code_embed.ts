@@ -330,9 +330,8 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpa
 
 	// 根据行数和设置动态设置高度
 	if (maxLines > 0 && lineCount > maxLines) {
-		// 计算高度：每行约 20px
-		// 减去 8px 确保不显示额外的部分行
-		const totalHeight = maxLines * 20 - 8;
+		// 计算高度：每行 20px
+		const totalHeight = maxLines * 20;
 
 		editorContainer.style.maxHeight = `${totalHeight}px`;
 		console.debug("Code Embed: Setting max height to", totalHeight, "px for", maxLines, "lines");
