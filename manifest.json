@@ -3,8 +3,8 @@
 	"name": "Code Space",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "A powerful, minimalist integrated development environment for managing and editing code snippets within Obsidian.",
+	"description": "Professional code file management with visual dashboard, syntax highlighting editor, and Markdown embedding.",
 	"author": "unlinearity",
-	"authorUrl": "mailto:unlinearity@gmail.com",
+	"authorUrl": "https://github.com/UNLINEARITY",
 	"isDesktopOnly": false
 }
