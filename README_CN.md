@@ -5,8 +5,8 @@
 </h1>
 
 <p align="center">
-    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/obsidian-codespace?style=for-the-badge">
-    <img alt="License" src="https://img.shields.io/github/license/unlinearity/obsidian-codespace?style=for-the-badge">
+    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
+    <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 ## 关于插件
 
-Obsidian 默认不支持代码文件的查看、管理和编辑，Code Space 插件为解决这一问题而生。
+Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space 插件为解决这一问题而生。
 
 **"Space" 的三层含义：**
 
@@ -29,11 +29,12 @@ Obsidian 默认不支持代码文件的查看、管理和编辑，Code Space 插
 2. **编辑空间**：进入代码文件内部，提供专业的代码查看和编辑环境
 3. **嵌入空间**：与 Obsidian 原生功能深度融合，支持代码文件的引用和嵌入式预览
 
+
 ---
 
 ## 核心功能
 
-### 代码文件管理空间
+### 1. 代码文件管理空间
 通过可视化仪表盘统一管理所有代码文件
 
 - **可视化仪表盘**：通过专用界面浏览和管理所有代码文件
@@ -41,7 +42,10 @@ Obsidian 默认不支持代码文件的查看、管理和编辑，Code Space 插
 - **右键操作**：重命名、移动、删除、在系统应用中打开
 - **快速创建**：一键创建新的代码文件
 
-### 专业代码编辑空间
+<p align='center'><img src='img\pre1.png' width=95%></p> 
+
+
+### 2. 专业代码编辑空间
 
 语法高亮、行号、代码折叠等专业编辑功能 
 
@@ -52,7 +56,9 @@ Obsidian 默认不支持代码文件的查看、管理和编辑，Code Space 插
 - **字体缩放**：Ctrl+鼠标滚轮调整字体大小
 - **快捷操作**: 支持系列快捷键，可以参考后面快捷键的提示
 
-### Obsidian 原生嵌入
+<p align='center'><img src='img\pre2.png' width=95%></p> 
+
+### 3. Obsidian 原生语法嵌入
 
 在 Markdown 中优雅地嵌入和预览代码
 
@@ -61,7 +67,16 @@ Obsidian 默认不支持代码文件的查看、管理和编辑，Code Space 插
 - **快速预览**：悬停在链接上即可预览代码内容
 - **双向同步**：外部修改自动检测并提示
 
+<p align='center'><img src='img\pre3.png' width=95%></p> 
+
 ---
+## 配置选项
+
+通过 **设置 > 社区插件 > Code Space** 访问配置：
+
+- **管理的扩展名**：指定需要 Code Space 管理的文件扩展名（英文逗号分隔）
+- **显示行号**：是否显示行号（默认：开启）
+- **最大嵌入行数**：嵌入预览显示的最大行数（默认：30，0 表示无限制）
 
 ## 支持的语言（可以任意扩展）
 
@@ -79,28 +94,24 @@ Obsidian 默认不支持代码文件的查看、管理和编辑，Code Space 插
 - 如果是代码文件，会通过Code Space的代码界面打开
 - 如果是二进制文件（例如图片或 pdf ,会调用 Obsidian 原生的查看器进行打开
 
----
+<p align='center'><img src='img\pre4.png' width=95%></p> 
 
-## 配置选项
-
-通过 **设置 > 社区插件 > Code Space** 访问配置：
-
-- **管理的扩展名**：指定需要 Code Space 管理的文件扩展名（逗号分隔）
-- **显示行号**：是否显示行号（默认：开启）
-- **最大嵌入行数**：嵌入预览显示的最大行数（默认：30，0 表示无限制）
 
 
 ## 支持的快捷键
 
 ### 插件命令
 
+<p align='center'><img src='img\pre5.png' width=95%></p> 
+
 | 命令路径 | 功能 |
 |---------|------|
 | `Ctrl+P` → "Open Code Dashboard" | 打开代码管理面板 |
 | `Ctrl+P` → "Create Code File" | 创建新代码文件 |
 | `Ctrl+P` → "Reload Code Space Plugin" | 重新加载插件 |
----
 
+
+---
 
 ### 基础操作
 
@@ -166,7 +177,7 @@ Obsidian 默认不支持代码文件的查看、管理和编辑，Code Space 插
 
 ### 方式二：手动安装
 
-1. 访问 [Releases](https://github.com/unlinearity/obsidian-codespace/releases/latest) 下载最新版本
+1. 访问 [Releases](https://github.com/unlinearity/Obsidian-Codespace/releases/latest) 下载最新版本
 2. 将下载的文件解压到库的插件目录：`.obsidian/plugins/code-space/`
 3. 在 Obsidian 设置中重新加载并启用插件
 
@@ -214,7 +225,7 @@ obsidian-codespace/
 2. 遵循现有代码风格
 3. 提交信息清晰明确
 
-如有问题或建议，请使用 [GitHub Issues](https://github.com/unlinearity/obsidian-codespace/issues)。
+如有问题或建议，请使用 [GitHub Issues](https://github.com/unlinearity/Obsidian-Codespace/issues)。
 
 ---
 
@@ -236,7 +247,7 @@ obsidian-codespace/
 
 - 作者：unlinearity
 - 邮箱：unlinearity@gmail.com
-- 问题反馈：[GitHub Issues](https://github.com/unlinearity/obsidian-codespace/issues)
+- 问题反馈：[GitHub Issues](https://github.com/unlinearity/Obsidian-Codespace/issues)
 - [MIT License](LICENSE) - Copyright (c) 2026 unlinearity
 ---
 

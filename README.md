@@ -1,12 +1,12 @@
 # Code Space
 
 <h1 align="center">
-    Professional Code Management for Obsidian
+    Professional Code File Management for Obsidian
 </h1>
 
 <p align="center">
-    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/obsidian-codespace?style=for-the-badge">
-    <img alt="License" src="https://img.shields.io/github/license/unlinearity/obsidian-codespace?style=for-the-badge">
+    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
+    <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 ## About
 
-Obsidian does not support code file viewing and editing by default. Code Space was created to solve this problem.
+Obsidian does not support **code file viewing, management, and editing** by default. Code Space was created to solve this problem.
 
 **The Three Layers of "Space":**
 
@@ -33,31 +33,54 @@ Obsidian does not support code file viewing and editing by default. Code Space w
 
 ## Core Features
 
-### Code File Management Space
+### 1. Code File Management Space
+
+Unified management of all code files through a visual dashboard
 
 - **Visual Dashboard**: Browse and manage all code files through a dedicated interface
 - **Smart Filtering**: Filter by file extension and search by filename
 - **Right-Click Actions**: Rename, move, delete, open in system app
 - **Quick Creation**: Create new code files with one click
 
-### Professional Code Editing Space
+<p align='center'><img src='img/pre1.png' width=95%></p>
+
+### 2. Professional Code Editing Space
+
+Syntax highlighting, line numbers, code folding, and more
 
 - **Syntax Highlighting**: Multi-language syntax highlighting powered by CodeMirror 6
 - **Smart Editing**: Auto-indentation, bracket matching, code folding
 - **Line Numbers**: Optional line number display
 - **Manual Save**: Save with Ctrl+S, preventing unintended modifications
 - **Font Scaling**: Adjust font size with Ctrl+Mouse Wheel
+- **Keyboard Shortcuts**: Comprehensive keyboard shortcuts support (see below)
 
-### Obsidian Native Integration
+<p align='center'><img src='img/pre2.png' width=95%></p>
+
+### 3. Obsidian Native Syntax Embedding
+
+Elegantly embed and preview code in Markdown notes
 
 - **File References**: Link code files using `[[filename]]` syntax
 - **Code Embedding**: Embed code previews in Markdown using `![[filename]]`
 - **Quick Preview**: Hover over links to preview code content
 - **Bidirectional Sync**: Automatic detection and notification of external modifications
 
+<p align='center'><img src='img/pre3.png' width=95%></p>
+
 ---
 
-## Supported Languages
+## Configuration
+
+Access plugin settings via: **Settings > Community Plugins > Code Space**
+
+- **Managed Extensions**: Comma-separated list of file extensions for Code Space to manage
+- **Show Line Numbers**: Toggle line number display (default: enabled)
+- **Max Embed Lines**: Maximum lines to display in embedded previews (default: 30, 0 for unlimited)
+
+---
+
+## Supported Languages (Extensible)
 
 | Language | Extensions |
 |----------|------------|
@@ -69,70 +92,35 @@ Obsidian does not support code file viewing and editing by default. Code Space w
 | Data | `.sql`, `.json`, `.yaml`, `.yml`, `.xml` |
 | Scripting | `.php`, `.rb`, `.sh` |
 
-*More languages can be added via plugin settings*
+*More languages can be added via plugin settings. The plugin supports management of files with any extension!*
 
----
+- Code files are opened through Code Space's code editor interface
+- Binary files (e.g., images or PDFs) are opened using Obsidian's native viewer
 
-## Screenshots
-
-### Code File Management Space
-
-Unified management of all code files through visual dashboard
-
-### Professional Editing Space
-
-Syntax highlighting, line numbers, code folding, and more
-
-### Code Embedding Space
-
-Elegantly embed and preview code in Markdown notes
-
----
-
-## Use Cases
-
-### Use Case 1: Algorithm Learning
-
-```
-My Vault/
-├── Algorithms/
-│   ├── Theory Notes.md      # Markdown notes
-│   ├── Two Sum.py           # Code implementation
-│   ├── Longest Subsequence.py
-│   └── Tree Traversal.py
-```
-
-**How to Use**:
-1. Browse all algorithm code in the dashboard
-2. Click files to enter editing space for implementation and debugging
-3. Embed code in learning notes: `![[Two Sum.py]]`
-
-### Use Case 2: Web Development
-
-```
-My Project/
-├── docs/
-│   ├── API Docs.md
-│   ├── Component Guide.md
-├── src/
-│   ├── index.js
-│   ├── styles.css
-│   └── utils.js
-```
-
-**How to Use**:
-1. Edit frontend code directly in Obsidian
-2. Reference code in documentation: `[[utils.js]]`
-3. Real-time preview of embedded code snippets
+<p align='center'><img src='img/pre4.png' width=95%></p>
 
 ---
 
 ## Supported Keyboard Shortcuts
 
-### Basic Editing
+### Plugin Commands
+
+<p align='center'><img src='img/pre5.png' width=95%></p>
+
+| Command Path | Function |
+|-------------|----------|
+| `Ctrl+P` → "Open Code Dashboard" | Open code management panel |
+| `Ctrl+P` → "Create Code File" | Create new code file |
+| `Ctrl+P` → "Reload Code Space Plugin" | Reload plugin |
+
+---
+
+### Basic Operations
 
 | Shortcut | Function |
 |----------|----------|
+| `Ctrl+S` | Save current file |
+| `Ctrl+Mouse Wheel` | Adjust font size |
 | `Ctrl+C` | Copy selection |
 | `Ctrl+X` | Cut selection |
 | `Ctrl+V` | Paste |
@@ -165,7 +153,6 @@ My Project/
 | `Ctrl+Shift+→` | Select to word end |
 | `Ctrl+Shift+Home` | Select to file start |
 | `Ctrl+Shift+End` | Select to file end |
-| `Ctrl+A` | Select all |
 
 ### Editing Operations
 
@@ -176,36 +163,6 @@ My Project/
 | `Ctrl+Backspace` | Delete word before cursor |
 | `Ctrl+Delete` | Delete word after cursor |
 | `Enter` | New line with indent preserved |
-
-### File Operations
-
-| Shortcut | Function |
-|----------|----------|
-| `Ctrl+S` | Save current file |
-
-### View Operations
-
-| Shortcut | Function |
-|----------|----------|
-| `Ctrl+Mouse Wheel` | Adjust font size |
-
-### Plugin Commands
-
-| Command Path | Function |
-|-------------|----------|
-| `Ctrl+Shift+P` → "Open Code Dashboard" | Open code management panel |
-| `Ctrl+Shift+P` → "Create Code File" | Create new code file |
-| `Ctrl+Shift+P` → "Reload Code Space Plugin" | Reload plugin |
-
----
-
-## Configuration
-
-Access plugin settings via: **Settings > Community Plugins > Code Space**
-
-- **Managed Extensions**: Comma-separated list of file extensions for Code Space to manage
-- **Show Line Numbers**: Toggle line number display (default: enabled)
-- **Max Embed Lines**: Maximum lines to display in embedded previews (default: 30, 0 for unlimited)
 
 ---
 
@@ -221,7 +178,7 @@ Access plugin settings via: **Settings > Community Plugins > Code Space**
 
 ### Method 2: Manual Installation
 
-1. Visit [Releases](https://github.com/unlinearity/obsidian-codespace/releases/latest) to download the latest version
+1. Visit [Releases](https://github.com/unlinearity/Obsidian-Codespace/releases/latest) to download the latest version
 2. Extract files to plugin directory: `.obsidian/plugins/code-space/`
 3. Reload and enable in Obsidian settings
 
@@ -269,26 +226,14 @@ Please ensure:
 2. Follows existing code style
 3. Commit messages are clear and descriptive
 
-For issues or suggestions, please use [GitHub Issues](https://github.com/unlinearity/obsidian-codespace/issues).
+For issues or suggestions, please use [GitHub Issues](https://github.com/unlinearity/Obsidian-Codespace/issues).
 
 ---
 
-## Changelog
+## Known Limitations
 
-### 1.0.0 (2026-01-19)
-
-#### Added
-- Visual code file dashboard
-- Multi-language syntax highlighting
-- Code embedding in Markdown
-- Manual save mechanism (Ctrl+S)
-- Dynamic font size adjustment
-- Configurable display options
-
-#### Known Limitations
 - Code file content not indexed by Obsidian global search
 - Find and replace functionality not implemented
-- Code completion not available
 
 ---
 
@@ -301,17 +246,12 @@ Built with:
 
 ---
 
-## License
-
-[MIT License](LICENSE) - Copyright (c) 2026 unlinearity
-
----
-
 ## Contact
 
 - Author: unlinearity
 - Email: unlinearity@gmail.com
-- Issues: [GitHub Issues](https://github.com/unlinearity/obsidian-codespace/issues)
+- Issues: [GitHub Issues](https://github.com/unlinearity/Obsidian-Codespace/issues)
+- [MIT License](LICENSE) - Copyright (c) 2026 unlinearity
 
 ---
 
