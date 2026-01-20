@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Modal, Notice, TFile, TextComponent, ButtonComponent } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Modal, Notice, TFile, TextComponent, ButtonComponent, App } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
@@ -9,27 +9,22 @@ class CreateCodeFileModal extends Modal {
 	private result: string | null = null;
 	private onSubmit: (result: string) => void;
 
-	constructor(app: any, onSubmit: (result: string) => void) {
+	constructor(app: App, onSubmit: (result: string) => void) {
 		super(app);
 		this.onSubmit = onSubmit;
-		this.setTitle("Create File");
+		this.setTitle("Create file");
 
 		// 文件名输入
 		const nameContainer = this.contentEl.createDiv({ cls: "create-file-input-container" });
 		nameContainer.createEl("label", { text: "File name:" });
 		const nameInput = new TextComponent(nameContainer);
 		nameInput.setPlaceholder("my_script.py");
-		nameInput.inputEl.style.width = "100%";
-		nameInput.inputEl.style.marginBottom = "20px";
 
 		// 提示文本
 		const hint = nameContainer.createEl("div", {
 			text: "Enter file name with extension (e.g., test.py, script.js). Default: .md",
 			cls: "setting-item-description"
 		});
-		hint.style.marginBottom = "15px";
-		hint.style.fontSize = "12px";
-		hint.style.color = "var(--text-muted)";
 
 		// 按钮容器
 		const buttonContainer = this.contentEl.createDiv({ cls: "modal-button-container" });
@@ -80,7 +75,7 @@ export default class CodeSpacePlugin extends Plugin {
 	settings: CodeSpaceSettings;
 
 	async onload() {
-		console.log("Code Space: Plugin loading...");
+		console.debug("Code Space: Plugin loading...");
 		await this.loadSettings();
 
 		this.addSettingTab(new CodeSpaceSettingTab(this.app, this));
@@ -97,18 +92,18 @@ export default class CodeSpacePlugin extends Plugin {
 
 		this.registerCodeExtensions();
 
-		console.log("Code Space: About to register code embed processor...");
+		console.debug("Code Space: About to register code embed processor...");
 		// Register code embed processor
 		registerCodeEmbedProcessor(this);
-		console.log("Code Space: Code embed processor registered");
+		console.debug("Code Space: Code embed processor registered");
 
-		this.addRibbonIcon('code-glyph', 'Open Code Space Dashboard', () => {
+		this.addRibbonIcon('code-glyph', 'Open code space dashboard', () => {
 			this.activateDashboard();
 		});
 
 		this.addCommand({
-			id: 'open-code-dashboard',
-			name: 'Open Dashboard',
+			id: 'open-dashboard',
+			name: 'Open dashboard',
 			callback: () => {
 				this.activateDashboard();
 			}
@@ -116,21 +111,21 @@ export default class CodeSpacePlugin extends Plugin {
 
 		this.addCommand({
 			id: 'create-code-file',
-			name: 'Create Code File',
+			name: 'Create code file',
 			callback: () => {
 				this.createCodeFile();
 			}
 		});
 
 		this.addCommand({
-			id: 'reload-code-space-plugin',
-			name: 'Reload Code Space Plugin',
+			id: 'reload-plugin',
+			name: 'Reload plugin',
 			callback: async () => {
 				await this.reloadPlugin();
 			}
 		});
 
-		console.log("Code Space: Plugin fully loaded");
+		console.debug("Code Space: Plugin fully loaded");
 	}
 
 	async reloadPlugin() {
@@ -138,20 +133,20 @@ export default class CodeSpacePlugin extends Plugin {
 		const pluginName = 'Code Space';
 
 		try {
-			console.log(`Code Space: Reloading plugin...`);
+			console.debug(`Code Space: Reloading plugin...`);
 			new Notice(`Reloading ${pluginName}...`, 2000);
 
 			// 获取插件管理器
-			// @ts-ignore
-			const plugins = this.app.plugins;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
+			const plugins = (this.app as any).plugins;
 
 			// 禁用插件
 			await plugins.disablePlugin(pluginId);
-			console.log(`Code Space: Plugin disabled`);
+			console.debug(`Code Space: Plugin disabled`);
 
 			// 启用插件
 			await plugins.enablePlugin(pluginId);
-			console.log(`Code Space: Plugin enabled`);
+			console.debug(`Code Space: Plugin enabled`);
 
 			new Notice(`${pluginName} reloaded successfully!`, 3000);
 		} catch (error) {
@@ -189,7 +184,7 @@ export default class CodeSpacePlugin extends Plugin {
 		try {
 			this.registerExtensions(exts, VIEW_TYPE_CODE_SPACE);
 		} catch (e) {
-			console.log("Code Space extension registration warning:", e);
+			console.debug("Code Space extension registration warning:", e);
 		}
 	}
 
@@ -242,42 +237,44 @@ export default class CodeSpacePlugin extends Plugin {
 
 	createCodeFile() {
 		// 打开创建文件模态框
-		new CreateCodeFileModal(this.app, async (fileName: string) => {
-			try {
-				// 检查是否有扩展名，没有则默认 .md
-				if (!fileName.includes(".")) {
-					fileName = fileName + ".md";
+		new CreateCodeFileModal(this.app, (fileName: string) => {
+			void (async () => {
+				try {
+					// 检查是否有扩展名，没有则默认 .md
+					if (!fileName.includes(".")) {
+						fileName = fileName + ".md";
+					}
+
+					// 在 vault 根目录创建文件
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
+					const newFile = await (this.app as any).vault.create(fileName, "");
+					new Notice(`Created ${fileName}`);
+
+					// 根据文件类型决定是否在 Code Space 中打开
+					const ext = newFile.extension.toLowerCase();
+					const isCodeFile = this.settings.extensions
+						.split(',')
+						.map(s => s.trim().toLowerCase())
+						.includes(ext);
+
+					if (isCodeFile) {
+						// 在 Code Space 中打开
+						const leaf = this.app.workspace.getLeaf(true);
+						await leaf.setViewState({
+							type: VIEW_TYPE_CODE_SPACE,
+							active: true,
+							state: { file: newFile.path }
+						});
+						this.app.workspace.revealLeaf(leaf);
+					} else {
+						// 在默认 Markdown 视图中打开
+						await this.app.workspace.openLinkText(newFile.path, "", true);
+					}
+				} catch (error) {
+					console.error("Failed to create file:", error);
+					new Notice("Failed to create file. File may already exist.");
 				}
-
-				// 在 vault 根目录创建文件
-				// @ts-ignore
-				const newFile = await this.app.vault.create(fileName, "");
-				new Notice(`Created ${fileName}`);
-
-				// 根据文件类型决定是否在 Code Space 中打开
-				const ext = newFile.extension.toLowerCase();
-				const isCodeFile = this.settings.extensions
-					.split(',')
-					.map(s => s.trim().toLowerCase())
-					.includes(ext);
-
-				if (isCodeFile) {
-					// 在 Code Space 中打开
-					const leaf = this.app.workspace.getLeaf(true);
-					await leaf.setViewState({
-						type: VIEW_TYPE_CODE_SPACE,
-						active: true,
-						state: { file: newFile.path }
-					});
-					this.app.workspace.revealLeaf(leaf);
-				} else {
-					// 在默认 Markdown 视图中打开
-					await this.app.workspace.openLinkText(newFile.path, "", true);
-				}
-			} catch (error) {
-				console.error("Failed to create file:", error);
-				new Notice("Failed to create file. File may already exist.");
-			}
+			})();
 		}).open();
 	}
 }

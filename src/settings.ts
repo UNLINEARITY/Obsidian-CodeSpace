@@ -16,8 +16,10 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 };
 
 export class CodeSpaceSettingTab extends PluginSettingTab {
-	plugin: any; // 避免循环引用类型问题
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Avoid circular dependency
+	plugin: any;
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Avoid circular dependency
 	constructor(app: App, plugin: any) {
 		super(app, plugin);
 		this.plugin = plugin;
@@ -27,10 +29,12 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "Code Space Settings" });
+		new Setting(containerEl)
+			.setHeading()
+			.setName("Code space settings");
 
 		new Setting(containerEl)
-			.setName("Managed Extensions")
+			.setName("Managed extensions")
 			.setDesc("Comma-separated list of file extensions to manage (e.g. py, js, cpp). Restart required to apply changes to file association.")
 			.addTextArea((text) =>
 				text
@@ -43,7 +47,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Show Line Numbers")
+			.setName("Show line numbers")
 			.setDesc("Toggle line numbers in the code editor.")
 			.addToggle((toggle) =>
 				toggle
@@ -55,7 +59,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Max Embed Lines")
+			.setName("Max embed lines")
 			.setDesc("Maximum number of lines to display in embedded code previews (0 for unlimited). If the file has fewer lines, all content is shown.")
 			.addText((text) =>
 				text

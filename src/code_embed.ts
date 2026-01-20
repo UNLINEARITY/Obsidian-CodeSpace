@@ -118,7 +118,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 		this.themeCompartment = new Compartment();
 	}
 
-	onload() {
+	onload(): void {
 		const isDark = document.body.classList.contains("theme-dark");
 		const langExt = LANGUAGE_PACKAGES[this.extension] || [];
 
@@ -287,7 +287,7 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	await renderCodeEmbed(embedEl, tFile, plugin);
 }
 
-async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpacePlugin) {
+async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeSpacePlugin) {
 	console.debug("Code Embed: Reading file content...");
 
 	// Read file content
@@ -333,7 +333,8 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: any, plugin: CodeSpa
 		// 计算高度：每行 20px
 		const totalHeight = maxLines * 20;
 
-		editorContainer.style.maxHeight = `${totalHeight}px`;
+		// Use CSS variable instead of direct style manipulation
+		editorContainer.setAttribute("style", `max-height: ${totalHeight}px;`);
 		console.debug("Code Embed: Setting max height to", totalHeight, "px for", maxLines, "lines");
 	}
 

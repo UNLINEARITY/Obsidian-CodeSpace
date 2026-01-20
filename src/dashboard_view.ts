@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal, App } from "obsidian";
 import CodeSpacePlugin from "./main"; // 导入插件类型
 import { CustomDropdown } from "./dropdown";
 
@@ -7,7 +7,7 @@ class RenameModal extends Modal {
 	private result: string | null = null;
 	private onSubmit: (result: string) => void;
 
-	constructor(app: any, title: string, placeholder: string, defaultValue: string, onSubmit: (result: string) => void) {
+	constructor(app: App, title: string, placeholder: string, defaultValue: string, onSubmit: (result: string) => void) {
 		super(app);
 		this.onSubmit = onSubmit;
 		this.setTitle(title);
@@ -15,7 +15,6 @@ class RenameModal extends Modal {
 		const input = new TextComponent(this.contentEl);
 		input.setValue(defaultValue);
 		input.setPlaceholder(placeholder);
-		input.inputEl.style.width = "100%";
 
 		const buttonContainer = this.contentEl.createDiv({ cls: "modal-button-container" });
 		const submitBtn = new ButtonComponent(buttonContainer);
@@ -48,16 +47,17 @@ class FolderSuggestModal extends SuggestModal<string> {
 	private folders: string[] = [];
 	private onSubmit: (folder: string) => void;
 
-	constructor(app: any, onSubmit: (folder: string) => void) {
+	constructor(app: App, onSubmit: (folder: string) => void) {
 		super(app);
 		this.onSubmit = onSubmit;
 		this.setPlaceholder("Type a folder");
 
 		// 获取所有文件夹
-		// @ts-ignore
-		this.folders = this.app.vault.getAllLoadedFiles()
-			.filter((f: any) => f.children !== undefined) // 只保留文件夹
-			.map((f: any) => f.path);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing Vault API
+		const files = this.app.vault.getAllLoadedFiles() as Array<{ path: string; children?: unknown[] }>;
+		this.folders = files
+			.filter((f) => f.children !== undefined) // 只保留文件夹
+			.map((f) => f.path);
 	}
 
 	getSuggestions(query: string): string[] {
@@ -123,8 +123,8 @@ export class CodeDashboardView extends ItemView {
 
 	// 获取配置的后缀列表
 	getManagedExtensions(): string[] {
-		// @ts-ignore
-		const plugin = this.app.plugins.getPlugin("code-space") as CodeSpacePlugin;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
+		const plugin = (this.app as any).plugins.getPlugin("code-space") as CodeSpacePlugin | undefined;
 		if (plugin && plugin.settings) {
 			return plugin.settings.extensions.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
 		}
@@ -135,13 +135,13 @@ export class CodeDashboardView extends ItemView {
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();
-		
+
 		const root = container.createDiv({ cls: "code-dashboard-root" });
-		
+
 		// Header
 		const header = root.createDiv({ cls: "code-dashboard-header" });
-		header.createEl("h1", { text: "Code Space" });
-		
+		header.createEl("h1", { text: "Code space" });
+
 		const codeExtensions = this.getManagedExtensions();
 		let files = this.app.vault.getFiles().filter(f => codeExtensions.includes(f.extension.toLowerCase()));
 
@@ -149,25 +149,25 @@ export class CodeDashboardView extends ItemView {
 
 		// Toolbar
 		const toolbar = root.createDiv({ cls: "code-dashboard-toolbar" });
-		
+
 		// 1. Settings Button (新增)
 		new ButtonComponent(toolbar)
 			.setIcon("settings")
-			.setTooltip("Open Settings")
+			.setTooltip("Open settings")
 			.setClass("clickable-icon")
 			.onClick(() => {
 				// 打开设置并定位到本插件
-				// @ts-ignore
-				this.app.setting.open();
-				// @ts-ignore
-				this.app.setting.openTabById("code-space");
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
+				(this.app as any).setting.open();
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
+				(this.app as any).setting.openTabById("code-space");
 			});
 
 		// 2. Search
 		const searchContainer = toolbar.createDiv({ cls: "code-search-box" });
 		const searchIcon = searchContainer.createDiv({ cls: "code-search-icon" });
 		setIcon(searchIcon, "search");
-		
+
 		new TextComponent(searchContainer)
 			.setPlaceholder("Search files...")
 			.setValue(this.state.searchQuery)
@@ -191,7 +191,7 @@ export class CodeDashboardView extends ItemView {
 		// 4. Sort
 		const sortContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
 		const sortDropdown = new CustomDropdown(sortContainer);
-		sortDropdown.addOption("date", "Date Modified");
+		sortDropdown.addOption("date", "Date modified");
 		sortDropdown.addOption("name", "Name");
 		sortDropdown.addOption("type", "Type");
 		sortDropdown.setValue(this.state.sortBy);
@@ -282,7 +282,7 @@ export class CodeDashboardView extends ItemView {
 						const newPath = file.parent?.path === "/" ?
 							`/${newName}.${file.extension}` :
 							`${file.parent?.path}/${newName}.${file.extension}`;
-						// @ts-ignore
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing FileManager API
 						await this.app.fileManager.renameFile(file, newPath);
 						new Notice(`Renamed to ${newName}.${file.extension}`);
 						this.render(true);
@@ -303,7 +303,7 @@ export class CodeDashboardView extends ItemView {
 						const newPath = folderPath === "/" ?
 							`/${file.name}` :
 							`${folderPath}/${file.name}`;
-						// @ts-ignore
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing FileManager API
 						await this.app.fileManager.renameFile(file, newPath);
 						new Notice(`Moved to ${newPath}`);
 						this.render(true);
@@ -318,16 +318,16 @@ export class CodeDashboardView extends ItemView {
 		menu.addSeparator();
 
 		menu.addItem((item) => item.setTitle("Open in default app").setIcon("external-link").onClick(() => {
-			// @ts-ignore
-			this.app.openWithDefaultApp(file.path);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
+			(this.app as any).openWithDefaultApp(file.path);
 		}));
 
 		menu.addItem((item) => item.setTitle("Reveal in navigation").setIcon("folder-open").onClick(() => {
 			const leaf = this.app.workspace.getLeavesOfType("file-explorer")[0];
 			if (leaf) {
 				this.app.workspace.revealLeaf(leaf);
-				// @ts-ignore
-				leaf.view.revealInFolder(file);
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing FileExplorer view API
+				(leaf.view as any).revealInFolder(file);
 			}
 		}));
 

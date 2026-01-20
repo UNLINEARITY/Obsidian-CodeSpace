@@ -120,9 +120,9 @@ export class CodeSpaceView extends TextFileView {
 		const ext = extension.toLowerCase();
 
 		// 检查用户是否在管理列表中添加了这个扩展名
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		const app = (window as any).app as { plugins: { getPlugin: (id: string) => CodeSpacePlugin } } | undefined;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing global app instance
+		const app = (window as unknown as { app?: { plugins: { getPlugin: (id: string) => CodeSpacePlugin | undefined } } }).app;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing plugins API
 		const plugin = app?.plugins?.getPlugin("code-space");
 		if (plugin && plugin.settings) {
 			const extensions = plugin.settings.extensions
@@ -160,8 +160,8 @@ export class CodeSpaceView extends TextFileView {
 	// 重写 getViewData，确保返回最新的内容
 
 	getPlugin(): CodeSpacePlugin {
-		// @ts-ignore
-		return this.app.plugins.getPlugin("code-space") as CodeSpacePlugin;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
+		return (this.app as any).plugins.getPlugin("code-space") as CodeSpacePlugin;
 	}
 
 	getLanguageExtension() {
@@ -282,7 +282,7 @@ export class CodeSpaceView extends TextFileView {
 			// 先销毁编辑器，防止它保存二进制内容
 			if (this.editorView) {
 				this.editorView.destroy();
-				this.editorView = null as any;
+				this.editorView = null as unknown as EditorView;
 			}
 
 			// 使用 Obsidian 原生方式打开文件
