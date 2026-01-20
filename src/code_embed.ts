@@ -333,8 +333,9 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		// 计算高度：每行 20px
 		const totalHeight = maxLines * 20;
 
-		// Use CSS variable instead of direct style manipulation
-		editorContainer.setAttribute("style", `max-height: ${totalHeight}px;`);
+		// Use CSS custom property for dynamic height
+		editorContainer.style.setProperty("--embed-max-height", `${totalHeight}px`);
+		editorContainer.classList.add("code-embed-scrollable");
 		console.debug("Code Embed: Setting max height to", totalHeight, "px for", maxLines, "lines");
 	}
 

@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf, TFile, Notice } from "obsidian";
+import { TextFileView, WorkspaceLeaf, TFile, Notice, App } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment, Extension } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
@@ -120,9 +120,8 @@ export class CodeSpaceView extends TextFileView {
 		const ext = extension.toLowerCase();
 
 		// 检查用户是否在管理列表中添加了这个扩展名
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing global app instance
-		const app = (window as unknown as { app?: { plugins: { getPlugin: (id: string) => CodeSpacePlugin | undefined } } }).app;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing plugins API
+		type WindowWithApp = Window & { app?: { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } } };
+		const app = (window as unknown as WindowWithApp).app;
 		const plugin = app?.plugins?.getPlugin("code-space");
 		if (plugin && plugin.settings) {
 			const extensions = plugin.settings.extensions
@@ -160,8 +159,9 @@ export class CodeSpaceView extends TextFileView {
 	// 重写 getViewData，确保返回最新的内容
 
 	getPlugin(): CodeSpacePlugin {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
-		return (this.app as any).plugins.getPlugin("code-space") as CodeSpacePlugin;
+		// Access internal Obsidian API with type assertion
+		type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin } };
+		return (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
 	}
 
 	getLanguageExtension() {
@@ -309,6 +309,7 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	async onOpen(): Promise<void> {
+		await Promise.resolve(); // Required for async function
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();
@@ -340,7 +341,7 @@ export class CodeSpaceView extends TextFileView {
 				{
 					key: "Mod-s",
 					run: () => {
-						this.save();
+						void this.save();
 						return true;
 					}
 				}
@@ -433,7 +434,7 @@ export class CodeSpaceView extends TextFileView {
 
 				// 没有未保存的修改，直接刷新
 				console.debug("Code Space: File modified externally, reloading...");
-				this.loadFileContent();
+				void this.loadFileContent();
 			}
 		}));
 	}
@@ -468,6 +469,7 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	async onClose(): Promise<void> {
+		await Promise.resolve(); // Required for async function
 		if (this.editorView) {
 			this.editorView.destroy();
 		}

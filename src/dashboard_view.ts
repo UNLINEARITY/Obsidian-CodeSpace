@@ -53,9 +53,9 @@ class FolderSuggestModal extends SuggestModal<string> {
 		this.setPlaceholder("Type a folder");
 
 		// 获取所有文件夹
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing Vault API
-		const files = this.app.vault.getAllLoadedFiles() as Array<{ path: string; children?: unknown[] }>;
-		this.folders = files
+		const files = this.app.vault.getAllLoadedFiles();
+		type AbstractFile = { path: string; children?: unknown[] };
+		this.folders = (files as unknown as AbstractFile[])
 			.filter((f) => f.children !== undefined) // 只保留文件夹
 			.map((f) => f.path);
 	}
@@ -106,7 +106,7 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Code Space";
+		return "Code space";
 	}
 
 	getIcon(): string {
@@ -114,6 +114,7 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		await Promise.resolve(); // Required for async function
 		this.render();
 		this.registerEvent(this.app.vault.on("create", () => this.render(true)));
 		this.registerEvent(this.app.vault.on("delete", () => this.render(true)));
@@ -123,8 +124,8 @@ export class CodeDashboardView extends ItemView {
 
 	// 获取配置的后缀列表
 	getManagedExtensions(): string[] {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
-		const plugin = (this.app as any).plugins.getPlugin("code-space") as CodeSpacePlugin | undefined;
+		type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
+		const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
 		if (plugin && plugin.settings) {
 			return plugin.settings.extensions.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
 		}
@@ -157,10 +158,10 @@ export class CodeDashboardView extends ItemView {
 			.setClass("clickable-icon")
 			.onClick(() => {
 				// 打开设置并定位到本插件
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
-				(this.app as any).setting.open();
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
-				(this.app as any).setting.openTabById("code-space");
+				type AppWithSetting = App & { setting: { open(): void; openTabById(id: string): void } };
+				const appWithSetting = this.app as unknown as AppWithSetting;
+				appWithSetting.setting.open();
+				appWithSetting.setting.openTabById("code-space");
 			});
 
 		// 2. Search
@@ -180,7 +181,7 @@ export class CodeDashboardView extends ItemView {
 		const existingExts = [...new Set(files.map(f => f.extension))].sort();
 		const filterContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
 		const filterDropdown = new CustomDropdown(filterContainer);
-		filterDropdown.addOption("all", "All Languages");
+		filterDropdown.addOption("all", "All languages");
 		existingExts.forEach(ext => filterDropdown.addOption(ext, ext.toUpperCase()));
 		filterDropdown.setValue(this.state.filterExt);
 		filterDropdown.onChange((value: string) => {
@@ -203,7 +204,7 @@ export class CodeDashboardView extends ItemView {
 		// 5. Sort Order
 		const sortBtn = new ButtonComponent(toolbar)
 			.setIcon(this.state.sortDesc ? "arrow-down-narrow-wide" : "arrow-up-narrow-wide")
-			.setTooltip("Toggle Order")
+			.setTooltip("Toggle order")
 			.onClick(() => {
 				this.state.sortDesc = !this.state.sortDesc;
 				sortBtn.setIcon(this.state.sortDesc ? "arrow-down-narrow-wide" : "arrow-up-narrow-wide");
@@ -262,7 +263,7 @@ export class CodeDashboardView extends ItemView {
 			meta.createDiv({ cls: "code-file-tag", text: file.extension.toUpperCase() });
 			meta.createDiv({ cls: "code-file-time", text: moment(file.stat.mtime).fromNow() });
 
-			item.addEventListener("click", () => this.openFile(file));
+			item.addEventListener("click", () => void this.openFile(file));
 			item.addEventListener("contextmenu", (e) => this.showContextMenu(e, file));
 		});
 	}
@@ -277,12 +278,11 @@ export class CodeDashboardView extends ItemView {
 				"Rename file",
 				"Enter new name (without extension)",
 				file.basename,
-				async (newName: string) => {
+				(newName: string) => void (async () => {
 					try {
 						const newPath = file.parent?.path === "/" ?
 							`/${newName}.${file.extension}` :
 							`${file.parent?.path}/${newName}.${file.extension}`;
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing FileManager API
 						await this.app.fileManager.renameFile(file, newPath);
 						new Notice(`Renamed to ${newName}.${file.extension}`);
 						this.render(true);
@@ -290,7 +290,7 @@ export class CodeDashboardView extends ItemView {
 						console.error("Failed to rename file:", error);
 						new Notice("Failed to rename file");
 					}
-				}
+				})()
 			).open();
 		}));
 
@@ -298,12 +298,11 @@ export class CodeDashboardView extends ItemView {
 		menu.addItem((item) => item.setTitle("Move file to").setIcon("folder-input").onClick(() => {
 			new FolderSuggestModal(
 				this.app,
-				async (folderPath: string) => {
+				(folderPath: string) => void (async () => {
 					try {
 						const newPath = folderPath === "/" ?
 							`/${file.name}` :
 							`${folderPath}/${file.name}`;
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Accessing FileManager API
 						await this.app.fileManager.renameFile(file, newPath);
 						new Notice(`Moved to ${newPath}`);
 						this.render(true);
@@ -311,23 +310,23 @@ export class CodeDashboardView extends ItemView {
 						console.error("Failed to move file:", error);
 						new Notice("Failed to move file");
 					}
-				}
+				})()
 			).open();
 		}));
 
 		menu.addSeparator();
 
 		menu.addItem((item) => item.setTitle("Open in default app").setIcon("external-link").onClick(() => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
-			(this.app as any).openWithDefaultApp(file.path);
+			type AppWithOpen = App & { openWithDefaultApp(path: string): void };
+			(this.app as unknown as AppWithOpen).openWithDefaultApp(file.path);
 		}));
 
 		menu.addItem((item) => item.setTitle("Reveal in navigation").setIcon("folder-open").onClick(() => {
 			const leaf = this.app.workspace.getLeavesOfType("file-explorer")[0];
 			if (leaf) {
-				this.app.workspace.revealLeaf(leaf);
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing FileExplorer view API
-				(leaf.view as any).revealInFolder(file);
+				void this.app.workspace.revealLeaf(leaf);
+				type ViewWithReveal = { revealInFolder(file: TFile): void };
+				(leaf.view as unknown as ViewWithReveal).revealInFolder(file);
 			}
 		}));
 
@@ -335,7 +334,7 @@ export class CodeDashboardView extends ItemView {
 
 		menu.addItem((item) => item.setTitle("Delete").setIcon("trash").setWarning(true).onClick(async () => {
 			try {
-				await this.app.vault.trash(file, true);
+				await this.app.fileManager.trashFile(file);
 				this.render(true);
 			} catch (error) {
 				console.error("Failed to delete file:", error);
@@ -353,6 +352,6 @@ export class CodeDashboardView extends ItemView {
 			active: true,
 			state: { file: file.path }
 		});
-		this.app.workspace.revealLeaf(leaf);
+		await this.app.workspace.revealLeaf(leaf);
 	}
 }

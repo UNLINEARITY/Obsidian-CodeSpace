@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting, Plugin } from "obsidian";
+import CodeSpacePlugin from "./main";
 
 export interface CodeSpaceSettings {
 	// 用户自定义的扩展名列表
@@ -16,13 +17,11 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 };
 
 export class CodeSpaceSettingTab extends PluginSettingTab {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Avoid circular dependency
-	plugin: any;
+	plugin: CodeSpacePlugin;
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Avoid circular dependency
-	constructor(app: App, plugin: any) {
+	constructor(app: App, plugin: Plugin) {
 		super(app, plugin);
-		this.plugin = plugin;
+		this.plugin = plugin as CodeSpacePlugin;
 	}
 
 	display(): void {
@@ -35,10 +34,10 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Managed extensions")
-			.setDesc("Comma-separated list of file extensions to manage (e.g. py, js, cpp). Restart required to apply changes to file association.")
+			.setDesc("Comma separated list of file extensions to manage (e.g., py, js, cpp). Restart required to apply changes to file association.")
 			.addTextArea((text) =>
 				text
-					.setPlaceholder("py, js, c, cpp")
+					.setPlaceholder("For example: py, js, c, cpp")
 					.setValue(this.plugin.settings.extensions)
 					.onChange(async (value) => {
 						this.plugin.settings.extensions = value;

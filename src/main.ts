@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Modal, Notice, TFile, TextComponent, ButtonComponent, App } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
@@ -18,10 +18,10 @@ class CreateCodeFileModal extends Modal {
 		const nameContainer = this.contentEl.createDiv({ cls: "create-file-input-container" });
 		nameContainer.createEl("label", { text: "File name:" });
 		const nameInput = new TextComponent(nameContainer);
-		nameInput.setPlaceholder("my_script.py");
+		nameInput.setPlaceholder("Example: script.py");
 
 		// 提示文本
-		const hint = nameContainer.createEl("div", {
+		nameContainer.createEl("div", {
 			text: "Enter file name with extension (e.g., test.py, script.js). Default: .md",
 			cls: "setting-item-description"
 		});
@@ -98,14 +98,14 @@ export default class CodeSpacePlugin extends Plugin {
 		console.debug("Code Space: Code embed processor registered");
 
 		this.addRibbonIcon('code-glyph', 'Open code space dashboard', () => {
-			this.activateDashboard();
+			void this.activateDashboard();
 		});
 
 		this.addCommand({
 			id: 'open-dashboard',
 			name: 'Open dashboard',
 			callback: () => {
-				this.activateDashboard();
+				void this.activateDashboard();
 			}
 		});
 
@@ -137,8 +137,8 @@ export default class CodeSpacePlugin extends Plugin {
 			new Notice(`Reloading ${pluginName}...`, 2000);
 
 			// 获取插件管理器
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
-			const plugins = (this.app as any).plugins;
+			type AppWithPlugins = App & { plugins: { disablePlugin(id: string): Promise<void>; enablePlugin(id: string): Promise<void> } };
+			const plugins = (this.app as unknown as AppWithPlugins).plugins;
 
 			// 禁用插件
 			await plugins.disablePlugin(pluginId);
@@ -151,7 +151,7 @@ export default class CodeSpacePlugin extends Plugin {
 			new Notice(`${pluginName} reloaded successfully!`, 3000);
 		} catch (error) {
 			console.error('Code Space: Failed to reload plugin:', error);
-			new Notice(`Failed to reload ${pluginName}: ${error}`, 5000);
+			new Notice(`Failed to reload ${pluginName}: ${String(error)}`, 5000);
 		}
 	}
 
@@ -192,7 +192,7 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as CodeSpaceSettings);
 	}
 
 	async saveSettings() {
@@ -231,7 +231,7 @@ export default class CodeSpacePlugin extends Plugin {
 		}
 
 		if (leaf) {
-			workspace.revealLeaf(leaf);
+			void workspace.revealLeaf(leaf);
 		}
 	}
 
@@ -246,8 +246,7 @@ export default class CodeSpacePlugin extends Plugin {
 					}
 
 					// 在 vault 根目录创建文件
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing internal Obsidian API
-					const newFile = await (this.app as any).vault.create(fileName, "");
+					const newFile = await this.app.vault.create(fileName, "");
 					new Notice(`Created ${fileName}`);
 
 					// 根据文件类型决定是否在 Code Space 中打开
@@ -265,7 +264,7 @@ export default class CodeSpacePlugin extends Plugin {
 							active: true,
 							state: { file: newFile.path }
 						});
-						this.app.workspace.revealLeaf(leaf);
+						void this.app.workspace.revealLeaf(leaf);
 					} else {
 						// 在默认 Markdown 视图中打开
 						await this.app.workspace.openLinkText(newFile.path, "", true);

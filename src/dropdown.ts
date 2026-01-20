@@ -60,7 +60,8 @@ export class CustomDropdown {
 		if (this.dropdownEl) {
 			const items = this.dropdownEl.querySelectorAll(".custom-dropdown-item");
 			items.forEach(item => {
-				const itemValue = (item as any).dataset.value;
+				const itemElement = item as HTMLElement;
+				const itemValue = itemElement.dataset.value;
 				if (itemValue === value) {
 					item.addClass("is-selected");
 				} else {
@@ -92,7 +93,7 @@ export class CustomDropdown {
 			this.renderDropdown();
 		}
 
-		this.dropdownEl.style.display = "block";
+		this.dropdownEl.removeClass("is-hidden");
 	}
 
 	private close() {
@@ -101,7 +102,7 @@ export class CustomDropdown {
 		this.selectEl.removeClass("is-open");
 
 		if (this.dropdownEl) {
-			this.dropdownEl.style.display = "none";
+			this.dropdownEl.addClass("is-hidden");
 		}
 	}
 
@@ -113,7 +114,8 @@ export class CustomDropdown {
 		this.options.forEach((label, value) => {
 			const item = this.dropdownEl!.createDiv({ cls: "custom-dropdown-item" });
 			item.textContent = label;
-			(item as any).dataset.value = value;
+			const itemElement = item as HTMLElement;
+			itemElement.dataset.value = value;
 
 			if (value === this.selectedValue) {
 				item.addClass("is-selected");

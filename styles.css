@@ -259,6 +259,10 @@
 	overflow-y: auto;
 }
 
+.custom-dropdown-menu.is-hidden {
+	display: none;
+}
+
 .custom-dropdown-item {
 	padding: 8px 14px;
 	font-size: 13px;
@@ -532,6 +536,11 @@
 .code-embed-editor {
 	background-color: var(--background-primary);
 	text-align: left; /* 确保左对齐 */
+}
+
+.code-embed-editor.code-embed-scrollable {
+	max-height: var(--embed-max-height);
+	overflow: auto;
 }
 
 .code-embed-editor .cm-editor {
