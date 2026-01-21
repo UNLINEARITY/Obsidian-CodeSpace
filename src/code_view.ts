@@ -4,6 +4,7 @@ import { EditorState, Compartment, Extension } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
+import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from "@codemirror/search";
 import { python } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
 import { javascript } from "@codemirror/lang-javascript";
@@ -334,9 +335,12 @@ export class CodeSpaceView extends TextFileView {
 			closeBrackets(),
 			highlightActiveLine(),
 			indentUnit.of("    "),
+			search({ top: true }), // 添加查找功能，面板显示在顶部
+			highlightSelectionMatches(), // 高亮选中文本的匹配项
 			keymap.of([
 				...defaultKeymap,
 				...historyKeymap,
+				...searchKeymap,
 				indentWithTab,
 				{
 					key: "Mod-s",
@@ -389,6 +393,44 @@ export class CodeSpaceView extends TextFileView {
 		});
 
 		console.debug("Code Space: Editor created with state");
+
+		// 添加测试方法到 window 对象，方便在控制台调试
+		(window as unknown as { testSearch?: () => void }).testSearch = () => {
+			console.log("Test search triggered!");
+			openSearchPanel(this.editorView);
+		};
+
+		// 直接在编辑器容器上监听键盘事件（使用 capture 模式，优先于 Obsidian 全局快捷键）
+		this.registerDomEvent(root, 'keydown', (e: KeyboardEvent) => {
+			const isModKey = e.ctrlKey || e.metaKey;
+
+			// Ctrl+Shift+F 或 Cmd+Shift+F - 打开搜索面板
+			if (isModKey && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+				e.preventDefault();
+				e.stopPropagation();
+				console.log("Opening CodeMirror search panel via Ctrl+Shift+F");
+				openSearchPanel(this.editorView);
+				return;
+			}
+
+			// Ctrl+H 或 Cmd+H - 打开替换面板
+			if (isModKey && !e.shiftKey && (e.key === 'h' || e.key === 'H')) {
+				e.preventDefault();
+				e.stopPropagation();
+				console.log("Opening CodeMirror replace panel via Ctrl+H");
+				openSearchPanel(this.editorView);
+				return;
+			}
+
+			// Ctrl+F 或 Cmd+F - 尝试打开搜索面板
+			if (isModKey && !e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+				e.preventDefault();
+				e.stopPropagation();
+				console.log("Opening CodeMirror search panel via Ctrl+F");
+				openSearchPanel(this.editorView);
+				return;
+			}
+		}, { capture: true });
 
 		// 添加 Ctrl+滚轮缩放功能
 		this.registerDomEvent(root, "wheel", (event: WheelEvent) => {

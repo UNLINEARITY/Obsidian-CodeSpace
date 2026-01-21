@@ -3,6 +3,7 @@ import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
+import { openSearchPanel } from "@codemirror/search";
 
 // 文件创建模态框
 class CreateCodeFileModal extends Modal {
@@ -122,6 +123,41 @@ export default class CodeSpacePlugin extends Plugin {
 			name: 'Reload plugin',
 			callback: async () => {
 				await this.reloadPlugin();
+			}
+		});
+
+		// 添加代码编辑器搜索命令
+		this.addCommand({
+			id: 'open-code-search',
+			name: 'Search in code editor',
+			checkCallback: (checking: boolean) => {
+				// 检查当前是否有活动的 CodeSpaceView
+				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
+				if (activeView) {
+					if (!checking) {
+						// 触发搜索
+						openSearchPanel(activeView.editorView);
+					}
+					return true;
+				}
+				return false;
+			}
+		});
+
+		this.addCommand({
+			id: 'open-code-replace',
+			name: 'Replace in code editor',
+			checkCallback: (checking: boolean) => {
+				// 检查当前是否有活动的 CodeSpaceView
+				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
+				if (activeView) {
+					if (!checking) {
+						// 触发替换
+						openSearchPanel(activeView.editorView);
+					}
+					return true;
+				}
+				return false;
 			}
 		});
 

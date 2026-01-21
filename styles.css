@@ -582,3 +582,93 @@
 .code-embed-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
 	background: var(--text-muted);
 }
+
+/* =================================================================
+   CodeMirror Search Panel Styles
+   ================================================================= */
+.code-space-container .cm-panel {
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding: 4px 8px;
+}
+
+.code-space-container .cm-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.code-space-container .cm-searchQuery,
+.code-space-container .cm-replaceQuery {
+    flex: 1;
+    min-width: 150px;
+    height: 28px;
+    padding: 0 8px;
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    color: var(--text-normal);
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.code-space-container .cm-searchQuery:focus,
+.code-space-container .cm-replaceQuery:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.15);
+}
+
+.code-space-container .cm-search button {
+    height: 28px;
+    padding: 0 12px;
+    background-color: var(--interactive-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    color: var(--text-normal);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+}
+
+.code-space-container .cm-search button:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.code-space-container .cm-search button.cm-search-button-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.code-space-container .cm-search button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Search match highlighting */
+.code-space-container .cm-searchMatch {
+    background-color: rgba(255, 215, 0, 0.3);
+}
+
+.code-space-container .cm-searchMatch-selected {
+    background-color: rgba(255, 215, 0, 0.5);
+}
+
+.theme-dark .code-space-container .cm-searchMatch {
+    background-color: rgba(255, 215, 0, 0.4);
+}
+
+.theme-dark .code-space-container .cm-searchMatch-selected {
+    background-color: rgba(255, 215, 0, 0.6);
+}
+
+/* Selection matches highlighting */
+.code-space-container .cm-selectionMatch {
+    background-color: hsla(var(--interactive-accent-hsl), 0.15);
+}
+
+/* Search panel icons */
+.code-space-container .cm-textfield {
+    position: relative;
+}
