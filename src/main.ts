@@ -3,7 +3,6 @@ import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
-import { openSearchPanel, searchPanelOpen, closeSearchPanel } from "@codemirror/search";
 
 // 文件创建模态框
 class CreateCodeFileModal extends Modal {
@@ -135,16 +134,8 @@ export default class CodeSpacePlugin extends Plugin {
 				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
 				if (activeView) {
 					if (!checking) {
-						// 检查搜索面板是否已经打开
-						const isOpen = searchPanelOpen(activeView.editorView.state);
-
-						if (isOpen) {
-							// 如果已打开，关闭面板
-							closeSearchPanel(activeView.editorView);
-						} else {
-							// 如果未打开，打开搜索面板
-							openSearchPanel(activeView.editorView);
-						}
+						// 切换自定义搜索面板
+						activeView.toggleSearchPanel();
 					}
 					return true;
 				}

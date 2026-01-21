@@ -584,84 +584,333 @@
 }
 
 /* =================================================================
-   CodeMirror Search Panel Styles
+   CodeMirror Search Panel Styles - Obsidian Native Style
    ================================================================= */
 .code-space-container .cm-panel {
     background-color: var(--background-secondary);
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding: 4px 8px;
+    border-top: 1px solid var(--background-modifier-border);
+    padding: var(--size-4-2) var(--size-4-3);
 }
 
 .code-space-container .cm-search {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--size-4-2);
     flex-wrap: wrap;
 }
 
+/* 搜索输入框 - 使用 Obsidian 原生输入框样式 */
 .code-space-container .cm-searchQuery,
 .code-space-container .cm-replaceQuery {
     flex: 1;
-    min-width: 150px;
-    height: 28px;
-    padding: 0 8px;
+    min-width: 120px;
+    height: var(--input-height, 30px);
+    padding: 0 var(--size-4-2);
     background-color: var(--background-modifier-form-field);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
+    border: var(--input-border-width, 1px) solid var(--background-modifier-border);
+    border-radius: var(--input-radius, 5px);
     color: var(--text-normal);
-    font-size: 13px;
-    font-family: inherit;
+    font-size: var(--font-ui-small, 13px);
+    font-family: var(--font-interface, var(--font-default));
+    line-height: normal;
+    transition: border-color var(--anim-duration-fast, 140ms) ease,
+                box-shadow var(--anim-duration-fast, 140ms) ease,
+                background-color var(--anim-duration-fast, 140ms) ease;
+}
+
+.code-space-container .cm-searchQuery:hover,
+.code-space-container .cm-replaceQuery:hover {
+    border-color: var(--background-modifier-border-hover);
+    background-color: var(--background-modifier-form-field-hover, var(--background-modifier-form-field));
 }
 
 .code-space-container .cm-searchQuery:focus,
 .code-space-container .cm-replaceQuery:focus {
     outline: none;
     border-color: var(--interactive-accent);
+    border-width: var(--input-border-width-focus, 2px);
+    box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.15);
+    background-color: var(--background-modifier-form-field-highlighted, var(--background-modifier-form-field));
+}
+
+.code-space-container .cm-searchQuery::placeholder,
+.code-space-container .cm-replaceQuery::placeholder {
+    color: var(--input-placeholder-color, var(--text-faint));
+}
+
+/* 搜索按钮 - Obsidian 风格 */
+.code-space-container .cm-search button {
+    min-width: var(--input-height, 30px);
+    height: var(--input-height, 30px);
+    padding: 0 var(--size-4-2);
+    background-color: var(--interactive-normal);
+    border: var(--border-width, 1px) solid var(--background-modifier-border);
+    border-radius: var(--button-radius, var(--input-radius, 5px));
+    color: var(--text-normal);
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--input-font-weight, var(--font-normal, 400));
+    cursor: pointer;
+    transition: background-color var(--anim-duration-fast, 140ms) ease,
+                border-color var(--anim-duration-fast, 140ms) ease,
+                color var(--anim-duration-fast, 140ms) ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.code-space-container .cm-search button:hover {
+    background-color: var(--interactive-hover);
+    border-color: var(--background-modifier-border-hover);
+    color: var(--text-normal);
+}
+
+.code-space-container .cm-search button:active {
+    background-color: var(--interactive-hover);
+    transform: translateY(1px);
+}
+
+/* 激活状态按钮 */
+.code-space-container .cm-search button.cm-search-button-active {
+    background-color: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.code-space-container .cm-search button.cm-search-button-active:hover {
+    background-color: var(--interactive-accent-hover);
+    border-color: var(--interactive-accent-hover);
+}
+
+/* 禁用状态 */
+.code-space-container .cm-search button[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* 搜索匹配高亮 - 鲜艳金黄色，最高对比度 */
+.code-space-container .cm-searchMatch {
+    background-color: #FFD700 !important;
+    border-radius: 2px;
+    outline: 2px solid #FFD700;
+}
+
+.code-space-container .cm-searchMatch-selected {
+    background-color: #FFAA00 !important;
+    border-radius: 2px;
+    outline: 3px solid #FFAA00;
+    box-shadow: 0 0 8px rgba(255, 170, 0, 0.8);
+}
+
+.theme-dark .code-space-container .cm-searchMatch {
+    background-color: #FFD700 !important;
+    outline: 2px solid #FFD700;
+}
+
+.theme-dark .code-space-container .cm-searchMatch-selected {
+    background-color: #FFAA00 !important;
+    outline: 3px solid #FFAA00;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 1);
+}
+
+/* 当前选中匹配 */
+.code-space-container .cm-selectionMatch {
+    background-color: hsla(var(--interactive-accent-hsl), 0.15);
+    border-radius: 2px;
+}
+
+/* 隐藏分隔符 */
+.code-space-container .cm-search + hr {
+    display: none;
+}
+
+/* 隐藏 CodeMirror 默认的搜索面板 */
+.code-space-container .cm-panel.cm-search {
+    display: none !important;
+}
+
+/* =================================================================
+   自定义搜索面板样式 - VS Code 风格
+   ================================================================= */
+.custom-search-panel {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding: 8px 12px;
+    font-family: var(--font-interface);
+    width: 100%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.custom-search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.custom-search-row:last-child {
+    margin-bottom: 0;
+}
+
+.custom-search-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.custom-search-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.custom-search-input {
+    flex: 1;
+    min-width: 200px;
+    height: 32px;
+    padding: 0 10px;
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    color: var(--text-normal);
+    font-size: 13px;
+    font-family: var(--font-interface);
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.custom-search-input:hover {
+    border-color: var(--background-modifier-border-hover);
+}
+
+.custom-search-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    border-width: 2px;
     box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.15);
 }
 
-.code-space-container .cm-search button {
-    height: 28px;
+.custom-search-options {
+    display: flex;
+    gap: 2px;
+}
+
+.custom-search-option-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 140ms ease;
+}
+
+.custom-search-option-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.custom-search-option-btn.active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.custom-search-option-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.custom-search-nav {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.custom-search-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 140ms ease;
+}
+
+.custom-search-nav-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.custom-search-nav-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.custom-search-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 140ms ease;
+}
+
+.custom-search-icon-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.custom-search-icon-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.custom-search-replace-btns {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.custom-search-replace-btn {
+    height: 30px;
     padding: 0 12px;
     background-color: var(--interactive-normal);
     border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
     color: var(--text-normal);
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 400;
     cursor: pointer;
-    transition: background-color 0.1s ease;
+    transition: all 140ms ease;
+    white-space: nowrap;
 }
 
-.code-space-container .cm-search button:hover {
-    background-color: var(--background-modifier-hover);
+.custom-search-replace-btn:hover {
+    background-color: var(--interactive-hover);
+    border-color: var(--background-modifier-border-hover);
 }
 
-.code-space-container .cm-search button.cm-search-button-active {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
+.custom-search-replace-btn.mod-all {
+    background-color: var(--interactive-normal);
 }
 
-.code-space-container .cm-search button[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
+.custom-search-replace-btn.mod-all:hover {
+    background-color: var(--interactive-hover);
 }
 
-.code-space-container .cm-searchMatch {
-    background-color: rgba(255, 215, 0, 0.3);
-}
-
-.code-space-container .cm-searchMatch-selected {
-    background-color: rgba(255, 215, 0, 0.5);
-}
-
-.theme-dark .code-space-container .cm-searchMatch {
-    background-color: rgba(255, 215, 0, 0.4);
-}
-
-.theme-dark .code-space-container .cm-searchMatch-selected {
-    background-color: rgba(255, 215, 0, 0.6);
-}
-
-.code-space-container .cm-selectionMatch {
-    background-color: hsla(var(--interactive-accent-hsl), 0.15);
+.is-hidden {
+    display: none !important;
 }

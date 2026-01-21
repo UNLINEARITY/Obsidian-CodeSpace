@@ -1,10 +1,10 @@
-import { TextFileView, WorkspaceLeaf, TFile, Notice, App } from "obsidian";
-import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
-import { EditorState, Compartment, Extension } from "@codemirror/state";
+import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon } from "obsidian";
+import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter, Decoration, DecorationSet } from "@codemirror/view";
+import { EditorState, Compartment, Extension, StateField, Transaction } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
-import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from "@codemirror/search";
+import { search, SearchQuery, searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { python } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
 import { javascript } from "@codemirror/lang-javascript";
@@ -16,6 +16,388 @@ import { tags } from "@lezer/highlight";
 import CodeSpacePlugin from "./main";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
+
+// 自定义搜索装饰器 StateField
+const searchHighlightField = StateField.define<DecorationSet>({
+	create(): DecorationSet {
+		return Decoration.none;
+	},
+	update(decorations: DecorationSet, tr: Transaction): DecorationSet {
+		// 这里会在后续实现
+		return decorations;
+	},
+	provide: (field: StateField<DecorationSet>) => EditorView.decorations.from(field)
+});
+
+
+// 自定义搜索面板类 - VS Code 风格
+class CustomSearchPanel {
+	panelEl: HTMLElement;
+	private searchInput: HTMLInputElement;
+	private replaceInput: HTMLInputElement;
+	private caseSensitiveBtn: HTMLElement;
+	private regexpBtn: HTMLElement;
+	private wholeWordBtn: HTMLElement;
+	private prevBtn: HTMLElement;
+	private nextBtn: HTMLElement;
+	private replaceBtn: HTMLElement;
+	private replaceAllBtn: HTMLElement;
+	private closeBtn: HTMLElement;
+
+	constructor(
+		private view: EditorView,
+		private container: HTMLElement
+	) {
+		// 创建面板元素（不自动添加到 DOM）
+		this.panelEl = document.createElement('div');
+		this.panelEl.addClass('custom-search-panel');
+		this.panelEl.addClass('is-hidden');
+
+		// 构建面板内容
+		this.buildPanelContent();
+
+		// 将搜索面板插入到容器的最前面（显示在顶部）
+		this.container.prepend(this.panelEl);
+		this.setupEventListeners();
+	}
+
+	private buildPanelContent(): void {
+		// 搜索行
+		const searchRow = this.panelEl.createDiv({ cls: "custom-search-row" });
+
+		// 搜索图标
+		const searchIcon = searchRow.createDiv({ cls: "custom-search-icon" });
+		setIcon(searchIcon, "search");
+
+		// 搜索输入框
+		this.searchInput = searchRow.createEl("input", {
+			cls: "custom-search-input",
+			type: "text",
+			attr: { placeholder: "Search" }
+		});
+
+		// 选项按钮组
+		const optionsGroup = searchRow.createDiv({ cls: "custom-search-options" });
+
+		this.caseSensitiveBtn = this.createOptionButton(optionsGroup, "case-sensitive", "Match case");
+		this.regexpBtn = this.createOptionButton(optionsGroup, "regex", "Use regular expression");
+		this.wholeWordBtn = this.createOptionButton(optionsGroup, "hashtag", "Match whole word");
+
+		// 导航按钮
+		const navGroup = searchRow.createDiv({ cls: "custom-search-nav" });
+		this.prevBtn = this.createNavButton(navGroup, "arrow-left", "Previous match");
+		this.nextBtn = this.createNavButton(navGroup, "arrow-right", "Next match");
+
+		// 关闭按钮
+		this.closeBtn = this.createIconButton(searchRow, "x", "Close");
+
+		// 替换行
+		const replaceRow = this.panelEl.createDiv({ cls: "custom-search-row custom-search-replace-row" });
+
+		// 替换图标
+		const replaceIcon = replaceRow.createDiv({ cls: "custom-search-icon" });
+		setIcon(replaceIcon, "repeat");
+
+		// 替换输入框
+		this.replaceInput = replaceRow.createEl("input", {
+			cls: "custom-search-input",
+			type: "text",
+			attr: { placeholder: "Replace" }
+		});
+
+		// 替换按钮组
+		const replaceBtnGroup = replaceRow.createDiv({ cls: "custom-search-replace-btns" });
+		this.replaceBtn = this.createReplaceButton(replaceBtnGroup, "Replace", false);
+		this.replaceAllBtn = this.createReplaceButton(replaceBtnGroup, "Replace all", true);
+	}
+
+	private createPanel(): HTMLElement {
+		// 这个方法不再使用，保留以避免编译错误
+		return this.panelEl;
+	}
+
+	private createOptionButton(parent: HTMLElement, icon: string, tooltip: string): HTMLElement {
+		const btn = parent.createDiv({ cls: "custom-search-option-btn" });
+		setIcon(btn, icon);
+		btn.setAttribute("aria-label", tooltip);
+		btn.setAttribute("data-tooltip", tooltip);
+		return btn;
+	}
+
+	private createNavButton(parent: HTMLElement, icon: string, tooltip: string): HTMLElement {
+		const btn = parent.createDiv({ cls: "custom-search-nav-btn" });
+		setIcon(btn, icon);
+		btn.setAttribute("aria-label", tooltip);
+		return btn;
+	}
+
+	private createIconButton(parent: HTMLElement, icon: string, tooltip: string): HTMLElement {
+		const btn = parent.createDiv({ cls: "custom-search-icon-btn" });
+		setIcon(btn, icon);
+		btn.setAttribute("aria-label", tooltip);
+		return btn;
+	}
+
+	private createReplaceButton(parent: HTMLElement, text: string, isAll: boolean): HTMLElement {
+		const btn = parent.createEl("button", { cls: "custom-search-replace-btn", text });
+		if (isAll) btn.addClass("mod-all");
+		return btn;
+	}
+
+	private setupEventListeners() {
+		// 关闭面板
+		this.closeBtn.addEventListener("click", () => this.close());
+
+		// 搜索输入变化时执行搜索
+		let searchTimeout: ReturnType<typeof setTimeout>;
+		this.searchInput.addEventListener("input", () => {
+			clearTimeout(searchTimeout);
+			searchTimeout = setTimeout(() => this.doSearch(), 150);
+		});
+
+		// 回车键导航
+		this.searchInput.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") {
+				e.shiftKey ? this.findPrevious() : this.findNext();
+			}
+		});
+
+		// 替换输入回车
+		this.replaceInput.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") {
+				e.shiftKey ? this.replace() : this.findNext();
+			}
+		});
+
+		// 选项按钮
+		this.caseSensitiveBtn.addEventListener("click", () => {
+			this.caseSensitiveBtn.toggleClass("active", !this.caseSensitiveBtn.hasClass("active"));
+			this.doSearch();
+		});
+
+		this.regexpBtn.addEventListener("click", () => {
+			this.regexpBtn.toggleClass("active", !this.regexpBtn.hasClass("active"));
+			this.doSearch();
+		});
+
+		this.wholeWordBtn.addEventListener("click", () => {
+			this.wholeWordBtn.toggleClass("active", !this.wholeWordBtn.hasClass("active"));
+			this.doSearch();
+		});
+
+		// 导航按钮
+		this.prevBtn.addEventListener("click", () => this.findPrevious());
+		this.nextBtn.addEventListener("click", () => this.findNext());
+
+		// 替换按钮
+		this.replaceBtn.addEventListener("click", () => this.replace());
+		this.replaceAllBtn.addEventListener("click", () => this.replaceAll());
+	}
+
+	private getQuery(): SearchQuery {
+		return new SearchQuery({
+			search: this.searchInput.value,
+			caseSensitive: this.caseSensitiveBtn.hasClass("active"),
+			regexp: this.regexpBtn.hasClass("active"),
+			wholeWord: this.wholeWordBtn.hasClass("active"),
+			replace: this.replaceInput.value
+		});
+	}
+
+	private doSearch() {
+		const query = this.getQuery();
+
+		if (!query.search) {
+			// 清空搜索高亮
+			return;
+		}
+
+		// 执行搜索 - 从当前位置开始查找第一个匹配
+		this.findNext();
+	}
+
+	private findNext() {
+		const query = this.getQuery();
+		if (!query.search) return;
+
+		const { from, to } = this.view.state.selection.main;
+		const searchString = this.view.state.doc.toString();
+
+		try {
+			let searchPos = to;
+			let match: { from: number; to: number } | null = null;
+
+			// 创建正则表达式用于搜索
+			let regex: RegExp;
+			const flags = query.caseSensitive ? "g" : "gi";
+			const pattern = query.regexp ? query.search : this.escapeRegex(query.search);
+
+			if (query.wholeWord) {
+				regex = new RegExp(`\\b${pattern}\\b`, flags);
+			} else {
+				regex = new RegExp(pattern, flags);
+			}
+
+			// 从当前位置开始查找
+			regex.lastIndex = searchPos;
+			let execResult = regex.exec(searchString);
+
+			if (execResult) {
+				match = { from: execResult.index, to: execResult.index + execResult[0].length };
+			} else {
+				// 如果没找到，从头开始搜索
+				regex.lastIndex = 0;
+				execResult = regex.exec(searchString);
+				if (execResult) {
+					match = { from: execResult.index, to: execResult.index + execResult[0].length };
+				}
+			}
+
+			if (match) {
+				this.view.dispatch({
+					selection: { anchor: match.from, head: match.to },
+					scrollIntoView: true
+				});
+			}
+		} catch (error) {
+			console.error("Search error:", error);
+		}
+	}
+
+	private findPrevious() {
+		const query = this.getQuery();
+		if (!query.search) return;
+
+		const { from, to } = this.view.state.selection.main;
+		const searchString = this.view.state.doc.toString();
+
+		try {
+			let searchPos = from;
+			let match: { from: number; to: number } | null = null;
+
+			// 创建正则表达式用于搜索
+			let regex: RegExp;
+			const flags = query.caseSensitive ? "g" : "gi";
+			const pattern = query.regexp ? query.search : this.escapeRegex(query.search);
+
+			if (query.wholeWord) {
+				regex = new RegExp(`\\b${pattern}\\b`, flags);
+			} else {
+				regex = new RegExp(pattern, flags);
+			}
+
+			// 从当前位置向后查找
+			let lastMatch: { from: number; to: number } | null = null;
+			let execResult: RegExpExecArray | null;
+
+			while ((execResult = regex.exec(searchString)) !== null) {
+				if (execResult.index < searchPos) {
+					lastMatch = { from: execResult.index, to: execResult.index + execResult[0].length };
+				} else {
+					break;
+				}
+			}
+
+			if (lastMatch) {
+				this.view.dispatch({
+					selection: { anchor: lastMatch.from, head: lastMatch.to },
+					scrollIntoView: true
+				});
+			}
+		} catch (error) {
+			console.error("Search error:", error);
+		}
+	}
+
+	private escapeRegex(text: string): string {
+		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+
+	private replace() {
+		const query = this.getQuery();
+		if (!query.search || !query.replace) return;
+
+		const { from, to } = this.view.state.selection.main;
+		const currentText = this.view.state.sliceDoc(from, to);
+
+		// 检查当前选中的文本是否匹配搜索词
+		const isMatch = query.caseSensitive ?
+			currentText === query.search :
+			currentText.toLowerCase() === query.search.toLowerCase();
+
+		if (isMatch) {
+			this.view.dispatch({
+				changes: { from, to, insert: query.replace },
+				selection: { anchor: from, head: from + query.replace.length }
+			});
+			this.findNext();
+		} else {
+			// 如果当前选中的不匹配，先查找下一个匹配项
+			this.findNext();
+		}
+	}
+
+	private replaceAll() {
+		const query = this.getQuery();
+		if (!query.search || !query.replace) return;
+
+		const searchString = this.view.state.doc.toString();
+		const changes: { from: number; to: number; insert: string }[] = [];
+
+		try {
+			let regex: RegExp;
+			const flags = query.caseSensitive ? "g" : "gi";
+			const pattern = query.regexp ? query.search : this.escapeRegex(query.search);
+
+			if (query.wholeWord) {
+				regex = new RegExp(`\\b${pattern}\\b`, flags);
+			} else {
+				regex = new RegExp(pattern, flags);
+			}
+
+			// 查找所有匹配
+			let execResult: RegExpExecArray | null;
+			let offset = 0;
+
+			while ((execResult = regex.exec(searchString)) !== null) {
+				changes.push({
+					from: execResult.index + offset,
+					to: execResult.index + execResult[0].length + offset,
+					insert: query.replace
+				});
+				offset += query.replace.length - execResult[0].length;
+			}
+
+			if (changes.length > 0) {
+				this.view.dispatch({ changes });
+			}
+		} catch (error) {
+			console.error("Replace all error:", error);
+		}
+	}
+
+	open() {
+		this.panelEl.removeClass("is-hidden");
+		this.searchInput.focus();
+	}
+
+	close() {
+		this.panelEl.addClass("is-hidden");
+	}
+
+	toggle() {
+		if (this.panelEl.hasClass("is-hidden")) {
+			this.open();
+		} else {
+			this.close();
+		}
+	}
+
+	destroy() {
+		this.panelEl.remove();
+	}
+}
+
 
 // Language package mapping to ensure proper bundling
 const LANGUAGE_PACKAGES: Record<string, Extension> = {
@@ -92,6 +474,11 @@ const baseTheme = EditorView.theme({
 		caretColor: "var(--text-accent) !important",
 		padding: "10px 0"
 	},
+	// 搜索选中文本的金黄色高亮
+	"&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
+	},
 	".cm-gutters": {
 		backgroundColor: "transparent !important",
 		color: "var(--text-muted)",
@@ -103,6 +490,90 @@ const baseTheme = EditorView.theme({
 	},
 	".cm-activeLine": {
 		backgroundColor: "var(--background-modifier-active-hover)"
+	},
+	// 搜索面板样式 - Obsidian 原生风格
+	".cm-panel.cm-search": {
+		backgroundColor: "var(--background-secondary)",
+		borderTop: "1px solid var(--background-modifier-border)",
+		padding: "8px 12px",
+		fontFamily: "var(--font-interface)"
+	},
+	".cm-search": {
+		display: "flex",
+		alignItems: "center",
+		gap: "8px",
+		flexWrap: "wrap"
+	},
+	// 搜索输入框
+	".cm-searchQuery, .cm-replaceQuery": {
+		flex: "1",
+		minWidth: "120px",
+		height: "30px",
+		padding: "0 8px",
+		backgroundColor: "var(--background-modifier-form-field)",
+		border: "1px solid var(--background-modifier-border)",
+		borderRadius: "5px",
+		color: "var(--text-normal)",
+		fontSize: "13px",
+		lineHeight: "30px",
+		transition: "border-color 140ms ease, box-shadow 140ms ease"
+	},
+	".cm-searchQuery:hover, .cm-replaceQuery:hover": {
+		borderColor: "var(--background-modifier-border-hover)"
+	},
+	".cm-searchQuery:focus, .cm-replaceQuery:focus": {
+		outline: "none",
+		borderColor: "var(--interactive-accent)",
+		borderWidth: "2px",
+		boxShadow: "0 0 0 2px hsla(var(--interactive-accent-hsl), 0.15)"
+	},
+	// 搜索按钮
+	".cm-search button": {
+		minWidth: "30px",
+		height: "30px",
+		padding: "0 8px",
+		backgroundColor: "var(--interactive-normal)",
+		border: "1px solid var(--background-modifier-border)",
+		borderRadius: "5px",
+		color: "var(--text-normal)",
+		fontSize: "13px",
+		fontWeight: "400",
+		cursor: "pointer",
+		transition: "background-color 140ms ease, border-color 140ms ease",
+		display: "inline-flex",
+		alignItems: "center",
+		justifyContent: "center",
+		whiteSpace: "nowrap"
+	},
+	".cm-search button:hover": {
+		backgroundColor: "var(--interactive-hover)",
+		borderColor: "var(--background-modifier-border-hover)"
+	},
+	".cm-search button:active": {
+		transform: "translateY(1px)"
+	},
+	".cm-search button.cm-search-button-active": {
+		backgroundColor: "var(--interactive-accent)",
+		borderColor: "var(--interactive-accent)",
+		color: "var(--text-on-accent)"
+	},
+	".cm-search button[disabled]": {
+		opacity: "0.4",
+		cursor: "not-allowed",
+		pointerEvents: "none"
+	},
+	// 搜索匹配高亮
+	".cm-searchMatch": {
+		backgroundColor: "hsla(45, 100%, 50%, 0.25)",
+		borderRadius: "2px"
+	},
+	".cm-searchMatch-selected": {
+		backgroundColor: "hsla(45, 100%, 50%, 0.4)",
+		boxShadow: "0 0 0 1px hsla(45, 100%, 45%, 0.3)"
+	},
+	".cm-selectionMatch": {
+		backgroundColor: "hsla(var(--interactive-accent-hsl), 0.15)",
+		borderRadius: "2px"
 	}
 });
 
@@ -115,6 +586,7 @@ export class CodeSpaceView extends TextFileView {
 	fontSize: number = 15; // 默认字体大小（px）
 	private isDirty: boolean = false; // 新增：跟踪是否有未保存的修改
 	private isSettingData: boolean = false; // 新增：标记是否正在设置数据
+	private searchPanel?: CustomSearchPanel; // 自定义搜索面板
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -209,6 +681,13 @@ export class CodeSpaceView extends TextFileView {
 		this.editorView.dispatch({
 			effects: this.lineNumbersCompartment.reconfigure(this.getLineNumbersExtension())
 		});
+	}
+
+	// 切换搜索面板（供命令调用）
+	toggleSearchPanel() {
+		if (this.searchPanel) {
+			this.searchPanel.toggle();
+		}
 	}
 
 	// 重写 save 方法，只在真正有未保存修改时才保存
@@ -335,12 +814,12 @@ export class CodeSpaceView extends TextFileView {
 			closeBrackets(),
 			highlightActiveLine(),
 			indentUnit.of("    "),
-			search({ top: true }), // 添加查找功能，面板显示在顶部
+			// 不使用默认的 search 扩展，改用自定义搜索面板
 			highlightSelectionMatches(), // 高亮选中文本的匹配项
 			keymap.of([
 				...defaultKeymap,
 				...historyKeymap,
-				...searchKeymap,
+				// 移除默认的 searchKeymap，使用我们自己的快捷键
 				indentWithTab,
 				{
 					key: "Mod-s",
@@ -394,11 +873,8 @@ export class CodeSpaceView extends TextFileView {
 
 		console.debug("Code Space: Editor created with state");
 
-		// 添加测试方法到 window 对象，方便在控制台调试
-		(window as unknown as { testSearch?: () => void }).testSearch = () => {
-			console.log("Test search triggered!");
-			openSearchPanel(this.editorView);
-		};
+		// 创建自定义搜索面板
+		this.searchPanel = new CustomSearchPanel(this.editorView, root);
 
 		// 直接在编辑器容器上监听键盘事件（使用 capture 模式，优先于 Obsidian 全局快捷键）
 		this.registerDomEvent(root, 'keydown', (e: KeyboardEvent) => {
@@ -408,8 +884,7 @@ export class CodeSpaceView extends TextFileView {
 			if (isModKey && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
 				e.preventDefault();
 				e.stopPropagation();
-				console.log("Opening CodeMirror search panel via Ctrl+Shift+F");
-				openSearchPanel(this.editorView);
+				this.searchPanel?.toggle();
 				return;
 			}
 
@@ -417,18 +892,27 @@ export class CodeSpaceView extends TextFileView {
 			if (isModKey && !e.shiftKey && (e.key === 'h' || e.key === 'H')) {
 				e.preventDefault();
 				e.stopPropagation();
-				console.log("Opening CodeMirror replace panel via Ctrl+H");
-				openSearchPanel(this.editorView);
+				this.searchPanel?.toggle();
 				return;
 			}
 
-			// Ctrl+F 或 Cmd+F - 尝试打开搜索面板
+			// Ctrl+F 或 Cmd+F - 打开搜索面板
 			if (isModKey && !e.shiftKey && (e.key === 'F' || e.key === 'f')) {
 				e.preventDefault();
 				e.stopPropagation();
-				console.log("Opening CodeMirror search panel via Ctrl+F");
-				openSearchPanel(this.editorView);
+				this.searchPanel?.toggle();
 				return;
+			}
+
+			// Escape - 关闭搜索面板
+			if (e.key === 'Escape' && this.searchPanel) {
+				// 检查搜索面板是否打开
+				if (!this.searchPanel.panelEl.hasClass("is-hidden")) {
+					e.preventDefault();
+					e.stopPropagation();
+					this.searchPanel.close();
+					return;
+				}
 			}
 		}, { capture: true });
 
@@ -512,6 +996,10 @@ export class CodeSpaceView extends TextFileView {
 
 	async onClose(): Promise<void> {
 		await Promise.resolve(); // Required for async function
+		// 销毁自定义搜索面板
+		if (this.searchPanel) {
+			this.searchPanel.destroy();
+		}
 		if (this.editorView) {
 			this.editorView.destroy();
 		}
