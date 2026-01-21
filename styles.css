@@ -646,7 +646,6 @@
     cursor: not-allowed;
 }
 
-/* Search match highlighting */
 .code-space-container .cm-searchMatch {
     background-color: rgba(255, 215, 0, 0.3);
 }
@@ -663,12 +662,6 @@
     background-color: rgba(255, 215, 0, 0.6);
 }
 
-/* Selection matches highlighting */
 .code-space-container .cm-selectionMatch {
     background-color: hsla(var(--interactive-accent-hsl), 0.15);
-}
-
-/* Search panel icons */
-.code-space-container .cm-textfield {
-    position: relative;
 }

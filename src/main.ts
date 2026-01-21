@@ -3,7 +3,7 @@ import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
-import { openSearchPanel } from "@codemirror/search";
+import { openSearchPanel, searchPanelOpen, closeSearchPanel } from "@codemirror/search";
 
 // 文件创建模态框
 class CreateCodeFileModal extends Modal {
@@ -126,34 +126,25 @@ export default class CodeSpacePlugin extends Plugin {
 			}
 		});
 
-		// 添加代码编辑器搜索命令
+		// 添加代码编辑器搜索和替换命令（开关模式）
 		this.addCommand({
-			id: 'open-code-search',
-			name: 'Search in code editor',
+			id: 'toggle-code-search',
+			name: 'Search and replace',
 			checkCallback: (checking: boolean) => {
 				// 检查当前是否有活动的 CodeSpaceView
 				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
 				if (activeView) {
 					if (!checking) {
-						// 触发搜索
-						openSearchPanel(activeView.editorView);
-					}
-					return true;
-				}
-				return false;
-			}
-		});
+						// 检查搜索面板是否已经打开
+						const isOpen = searchPanelOpen(activeView.editorView.state);
 
-		this.addCommand({
-			id: 'open-code-replace',
-			name: 'Replace in code editor',
-			checkCallback: (checking: boolean) => {
-				// 检查当前是否有活动的 CodeSpaceView
-				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
-				if (activeView) {
-					if (!checking) {
-						// 触发替换
-						openSearchPanel(activeView.editorView);
+						if (isOpen) {
+							// 如果已打开，关闭面板
+							closeSearchPanel(activeView.editorView);
+						} else {
+							// 如果未打开，打开搜索面板
+							openSearchPanel(activeView.editorView);
+						}
 					}
 					return true;
 				}
