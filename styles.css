@@ -8,6 +8,46 @@
     flex-direction: column;
     overflow: hidden;
     background-color: var(--background-primary);
+    position: relative;
+}
+
+/* =================================================================
+   浮动搜索按钮
+   ================================================================= */
+.code-search-float-button {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--interactive-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 140ms ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    color: var(--text-normal);
+}
+
+.code-search-float-button:hover {
+    background-color: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.code-search-float-button:active {
+    transform: scale(0.95);
+}
+
+.code-search-float-button svg {
+    width: 20px;
+    height: 20px;
 }
 
 /* 搜索选中高亮 - 金黄色，最高优先级 */

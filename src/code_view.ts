@@ -919,47 +919,36 @@ export class CodeSpaceView extends TextFileView {
 		// 创建自定义搜索面板
 		this.searchPanel = new CustomSearchPanel(this.editorView, root);
 
-		// 直接在编辑器容器上监听键盘事件（使用 capture 模式，优先于 Obsidian 全局快捷键）
-		this.registerDomEvent(root, 'keydown', (e: KeyboardEvent) => {
-			const isModKey = e.ctrlKey || e.metaKey;
+		// 创建浮动搜索按钮
+		this.createSearchButton(root);
 
-			// Ctrl+Shift+F 或 Cmd+Shift+F - 打开搜索面板
-			if (isModKey && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
-				e.preventDefault();
-				e.stopPropagation();
-				this.searchPanel?.toggle();
-				return;
-			}
+		// 设置缩放功能
+		this.setupZoomHandler(root);
+	}
 
-			// Ctrl+H 或 Cmd+H - 打开替换面板
-			if (isModKey && !e.shiftKey && (e.key === 'h' || e.key === 'H')) {
-				e.preventDefault();
-				e.stopPropagation();
-				this.searchPanel?.toggle();
-				return;
-			}
+	private createSearchButton(container: HTMLElement) {
+		// 创建浮动按钮容器
+		const buttonContainer = container.createDiv({
+			cls: "code-search-float-button"
+		});
 
-			// Ctrl+F 或 Cmd+F - 打开搜索面板
-			if (isModKey && !e.shiftKey && (e.key === 'F' || e.key === 'f')) {
-				e.preventDefault();
-				e.stopPropagation();
-				this.searchPanel?.toggle();
-				return;
-			}
+		// 设置搜索图标
+		setIcon(buttonContainer, "search");
 
-			// Escape - 关闭搜索面板
-			if (e.key === 'Escape' && this.searchPanel) {
-				// 检查搜索面板是否打开
-				if (!this.searchPanel.panelEl.hasClass("is-hidden")) {
-					e.preventDefault();
-					e.stopPropagation();
-					this.searchPanel.close();
-					return;
-				}
-			}
-		}, { capture: true });
+		// 点击事件：切换搜索面板
+		buttonContainer.addEventListener("click", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			this.searchPanel?.toggle();
+		});
 
-		// 添加 Ctrl+滚轮缩放功能
+		// 鼠标悬停提示
+		buttonContainer.setAttribute("aria-label", "Search and replace");
+		buttonContainer.setAttribute("data-tooltip", "Search and replace");
+	}
+
+	// 添加 Ctrl+滚轮缩放功能
+	private setupZoomHandler(root: HTMLElement) {
 		this.registerDomEvent(root, "wheel", (event: WheelEvent) => {
 			// 检测是否按下了 Ctrl 或 Cmd 键
 			if (event.ctrlKey || event.metaKey) {
