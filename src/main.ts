@@ -1,6 +1,7 @@
 import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
+import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
 
@@ -90,6 +91,11 @@ export default class CodeSpacePlugin extends Plugin {
 			(leaf) => new CodeDashboardView(leaf)
 		);
 
+		this.registerView(
+			VIEW_TYPE_CODE_OUTLINE,
+			(leaf) => new CodeOutlineView(leaf)
+		);
+
 		this.registerCodeExtensions();
 
 		console.debug("Code Space: About to register code embed processor...");
@@ -122,6 +128,14 @@ export default class CodeSpacePlugin extends Plugin {
 			name: 'Reload plugin',
 			callback: async () => {
 				await this.reloadPlugin();
+			}
+		});
+
+		this.addCommand({
+			id: 'toggle-outline',
+			name: 'Toggle code outline',
+			callback: () => {
+				void this.toggleOutline();
 			}
 		});
 
@@ -250,6 +264,33 @@ export default class CodeSpacePlugin extends Plugin {
 
 		if (leaf) {
 			void workspace.revealLeaf(leaf);
+		}
+	}
+
+	async toggleOutline() {
+		const { workspace } = this.app;
+		const existingLeaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
+
+		if (existingLeaves.length > 0) {
+			// 如果已经打开，则关闭
+			existingLeaves[0]!.detach();
+		} else {
+			// 在右侧边栏创建新的大纲视图
+			// 使用 split 模式在右侧创建新叶子节点
+			const leaf = workspace.getLeaf('split');
+			await leaf.setViewState({
+				type: VIEW_TYPE_CODE_OUTLINE,
+				active: true
+			});
+			void workspace.revealLeaf(leaf);
+		}
+	}
+
+	async updateOutline(file: import("obsidian").TFile) {
+		const outlineLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
+		if (outlineLeaves.length > 0) {
+			const outlineView = outlineLeaves[0]!.view as CodeOutlineView;
+			await outlineView.updateSymbols(file);
 		}
 	}
 

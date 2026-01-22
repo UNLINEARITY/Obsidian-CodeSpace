@@ -263,7 +263,9 @@ export class CodeDashboardView extends ItemView {
 			meta.createDiv({ cls: "code-file-tag", text: file.extension.toUpperCase() });
 			meta.createDiv({ cls: "code-file-time", text: moment(file.stat.mtime).fromNow() });
 
-			item.addEventListener("click", () => void this.openFile(file));
+			item.addEventListener("click", () => {
+				void this.openFile(file);
+			});
 			item.addEventListener("contextmenu", (e) => this.showContextMenu(e, file));
 		});
 	}
@@ -353,5 +355,12 @@ export class CodeDashboardView extends ItemView {
 			state: { file: file.path }
 		});
 		await this.app.workspace.revealLeaf(leaf);
+
+		// 更新侧边栏大纲
+		type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
+		const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
+		if (plugin) {
+			await plugin.updateOutline(file);
+		}
 	}
 }
