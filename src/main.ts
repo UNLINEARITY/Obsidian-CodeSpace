@@ -158,6 +158,9 @@ export default class CodeSpacePlugin extends Plugin {
 		});
 
 		console.debug("Code Space: Plugin fully loaded");
+
+		// 自动在右侧边栏打开代码大纲
+		void this.activateOutlineInSidebar();
 	}
 
 	async reloadPlugin() {
@@ -283,6 +286,63 @@ export default class CodeSpacePlugin extends Plugin {
 				active: true
 			});
 			void workspace.revealLeaf(leaf);
+		}
+	}
+
+	async activateOutlineInSidebar() {
+		// 检查是否已经有大纲视图
+		const existingLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
+		if (existingLeaves.length > 0) {
+			return; // 已经存在，不需要创建
+		}
+
+		// 在右侧边栏创建大纲视图
+		const { workspace } = this.app;
+
+		try {
+			// 获取右侧边栏容器
+			type WorkspaceWithRootSplit = typeof workspace & {
+				rootSplit: {
+					children: Array<{
+						type: string;
+						children: Array<WorkspaceLeaf>;
+					}>
+				}
+			};
+
+			const rootSplit = (workspace as unknown as WorkspaceWithRootSplit).rootSplit;
+
+			// 找到右侧边栏（type === 'right'）
+			const rightSidebar = rootSplit.children.find(child => child.type === 'right');
+
+			if (rightSidebar && rightSidebar.children.length > 0) {
+				// 如果右侧边栏已经有标签页，在右侧边栏容器中创建新叶子
+				// 使用 rightSidebar 本身作为父容器
+				const newLeaf = workspace.createLeafInParent(rightSidebar as any, -1);
+
+				await newLeaf.setViewState({
+					type: VIEW_TYPE_CODE_OUTLINE,
+					active: true
+				});
+
+				console.debug("Code Space: Outline added to right sidebar tab container");
+			} else {
+				// 如果右侧边栏还没有任何视图，使用备用方案
+				const leaf = workspace.getLeaf(false);
+				await leaf.setViewState({
+					type: VIEW_TYPE_CODE_OUTLINE,
+					active: true
+				});
+				console.debug("Code Space: Outline created in new split");
+			}
+		} catch (error) {
+			console.error("Code Space: Failed to activate outline in sidebar, using fallback", error);
+			// 最终备用方案
+			const leaf = workspace.getLeaf(false);
+			await leaf.setViewState({
+				type: VIEW_TYPE_CODE_OUTLINE,
+				active: true
+			});
 		}
 	}
 
