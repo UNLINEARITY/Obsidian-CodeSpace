@@ -11,7 +11,6 @@ export interface CodeSymbol {
 export function parseCodeSymbols(file: TFile, content: string): CodeSymbol[] {
 	const ext = file.extension.toLowerCase();
 	const lines = content.split("\n");
-	const symbols: CodeSymbol[] = [];
 
 	// 根据文件扩展名选择解析器
 	switch (ext) {
@@ -89,7 +88,6 @@ function parseJavaScript(lines: string[]): CodeSymbol[] {
 	const classRegex = /^class\s+([A-Za-z_][A-Za-z0-9_]*)/;
 	const funcRegex = /^function\s+([A-Za-z_][A-Za-z0-9_]*)/;
 	const arrowFuncRegex = /^(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:\(.*\)|[A-Za-z_][A-Za-z0-9_]*)\s*=>/;
-	const methodRegex = /^\s+([A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*{/;
 
 	lines.forEach((line, index) => {
 		const classMatch = line.match(classRegex);

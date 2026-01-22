@@ -159,8 +159,10 @@ export default class CodeSpacePlugin extends Plugin {
 
 		console.debug("Code Space: Plugin fully loaded");
 
-		// 自动在右侧边栏打开代码大纲
-		void this.activateOutlineInSidebar();
+		// Automatically create the outline view in the right sidebar when layout is ready
+		this.app.workspace.onLayoutReady(() => {
+			void this.activateOutlineInSidebar();
+		});
 	}
 
 	async reloadPlugin() {
@@ -279,63 +281,39 @@ export default class CodeSpacePlugin extends Plugin {
 			existingLeaves[0]!.detach();
 		} else {
 			// 在右侧边栏创建新的大纲视图
-			// 使用 split 模式在右侧创建新叶子节点
-			const leaf = workspace.getLeaf('split');
-			await leaf.setViewState({
-				type: VIEW_TYPE_CODE_OUTLINE,
-				active: true
-			});
-			void workspace.revealLeaf(leaf);
+			const leaf = workspace.getRightLeaf(false);
+			if (leaf) {
+				await leaf.setViewState({
+					type: VIEW_TYPE_CODE_OUTLINE,
+					active: true
+				});
+				void workspace.revealLeaf(leaf);
+			}
 		}
 	}
 
 	async activateOutlineInSidebar() {
+		const { workspace } = this.app;
+		
 		// 检查是否已经有大纲视图
-		const existingLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
+		const existingLeaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
 		if (existingLeaves.length > 0) {
-			return; // 已经存在，不需要创建
+			return;
 		}
 
-		// 在右侧边栏创建大纲视图
-		const { workspace } = this.app;
-
+		// 创建新的大纲视图
 		try {
-			// 方法1：尝试通过 workspace.rightSplit 创建
-			type WorkspaceWithRightSplit = typeof workspace & {
-				rightSplit: {
-					leaf: WorkspaceLeaf;
-				}
-			};
-
-			const workspaceWithRight = workspace as unknown as WorkspaceWithRightSplit;
-
-			// 如果右侧边栏有 leaf 属性，使用它
-			if ('rightSplit' in workspaceWithRight && workspaceWithRight.rightSplit) {
-				// 直接在右侧边栏创建新标签页
-				await workspaceWithRight.rightSplit.leaf.setViewState({
+			const leaf = workspace.getRightLeaf(false);
+			if (leaf) {
+				await leaf.setViewState({
 					type: VIEW_TYPE_CODE_OUTLINE,
 					active: true
 				});
-				console.debug("Code Space: Outline added via rightSplit.leaf");
-				return;
+				console.debug("Code Space: Outline created successfully");
 			}
-
-			// 方法2：使用 getLeaf(false) 创建右侧叶子节点
-			const leaf = workspace.getLeaf(false);
-			await leaf.setViewState({
-				type: VIEW_TYPE_CODE_OUTLINE,
-				active: true
-			});
-			console.debug("Code Space: Outline created with getLeaf(false)");
-
 		} catch (error) {
-			console.error("Code Space: Failed to activate outline in sidebar", error);
-			// 最终备用方案
-			const leaf = workspace.getLeaf('split');
-			await leaf.setViewState({
-				type: VIEW_TYPE_CODE_OUTLINE,
-				active: true
-			});
+			console.error("Code Space: Failed to create outline", error);
+			new Notice("Failed to create code outline");
 		}
 	}
 

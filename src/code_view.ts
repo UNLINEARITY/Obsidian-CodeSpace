@@ -1,10 +1,10 @@
 import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon } from "obsidian";
-import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter, Decoration, DecorationSet } from "@codemirror/view";
-import { EditorState, Compartment, Extension, StateField, Transaction } from "@codemirror/state";
+import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
+import { EditorState, Compartment, Extension } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
-import { search, SearchQuery, searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { SearchQuery, highlightSelectionMatches } from "@codemirror/search";
 import { python } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
 import { javascript } from "@codemirror/lang-javascript";
@@ -17,21 +17,7 @@ import CodeSpacePlugin from "./main";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
 
-// 自定义搜索装饰器 StateField
-const searchHighlightField = StateField.define<DecorationSet>({
-	create(): DecorationSet {
-		return Decoration.none;
-	},
-	update(decorations: DecorationSet, tr: Transaction): DecorationSet {
-		// 这里会在后续实现
-		return decorations;
-	},
-	provide: (field: StateField<DecorationSet>) => EditorView.decorations.from(field)
-});
-
 // 创建搜索高亮装饰的样式
-const searchHighlightMark = Decoration.mark({ class: "search-match-highlight" });
-const searchSelectedMark = Decoration.mark({ class: "search-selected-highlight" });
 
 
 // 自定义搜索面板类 - VS Code 风格
@@ -162,14 +148,22 @@ class CustomSearchPanel {
 		// 回车键导航
 		this.searchInput.addEventListener("keydown", (e) => {
 			if (e.key === "Enter") {
-				e.shiftKey ? this.findPrevious() : this.findNext();
+				if (e.shiftKey) {
+					this.findPrevious();
+				} else {
+					this.findNext();
+				}
 			}
 		});
 
 		// 替换输入回车
 		this.replaceInput.addEventListener("keydown", (e) => {
 			if (e.key === "Enter") {
-				e.shiftKey ? this.replace() : this.findNext();
+				if (e.shiftKey) {
+					this.replace();
+				} else {
+					this.findNext();
+				}
 			}
 		});
 
@@ -230,7 +224,7 @@ class CustomSearchPanel {
 		const query = this.getQuery();
 		if (!query.search) return;
 
-		const { from, to } = this.view.state.selection.main;
+		const { to } = this.view.state.selection.main;
 		const searchString = this.view.state.doc.toString();
 
 		try {
@@ -278,12 +272,11 @@ class CustomSearchPanel {
 		const query = this.getQuery();
 		if (!query.search) return;
 
-		const { from, to } = this.view.state.selection.main;
+		const { from } = this.view.state.selection.main;
 		const searchString = this.view.state.doc.toString();
 
 		try {
 			let searchPos = from;
-			let match: { from: number; to: number } | null = null;
 
 			// 创建正则表达式用于搜索
 			let regex: RegExp;

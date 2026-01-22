@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, TFile, setIcon } from "obsidian";
 import CodeSpacePlugin from "./main";
 import { parseCodeSymbols, CodeSymbol } from "./code_parser";
+import { CodeSpaceView } from "./code_view";
 
 export const VIEW_TYPE_CODE_OUTLINE = "code-space-outline";
 
@@ -22,7 +23,7 @@ export class CodeOutlineView extends ItemView {
 	}
 
 	getIcon(): string {
-		return "list";
+		return "code";
 	}
 
 	async onOpen(): Promise<void> {
@@ -44,20 +45,33 @@ export class CodeOutlineView extends ItemView {
 	}
 
 	async updateFromActiveView() {
-		// 获取当前活动的视图
-		const activeLeaf = this.app.workspace.activeLeaf;
-		if (!activeLeaf) return;
+		console.debug("Code Outline: updateFromActiveView called");
 
-		const activeView = activeLeaf.view;
-		if (!activeView) return;
+		// Avoid clearing/refreshing if the outline view itself is the active view
+		// This happens when the user clicks on the outline view
+		const activeViewSelf = this.app.workspace.getActiveViewOfType(CodeOutlineView);
+		if (activeViewSelf && activeViewSelf === this) {
+			console.debug("Code Outline: Outline view is active, skipping update");
+			return;
+		}
 
-		// 检查是否是 CodeSpaceView（通过 getViewType）
-		type ViewWithType = { getViewType(): string; file?: TFile };
-		const typedView = activeView as unknown as ViewWithType;
+		// 使用推荐的方法获取当前活动的 CodeSpaceView
+		const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
 
-		if (typedView.getViewType() === 'code-space-view' && typedView.file) {
+		if (activeView && activeView.file) {
+			// Check if we are already showing the outline for this file
+			if (this.currentFile && this.currentFile.path === activeView.file.path) {
+				console.debug("Code Outline: Already showing outline for", activeView.file.name);
+				return;
+			}
+
 			// 是代码文件视图，更新大纲
-			await this.updateSymbols(typedView.file);
+			console.debug("Code Outline: Active view is code file:", activeView.file.name);
+			await this.updateSymbols(activeView.file);
+		} else {
+			// 不是代码文件，清空大纲显示
+			console.debug("Code Outline: Active view is not a code file, clearing");
+			this.clear();
 		}
 	}
 
@@ -67,7 +81,7 @@ export class CodeOutlineView extends ItemView {
 		container.empty();
 
 		// 标题
-		const header = container.createEl("h2", {
+		container.createEl("h2", {
 			text: "Code outline",
 			cls: "code-outline-header"
 		});
@@ -107,7 +121,7 @@ export class CodeOutlineView extends ItemView {
 			if (symbol.type === "class") {
 				setIcon(icon, "box");
 			} else if (symbol.type === "function") {
-				setIcon(icon, "function");
+				setIcon(icon, "braces");
 			} else {
 				setIcon(icon, "curly-braces");
 			}
@@ -147,40 +161,68 @@ export class CodeOutlineView extends ItemView {
 	async jumpToSymbol(symbol: CodeSymbol) {
 		if (!this.currentFile) return;
 
+		console.debug("Code Outline: Jumping to symbol:", symbol.name, "at line", symbol.line);
+
 		// 在 Code Space 视图中打开文件
 		const leaves = this.app.workspace.getLeavesOfType("code-space-view");
+
+		// Define a minimal interface to satisfy TypeScript
+		interface CodeSpaceViewInterface {
+			file: TFile | null;
+			editorView?: {
+				state: {
+					doc: {
+						line(lineNum: number): { from: number };
+					};
+				};
+				dispatch(transaction: {
+					selection: { anchor: number; head: number };
+					scrollIntoView: boolean;
+				}): void;
+			};
+		}
+
 		let targetLeaf = leaves.find(leaf => {
-			const view = leaf.view as any;
+			const view = leaf.view as unknown as CodeSpaceViewInterface;
 			return view.file && view.file.path === this.currentFile!.path;
 		});
 
 		// 如果没有找到已打开的视图，创建新的
 		if (!targetLeaf) {
+			console.debug("Code Outline: Creating new view");
 			targetLeaf = this.app.workspace.getLeaf(true);
 			await targetLeaf.setViewState({
 				type: "code-space-view",
 				active: true,
 				state: { file: this.currentFile.path }
 			});
+		} else {
+			console.debug("Code Outline: Using existing view");
 		}
 
 		// 聚焦到该视图
 		await this.app.workspace.revealLeaf(targetLeaf);
 
 		// 跳转到指定行
-		const view = targetLeaf.view as any;
+		const view = targetLeaf.view as unknown as CodeSpaceViewInterface;
 		if (view && view.editorView) {
+			console.debug("Code Outline: Jumping to line", symbol.line);
+			// Small delay to ensure view is ready
 			setTimeout(() => {
 				try {
+					if (!view.editorView) return;
 					const pos = view.editorView.state.doc.line(symbol.line).from;
 					view.editorView.dispatch({
 						selection: { anchor: pos, head: pos },
 						scrollIntoView: true
 					});
+					console.debug("Code Outline: Dispatch successful");
 				} catch (error) {
-					console.error("Failed to jump to line:", error);
+					console.error("Code Outline: Failed to jump to line:", error);
 				}
 			}, 100);
+		} else {
+			console.debug("Code Outline: No editorView found");
 		}
 	}
 }
