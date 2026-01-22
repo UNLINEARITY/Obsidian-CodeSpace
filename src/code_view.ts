@@ -777,7 +777,7 @@ export class CodeSpaceView extends TextFileView {
 			type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
 			const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
 			if (plugin && this.file) {
-				void plugin.updateOutline(this.file);
+				void plugin.updateOutline(this.file, this.editorView.state.doc.toString());
 			}
 		} catch (error) {
 			// 保存失败，恢复 dirty 状态

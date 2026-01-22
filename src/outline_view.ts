@@ -138,12 +138,12 @@ export class CodeOutlineView extends ItemView {
 		});
 	}
 
-	async updateSymbols(file: TFile) {
+	async updateSymbols(file: TFile, content?: string) {
 		this.currentFile = file;
 
 		try {
-			const content = await this.app.vault.read(file);
-			this.symbols = parseCodeSymbols(file, content);
+			const fileContent = content !== undefined ? content : await this.app.vault.read(file);
+			this.symbols = parseCodeSymbols(file, fileContent);
 		} catch (error) {
 			console.error("Failed to parse symbols:", error);
 			this.symbols = [];

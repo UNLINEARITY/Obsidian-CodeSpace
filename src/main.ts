@@ -228,6 +228,10 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	onunload() {
+		// 卸载时清理大纲视图，防止重载插件时重复创建
+		const { workspace } = this.app;
+		const outlineLeaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
+		outlineLeaves.forEach(leaf => leaf.detach());
 	}
 
 	async loadSettings() {
@@ -319,11 +323,13 @@ export default class CodeSpacePlugin extends Plugin {
 		}
 	}
 
-	async updateOutline(file: import("obsidian").TFile) {
+	async updateOutline(file: import("obsidian").TFile, content?: string) {
 		const outlineLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
 		if (outlineLeaves.length > 0) {
-			const outlineView = outlineLeaves[0]!.view as CodeOutlineView;
-			await outlineView.updateSymbols(file);
+			const view = outlineLeaves[0]!.view;
+			if (view instanceof CodeOutlineView) {
+				await view.updateSymbols(file, content);
+			}
 		}
 	}
 
