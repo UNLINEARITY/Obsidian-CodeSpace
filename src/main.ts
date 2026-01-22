@@ -300,45 +300,38 @@ export default class CodeSpacePlugin extends Plugin {
 		const { workspace } = this.app;
 
 		try {
-			// 获取右侧边栏容器
-			type WorkspaceWithRootSplit = typeof workspace & {
-				rootSplit: {
-					children: Array<{
-						type: string;
-						children: Array<WorkspaceLeaf>;
-					}>
+			// 方法1：尝试通过 workspace.rightSplit 创建
+			type WorkspaceWithRightSplit = typeof workspace & {
+				rightSplit: {
+					leaf: WorkspaceLeaf;
 				}
 			};
 
-			const rootSplit = (workspace as unknown as WorkspaceWithRootSplit).rootSplit;
+			const workspaceWithRight = workspace as unknown as WorkspaceWithRightSplit;
 
-			// 找到右侧边栏（type === 'right'）
-			const rightSidebar = rootSplit.children.find(child => child.type === 'right');
-
-			if (rightSidebar && rightSidebar.children.length > 0) {
-				// 如果右侧边栏已经有标签页，在右侧边栏容器中创建新叶子
-				// 使用 rightSidebar 本身作为父容器
-				const newLeaf = workspace.createLeafInParent(rightSidebar as any, -1);
-
-				await newLeaf.setViewState({
+			// 如果右侧边栏有 leaf 属性，使用它
+			if ('rightSplit' in workspaceWithRight && workspaceWithRight.rightSplit) {
+				// 直接在右侧边栏创建新标签页
+				await workspaceWithRight.rightSplit.leaf.setViewState({
 					type: VIEW_TYPE_CODE_OUTLINE,
 					active: true
 				});
-
-				console.debug("Code Space: Outline added to right sidebar tab container");
-			} else {
-				// 如果右侧边栏还没有任何视图，使用备用方案
-				const leaf = workspace.getLeaf(false);
-				await leaf.setViewState({
-					type: VIEW_TYPE_CODE_OUTLINE,
-					active: true
-				});
-				console.debug("Code Space: Outline created in new split");
+				console.debug("Code Space: Outline added via rightSplit.leaf");
+				return;
 			}
-		} catch (error) {
-			console.error("Code Space: Failed to activate outline in sidebar, using fallback", error);
-			// 最终备用方案
+
+			// 方法2：使用 getLeaf(false) 创建右侧叶子节点
 			const leaf = workspace.getLeaf(false);
+			await leaf.setViewState({
+				type: VIEW_TYPE_CODE_OUTLINE,
+				active: true
+			});
+			console.debug("Code Space: Outline created with getLeaf(false)");
+
+		} catch (error) {
+			console.error("Code Space: Failed to activate outline in sidebar", error);
+			// 最终备用方案
+			const leaf = workspace.getLeaf('split');
 			await leaf.setViewState({
 				type: VIEW_TYPE_CODE_OUTLINE,
 				active: true

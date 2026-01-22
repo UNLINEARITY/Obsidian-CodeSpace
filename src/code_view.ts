@@ -752,6 +752,13 @@ export class CodeSpaceView extends TextFileView {
 
 			// 更新缓存
 			this.data = this.editorView.state.doc.toString();
+
+			// 保存成功后，更新侧边栏大纲
+			type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
+			const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
+			if (plugin && this.file) {
+				void plugin.updateOutline(this.file);
+			}
 		} catch (error) {
 			// 保存失败，恢复 dirty 状态
 			this.isDirty = true;

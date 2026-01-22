@@ -28,6 +28,37 @@ export class CodeOutlineView extends ItemView {
 	async onOpen(): Promise<void> {
 		await Promise.resolve();
 		this.render();
+
+		// 监听活动叶子节点变化，自动更新大纲
+		this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
+			void this.updateFromActiveView();
+		}));
+
+		// 监听文件变化（当用户在编辑器中切换文件时）
+		this.registerEvent(this.app.workspace.on('file-open', () => {
+			void this.updateFromActiveView();
+		}));
+
+		// 初始加载时检查当前活动视图
+		void this.updateFromActiveView();
+	}
+
+	async updateFromActiveView() {
+		// 获取当前活动的视图
+		const activeLeaf = this.app.workspace.activeLeaf;
+		if (!activeLeaf) return;
+
+		const activeView = activeLeaf.view;
+		if (!activeView) return;
+
+		// 检查是否是 CodeSpaceView（通过 getViewType）
+		type ViewWithType = { getViewType(): string; file?: TFile };
+		const typedView = activeView as unknown as ViewWithType;
+
+		if (typedView.getViewType() === 'code-space-view' && typedView.file) {
+			// 是代码文件视图，更新大纲
+			await this.updateSymbols(typedView.file);
+		}
 	}
 
 	render() {
