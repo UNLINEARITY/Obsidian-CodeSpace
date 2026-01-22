@@ -29,6 +29,10 @@ const searchHighlightField = StateField.define<DecorationSet>({
 	provide: (field: StateField<DecorationSet>) => EditorView.decorations.from(field)
 });
 
+// 创建搜索高亮装饰的样式
+const searchHighlightMark = Decoration.mark({ class: "search-match-highlight" });
+const searchSelectedMark = Decoration.mark({ class: "search-selected-highlight" });
+
 
 // 自定义搜索面板类 - VS Code 风格
 class CustomSearchPanel {
@@ -208,7 +212,13 @@ class CustomSearchPanel {
 		const query = this.getQuery();
 
 		if (!query.search) {
-			// 清空搜索高亮
+			// 清空搜索时，清除选中状态
+			const { from, to } = this.view.state.selection.main;
+			if (from !== to) {
+				this.view.dispatch({
+					selection: { anchor: from, head: from }
+				});
+			}
 			return;
 		}
 
@@ -474,8 +484,32 @@ const baseTheme = EditorView.theme({
 		caretColor: "var(--text-accent) !important",
 		padding: "10px 0"
 	},
-	// 搜索选中文本的金黄色高亮
-	"&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
+	// 搜索选中文本的金黄色高亮 - 最高优先级
+	"&.cm-focused .cm-selectionBackground": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
+	},
+	".cm-selectionBackground": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
+	},
+	".cm-content ::selection": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
+	},
+	"&.cm-focused .cm-content ::selection": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
+	},
+	"::selection": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
+	},
+	"::moz-selection": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
+	},
+	".cm-line::selection": {
 		backgroundColor: "#FFD700 !important",
 		color: "#000000 !important"
 	},
@@ -490,6 +524,15 @@ const baseTheme = EditorView.theme({
 	},
 	".cm-activeLine": {
 		backgroundColor: "var(--background-modifier-active-hover)"
+	},
+	// 确保活动行内的选区也是金黄色
+	".cm-activeLine .cm-selectionBackground": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
+	},
+	".cm-activeLine::selection": {
+		backgroundColor: "#FFD700 !important",
+		color: "#000000 !important"
 	},
 	// 搜索面板样式 - Obsidian 原生风格
 	".cm-panel.cm-search": {

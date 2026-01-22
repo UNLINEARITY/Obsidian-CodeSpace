@@ -10,6 +10,62 @@
     background-color: var(--background-primary);
 }
 
+/* 搜索选中高亮 - 金黄色，最高优先级 */
+.code-space-container .cm-editor.cm-focused > .cm-scroller > .cm-content .cm-selectionBackground,
+.code-space-container.cm-focused .cm-selectionBackground,
+.code-space-container .cm-selectionBackground {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+/* 活动行内的选区也必须是金黄色 */
+.code-space-container .cm-activeLine .cm-selectionBackground,
+.code-space-container.cm-focused .cm-activeLine .cm-selectionBackground {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+.code-space-container ::selection {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+.code-space-container ::-moz-selection {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+.code-space-container .cm-content ::selection {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+.code-space-container .cm-content ::-moz-selection {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+.code-space-container.cm-focused .cm-content ::selection {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+.code-space-container.cm-focused .cm-content ::-moz-selection {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+/* 活动行内的 ::selection */
+.code-space-container .cm-activeLine::selection {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
+.code-space-container .cm-line::selection {
+    background-color: #FFD700 !important;
+    color: #000000 !important;
+}
+
 .code-space-container .cm-editor {
     height: 100% !important;
     font-family: var(--font-monospace, 'Fira Code', 'JetBrains Mono', 'Cascadia Code', monospace);
