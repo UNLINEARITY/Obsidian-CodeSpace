@@ -1,4 +1,5 @@
 import { ItemView, WorkspaceLeaf, TFile, setIcon } from "obsidian";
+import { EditorView } from "@codemirror/view";
 import CodeSpacePlugin from "./main";
 import { parseCodeSymbols, CodeSymbol } from "./code_parser";
 import { CodeSpaceView } from "./code_view";
@@ -177,7 +178,8 @@ export class CodeOutlineView extends ItemView {
 				};
 				dispatch(transaction: {
 					selection: { anchor: number; head: number };
-					scrollIntoView: boolean;
+					effects?: any[];
+					scrollIntoView?: boolean;
 				}): void;
 			};
 		}
@@ -214,7 +216,7 @@ export class CodeOutlineView extends ItemView {
 					const line = view.editorView.state.doc.line(symbol.line);
 					view.editorView.dispatch({
 						selection: { anchor: line.from, head: line.to },
-						scrollIntoView: true
+						effects: [EditorView.scrollIntoView(line.from, { x: "nearest", y: "center" })]
 					});
 					console.debug("Code Outline: Dispatch successful");
 				} catch (error) {

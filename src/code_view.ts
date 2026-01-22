@@ -260,7 +260,7 @@ class CustomSearchPanel {
 			if (match) {
 				this.view.dispatch({
 					selection: { anchor: match.from, head: match.to },
-					scrollIntoView: true
+					effects: [EditorView.scrollIntoView(match.from, { x: "nearest", y: "center" })]
 				});
 			}
 		} catch (error) {
@@ -304,7 +304,7 @@ class CustomSearchPanel {
 			if (lastMatch) {
 				this.view.dispatch({
 					selection: { anchor: lastMatch.from, head: lastMatch.to },
-					scrollIntoView: true
+					effects: [EditorView.scrollIntoView(lastMatch.from, { x: "nearest", y: "center" })]
 				});
 			} else {
 				// 循环搜索：如果前面没有匹配项，找到文档中的最后一个匹配项
@@ -317,7 +317,7 @@ class CustomSearchPanel {
 				if (finalMatch) {
 					this.view.dispatch({
 						selection: { anchor: finalMatch.from, head: finalMatch.to },
-						scrollIntoView: true
+						effects: [EditorView.scrollIntoView(finalMatch.from, { x: "nearest", y: "center" })]
 					});
 				}
 			}
@@ -374,15 +374,13 @@ class CustomSearchPanel {
 
 			// 查找所有匹配
 			let execResult: RegExpExecArray | null;
-			let offset = 0;
 
 			while ((execResult = regex.exec(searchString)) !== null) {
 				changes.push({
-					from: execResult.index + offset,
-					to: execResult.index + execResult[0].length + offset,
+					from: execResult.index,
+					to: execResult.index + execResult[0].length,
 					insert: query.replace
 				});
-				offset += query.replace.length - execResult[0].length;
 			}
 
 			if (changes.length > 0) {
@@ -526,10 +524,11 @@ const baseTheme = EditorView.theme({
 		color: "#FFFFFF !important"
 	},
 	".cm-gutters": {
-		backgroundColor: "transparent !important",
+		backgroundColor: "var(--background-primary) !important",
 		color: "var(--text-muted)",
 		borderRight: "1px solid var(--background-modifier-border)",
-		minWidth: "40px"
+		minWidth: "40px",
+		zIndex: "10"
 	},
 	".cm-activeLineGutter": {
 		backgroundColor: "var(--background-modifier-active-hover)"
