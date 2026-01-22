@@ -35,30 +35,31 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 ## 核心功能
 
 ### 1. 代码文件管理空间
-通过可视化仪表盘统一管理所有代码文件
+提供可视化仪表盘，用于库内代码文件的统一索引与管理。
 
-- **可视化仪表盘**：通过专用界面浏览和管理所有代码文件
-- **智能筛选**：按文件扩展名、文件名搜索过滤
-- **右键操作**：重命名、移动、删除、在系统应用中打开
-- **快速创建**：一键创建新的代码文件
+- **可视化仪表盘**：提供沉浸式管理界面，支持网格布局与文件状态概览。
+- **集成管理工具**：标题区域集成**设置入口**与**文件创建功能**，简化操作路径。
+- **多维动态过滤**：支持按文件扩展名筛选和按文件名实时搜索。
+- **标准文件操作**：集成重命名、移动、删除及外部应用打开等obsidian原生支持的文件管理功能。
 
 <p align='center'><img src='img\pre1.png' width=95%></p> 
 
 
 ### 2. 专业代码编辑空间
+提供基于 IDE 体验的代码查看与编辑环境。
 
-语法高亮、行号、代码折叠等专业编辑功能 
+- **语法高亮**：基于 CodeMirror 6，提供针对多种编程语言的精确高亮显示。
+- **结构化导航**：集成代码大纲视图，自动解析类、函数及方法结构并支持点击跳转。
+- **高级搜索替换**：提供独立搜索面板，支持正则表达式、大小写敏感、全词匹配及全局替换。
+- **手动保存机制**：支持 Ctrl+S 手动保存，并具备光标位置保护功能，防止保存时视口跳动。
+- **基础编辑辅助**：支持自动缩进、括号补全、代码折叠及行号显示。
+- **交互优化**：支持 Ctrl+滚轮缩放字体，并提供浮动搜索按钮以快速触达查找功能。
 
-- **语法高亮**：基于 CodeMirror 6 的多语言语法高亮
-- **智能编辑**：自动缩进、括号匹配、代码折叠
-- **行号显示**：可选的行号显示功能
-- **手动保存**：Ctrl+S 手动保存，避免意外修改
-- **字体缩放**：Ctrl+鼠标滚轮调整字体大小
-- **快捷操作**: 支持系列快捷键，可以参考后面快捷键的提示
+<p align='center'><img src='img\pre22.png' width=95%></p> 
 
 <p align='center'><img src='img\pre2.png' width=95%></p> 
 
-### 3. Obsidian 原生语法嵌入
+### 3. Obsidian 原生嵌入空间
 
 在 Markdown 中优雅地嵌入和预览代码
 
@@ -90,9 +91,9 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 | 数据 | `.sql`, `.json`, `.yaml`, `.yml`, `.xml` |
 | 脚本 | `.php`, `.rb`, `.sh` |
 
-*更多语言可通过插件设置添加，插件支持任意后缀的文件管理！*
+**更多语言可通过插件设置添加，插件支持任意后缀的文件管理！**
 - 如果是代码文件，会通过Code Space的代码界面打开
-- 如果是二进制文件（例如图片或 pdf ,会调用 Obsidian 原生的查看器进行打开
+- 如果是二进制文件（例如图片或 pdf ,会调用 Obsidian 原生的查看器进行打开，你甚至可以用来管理 pdf 等附件）
 
 <p align='center'><img src='img\pre4.png' width=95%></p> 
 
@@ -106,9 +107,10 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 | 命令路径 | 功能 |
 |---------|------|
-| `Ctrl+P` → "Open Code Dashboard" | 打开代码管理面板 |
-| `Ctrl+P` → "Create Code File" | 创建新代码文件 |
-| `Ctrl+P` → "Reload Code Space Plugin" | 重新加载插件 |
+| `Ctrl+P` → "Open code dashboard" | 打开代码管理面板 |
+| `Ctrl+P` → "Create code file" | 创建新代码文件 |
+| `Ctrl+P` → "Reload code space plugin" | 重新加载插件 |
+| `Ctrl+P` → "Toggle code outline" | 开关代码大纲视图（默认打开） |
 
 
 ---
@@ -117,7 +119,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 | 快捷键 | 功能 |
 |--------|------|
-| `Ctrl+S` | 保存当前文件 |
+| `Ctrl+S` | 手动保存文件 |
 | `Ctrl+鼠标滚轮` | 调整字体大小 |
 | `Ctrl+C` | 复制选中内容 |
 | `Ctrl+X` | 剪切选中内容 |
@@ -167,7 +169,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 ## 安装
 
-### 方式一：通过 Obsidian 社区插件安装（推荐）
+### 方式一：通过 Obsidian 社区插件安装（在审核列表，还未完全上架）
 
 1. 打开 **设置 > 社区插件**
 2. 关闭"安全模式"
@@ -177,8 +179,8 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 ### 方式二：手动安装
 
-1. 访问 [Releases](https://github.com/unlinearity/Obsidian-Codespace/releases/latest) 下载最新版本
-2. 将下载的文件解压到库的插件目录：`.obsidian/plugins/code-space/`
+1. 访问 [Releases](https://github.com/unlinearity/Obsidian-Codespace/releases/latest) 
+2. 下载 main.js、manifest.json、styles.css，放置在你的obsidian库的插件目录：`.obsidian/plugins/code-space/`，code-space 这个文件夹如果不存在请手动创建
 3. 在 Obsidian 设置中重新加载并启用插件
 
 ---
@@ -204,14 +206,17 @@ npm run lint         # 运行 ESLint
 ```
 obsidian-codespace/
 ├── src/
-│   ├── main.ts           # 插件初始化
-│   ├── code_view.ts      # 代码编辑器实现
-│   ├── code_embed.ts     # Markdown 嵌入处理器
-│   ├── code_dashboard.ts # 文件浏览界面
-│   └── settings.ts       # 设置界面
-├── styles.css            # 插件样式
+│   ├── main.ts           # 插件入口：负责命令注册、视图挂载及生命周期管理
+│   ├── code_view.ts      # 编辑器核心：基于 CodeMirror 6 的代码编辑环境实现
+│   ├── dashboard_view.ts # 仪表盘视图：可视化文件索引与管理界面
+│   ├── outline_view.ts   # 大纲视图：侧边栏结构化导航实现
+│   ├── code_parser.ts    # 符号解析器：多语言代码结构分析工具
+│   ├── code_embed.ts     # 嵌入处理器：Markdown 引用与预览逻辑
+│   ├── dropdown.ts       # UI 组件：自定义下拉交互菜单
+│   └── settings.ts       # 设置面板：插件配置项实现
+├── styles.css            # 插件样式：涵盖编辑器、仪表盘及大纲的视觉定义
 ├── manifest.json         # 插件元数据
-└── package.json
+└── package.json          # 项目依赖与构建脚本
 ```
 
 ---
@@ -230,16 +235,17 @@ obsidian-codespace/
 ---
 
 ## 已知限制
-- 代码文件内容未被 Obsidian 全局搜索索引
-- 未实现查找和替换功能
+- 代码文件内容目前不被 Obsidian 的全局搜索引擎索引。
 
 ---
 ## 致谢
 
-本项目构建于以下优秀项目：
-- [Obsidian API](https://github.com/obsidianmd/obsidian-api)
-- [CodeMirror 6](https://codemirror.net/)
-- [TypeScript](https://www.typescriptlang.org/)
+本项目构建于以下优秀项目之上：
+- [Obsidian API](https://github.com/obsidianmd/obsidian-api): 提供强大的插件扩展能力。
+- [CodeMirror 6](https://codemirror.net/): 灵活且现代的代码编辑器引擎。
+- [Lezer](https://lezer.codemirror.net/): 高效的增量式代码解析系统。
+- [TypeScript](https://www.typescriptlang.org/): 提供稳健的类型安全保障。
+- [esbuild](https://esbuild.github.io/): 极速的 JavaScript 打包工具。
 
 ---
 
