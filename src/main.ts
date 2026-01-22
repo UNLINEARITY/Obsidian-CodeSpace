@@ -55,6 +55,8 @@ class CreateCodeFileModal extends Modal {
 		// 支持回车确认
 		nameInput.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
 			if (e.key === "Enter") {
+				e.preventDefault();
+				e.stopPropagation();
 				const fileName = nameInput.getValue().trim();
 				if (fileName) {
 					this.result = fileName;

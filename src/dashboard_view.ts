@@ -151,7 +151,8 @@ export class CodeDashboardView extends ItemView {
 			.setIcon("settings")
 			.setTooltip("Open settings")
 			.setClass("clickable-icon")
-			.onClick(() => {
+			.onClick((e) => {
+				e.stopPropagation();
 				type AppWithSetting = App & { setting: { open(): void; openTabById(id: string): void } };
 				const appWithSetting = this.app as unknown as AppWithSetting;
 				appWithSetting.setting.open();
@@ -163,7 +164,8 @@ export class CodeDashboardView extends ItemView {
 			.setIcon("plus-circle")
 			.setTooltip("Create code file")
 			.setClass("clickable-icon")
-			.onClick(() => {
+			.onClick((e) => {
+				e.stopPropagation();
 				type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
 				const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
 				if (plugin) {
