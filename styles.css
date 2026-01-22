@@ -137,7 +137,7 @@ body .code-space-container .cm-activeLine::selection {
    Dashboard
    ================================================================= */
 .code-dashboard-root {
-    padding: 36px 52px;
+    padding: 24px 32px;
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
@@ -173,20 +173,82 @@ body .code-space-container .cm-activeLine::selection {
 }
 
 /* Header */
-.code-dashboard-header {
-    margin-bottom: 28px;
+.code-dashboard-header-container {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* 增加标题和副标题之间的间距 */
 }
 
-.code-dashboard-header h1 {
+.code-dashboard-title-group {
+    display: flex;
+    align-items: center; /* 垂直居中对齐 */
+    gap: 12px;
+    min-height: 40px; /* 确保有足够高度容纳内容 */
+}
+
+.code-dashboard-title-group h1 {
     margin: 0;
+    padding: 0;
     font-size: 32px;
     font-weight: 600;
     letter-spacing: -0.3px;
     color: var(--text-normal);
+    line-height: 1.2; /* 恢复正常行高，防止文字溢出被切 */
+    display: inline-block;
+}
+
+.code-dashboard-title-group .clickable-icon {
+    margin: 0;
+    padding: 0;
+    height: 32px;
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border-radius: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0; /* 防止按钮变形 */
+    /* 微调按钮位置以匹配视觉重心 */
+    position: relative;
+    top: 2px;
+}
+
+.code-dashboard-title-group .clickable-icon:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+
+.code-dashboard-title-group .clickable-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2px;
 }
 
 .code-dashboard-subtitle {
-    margin: 6px 0 0 0;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5; /* 增加行高优化阅读体验 */
+}
+
+.code-dashboard-title-group .clickable-icon:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+
+.code-dashboard-title-group .clickable-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.code-dashboard-subtitle {
+    margin: 0;
     color: var(--text-muted);
     font-size: 14px;
     font-weight: 400;

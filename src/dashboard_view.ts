@@ -139,32 +139,47 @@ export class CodeDashboardView extends ItemView {
 
 		const root = container.createDiv({ cls: "code-dashboard-root" });
 
-		// Header
-		const header = root.createDiv({ cls: "code-dashboard-header" });
-		header.createEl("h1", { text: "Code space" });
+		// Header Container
+		const headerContainer = root.createDiv({ cls: "code-dashboard-header-container" });
+		
+		// Title Group (Title + Buttons)
+		const titleGroup = headerContainer.createDiv({ cls: "code-dashboard-title-group" });
+		titleGroup.createEl("h1", { text: "Code space" });
 
-		const codeExtensions = this.getManagedExtensions();
-		let files = this.app.vault.getFiles().filter(f => codeExtensions.includes(f.extension.toLowerCase()));
-
-		header.createEl("p", { text: `${files.length} code files managed`, cls: "code-dashboard-subtitle" });
-
-		// Toolbar
-		const toolbar = root.createDiv({ cls: "code-dashboard-toolbar" });
-
-		// 1. Settings Button (新增)
-		new ButtonComponent(toolbar)
+		// Settings Button
+		new ButtonComponent(titleGroup)
 			.setIcon("settings")
 			.setTooltip("Open settings")
 			.setClass("clickable-icon")
 			.onClick(() => {
-				// 打开设置并定位到本插件
 				type AppWithSetting = App & { setting: { open(): void; openTabById(id: string): void } };
 				const appWithSetting = this.app as unknown as AppWithSetting;
 				appWithSetting.setting.open();
 				appWithSetting.setting.openTabById("code-space");
 			});
 
-		// 2. Search
+		// Create File Button
+		new ButtonComponent(titleGroup)
+			.setIcon("plus-circle")
+			.setTooltip("Create code file")
+			.setClass("clickable-icon")
+			.onClick(() => {
+				type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
+				const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
+				if (plugin) {
+					plugin.createCodeFile();
+				}
+			});
+
+		const codeExtensions = this.getManagedExtensions();
+		let files = this.app.vault.getFiles().filter(f => codeExtensions.includes(f.extension.toLowerCase()));
+
+		headerContainer.createEl("p", { text: `${files.length} code files managed`, cls: "code-dashboard-subtitle" });
+
+		// Toolbar
+		const toolbar = root.createDiv({ cls: "code-dashboard-toolbar" });
+
+		// 2. Search (Note: Removed Settings button from here)
 		const searchContainer = toolbar.createDiv({ cls: "code-search-box" });
 		const searchIcon = searchContainer.createDiv({ cls: "code-search-icon" });
 		setIcon(searchIcon, "search");
