@@ -1032,6 +1032,18 @@ export class CodeSpaceView extends TextFileView {
 		try {
 			// 读取文件内容
 			const content = await this.app.vault.read(this.file);
+			
+			// 检查内容是否发生变化
+			const currentContent = this.editorView.state.doc.toString();
+			if (content === currentContent) {
+				// 内容一致，不需要重新加载编辑器，从而保留光标位置
+				// 但仍需更新缓存和状态
+				this.data = content;
+				this.isDirty = false;
+				this.updateTitle();
+				console.debug("Code Space: File content matches editor content, skipping reload to preserve cursor");
+				return;
+			}
 
 			// 更新编辑器内容
 			this.editorView.dispatch({
