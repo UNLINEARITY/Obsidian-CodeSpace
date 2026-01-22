@@ -306,6 +306,20 @@ class CustomSearchPanel {
 					selection: { anchor: lastMatch.from, head: lastMatch.to },
 					scrollIntoView: true
 				});
+			} else {
+				// 循环搜索：如果前面没有匹配项，找到文档中的最后一个匹配项
+				regex.lastIndex = 0;
+				let finalMatch: { from: number; to: number } | null = null;
+				while ((execResult = regex.exec(searchString)) !== null) {
+					finalMatch = { from: execResult.index, to: execResult.index + execResult[0].length };
+				}
+
+				if (finalMatch) {
+					this.view.dispatch({
+						selection: { anchor: finalMatch.from, head: finalMatch.to },
+						scrollIntoView: true
+					});
+				}
 			}
 		} catch (error) {
 			console.error("Search error:", error);
