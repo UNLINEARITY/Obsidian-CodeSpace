@@ -9,101 +9,28 @@
     overflow: hidden;
     background-color: var(--background-primary);
     position: relative;
+    /* 强制覆盖 Obsidian 的选区颜色变量 */
+    --text-selection: #FF5555;
+    --text-highlight-bg: rgba(255, 215, 0, 0.6);
 }
 
-/* =================================================================
-   浮动搜索按钮
-   ================================================================= */
-.code-search-float-button {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--interactive-normal);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 50%;
-    cursor: pointer;
-    z-index: 100;
-    transition: all 140ms ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    color: var(--text-normal);
+/* ... existing styles ... */
+
+/* 搜索选中高亮 - 淡红色，最高优先级 - 使用 body 前缀增强权重 */
+body .code-space-container .cm-editor .cm-scroller .cm-content .cm-selectionBackground,
+body .code-space-container .cm-selectionBackground,
+body .code-space-container ::selection,
+body .code-space-container .cm-content ::selection,
+body .code-space-container .cm-line::selection {
+    background-color: #FF5555 !important;
+    color: #FFFFFF !important;
 }
 
-.code-search-float-button:hover {
-    background-color: var(--interactive-accent);
-    border-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.code-search-float-button:active {
-    transform: scale(0.95);
-}
-
-.code-search-float-button svg {
-    width: 20px;
-    height: 20px;
-}
-
-/* 搜索选中高亮 - 金黄色，最高优先级 */
-.code-space-container .cm-editor.cm-focused > .cm-scroller > .cm-content .cm-selectionBackground,
-.code-space-container.cm-focused .cm-selectionBackground,
-.code-space-container .cm-selectionBackground {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-/* 活动行内的选区也必须是金黄色 */
-.code-space-container .cm-activeLine .cm-selectionBackground,
-.code-space-container.cm-focused .cm-activeLine .cm-selectionBackground {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-.code-space-container ::selection {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-.code-space-container ::-moz-selection {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-.code-space-container .cm-content ::selection {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-.code-space-container .cm-content ::-moz-selection {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-.code-space-container.cm-focused .cm-content ::selection {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-.code-space-container.cm-focused .cm-content ::-moz-selection {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-/* 活动行内的 ::selection */
-.code-space-container .cm-activeLine::selection {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
-}
-
-.code-space-container .cm-line::selection {
-    background-color: #FFD700 !important;
-    color: #000000 !important;
+/* 活动行内的选区也必须是淡红色 */
+body .code-space-container .cm-activeLine .cm-selectionBackground,
+body .code-space-container .cm-activeLine::selection {
+    background-color: #FF5555 !important;
+    color: #FFFFFF !important;
 }
 
 .code-space-container .cm-editor {
@@ -785,34 +712,40 @@
     pointer-events: none;
 }
 
-/* 搜索匹配高亮 - 鲜艳金黄色，最高对比度 */
+/* 搜索匹配高亮 - 金黄色 (普通匹配) */
 .code-space-container .cm-searchMatch {
     background-color: #FFD700 !important;
     border-radius: 2px;
     outline: 2px solid #FFD700;
+    color: #000000 !important;
 }
 
+/* 当前选中的搜索匹配 - 淡红色 (当前焦点) */
 .code-space-container .cm-searchMatch-selected {
-    background-color: #FFAA00 !important;
+    background-color: #FF5555 !important;
     border-radius: 2px;
-    outline: 3px solid #FFAA00;
-    box-shadow: 0 0 8px rgba(255, 170, 0, 0.8);
+    outline: 3px solid #FF5555;
+    box-shadow: 0 0 8px rgba(255, 85, 85, 0.8);
+    color: #FFFFFF !important;
 }
 
 .theme-dark .code-space-container .cm-searchMatch {
     background-color: #FFD700 !important;
     outline: 2px solid #FFD700;
+    color: #000000 !important;
 }
 
 .theme-dark .code-space-container .cm-searchMatch-selected {
-    background-color: #FFAA00 !important;
-    outline: 3px solid #FFAA00;
-    box-shadow: 0 0 10px rgba(255, 170, 0, 1);
+    background-color: #FF5555 !important;
+    outline: 3px solid #FF5555;
+    box-shadow: 0 0 10px rgba(255, 85, 85, 1);
+    color: #FFFFFF !important;
 }
 
-/* 当前选中匹配 */
+/* 其他相同的词 - 金黄色 */
 .code-space-container .cm-selectionMatch {
-    background-color: hsla(var(--interactive-accent-hsl), 0.15);
+    background-color: rgba(255, 215, 0, 0.6) !important;
+    color: #000000 !important;
     border-radius: 2px;
 }
 

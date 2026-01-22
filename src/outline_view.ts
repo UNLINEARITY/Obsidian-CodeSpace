@@ -172,7 +172,7 @@ export class CodeOutlineView extends ItemView {
 			editorView?: {
 				state: {
 					doc: {
-						line(lineNum: number): { from: number };
+						line(lineNum: number): { from: number; to: number };
 					};
 				};
 				dispatch(transaction: {
@@ -211,9 +211,9 @@ export class CodeOutlineView extends ItemView {
 			setTimeout(() => {
 				try {
 					if (!view.editorView) return;
-					const pos = view.editorView.state.doc.line(symbol.line).from;
+					const line = view.editorView.state.doc.line(symbol.line);
 					view.editorView.dispatch({
-						selection: { anchor: pos, head: pos },
+						selection: { anchor: line.from, head: line.to },
 						scrollIntoView: true
 					});
 					console.debug("Code Outline: Dispatch successful");

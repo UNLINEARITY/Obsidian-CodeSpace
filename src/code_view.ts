@@ -1,6 +1,6 @@
 import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
-import { EditorState, Compartment, Extension } from "@codemirror/state";
+import { EditorState, Compartment, Extension, Prec } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
@@ -384,6 +384,11 @@ class CustomSearchPanel {
 		this.searchInput.focus();
 	}
 
+	focusReplace() {
+		this.open();
+		this.replaceInput.focus();
+	}
+
 	close() {
 		this.panelEl.addClass("is-hidden");
 	}
@@ -477,34 +482,34 @@ const baseTheme = EditorView.theme({
 		caretColor: "var(--text-accent) !important",
 		padding: "10px 0"
 	},
-	// 搜索选中文本的金黄色高亮 - 最高优先级
+	// 搜索选中文本的淡红色高亮 - 最高优先级
 	"&.cm-focused .cm-selectionBackground": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	".cm-selectionBackground": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	".cm-content ::selection": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	"&.cm-focused .cm-content ::selection": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	"::selection": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	"::moz-selection": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	".cm-line::selection": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	".cm-gutters": {
 		backgroundColor: "transparent !important",
@@ -518,14 +523,14 @@ const baseTheme = EditorView.theme({
 	".cm-activeLine": {
 		backgroundColor: "var(--background-modifier-active-hover)"
 	},
-	// 确保活动行内的选区也是金黄色
+	// 确保活动行内的选区也是淡红色
 	".cm-activeLine .cm-selectionBackground": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	".cm-activeLine::selection": {
-		backgroundColor: "#FFD700 !important",
-		color: "#000000 !important"
+		backgroundColor: "#FF5555 !important",
+		color: "#FFFFFF !important"
 	},
 	// 搜索面板样式 - Obsidian 原生风格
 	".cm-panel.cm-search": {
@@ -598,17 +603,25 @@ const baseTheme = EditorView.theme({
 		cursor: "not-allowed",
 		pointerEvents: "none"
 	},
-	// 搜索匹配高亮
+	// 搜索匹配高亮 - 金黄色 (普通匹配)
 	".cm-searchMatch": {
-		backgroundColor: "hsla(45, 100%, 50%, 0.25)",
-		borderRadius: "2px"
+		backgroundColor: "#FFD700 !important",
+		borderRadius: "2px",
+		outline: "2px solid #FFD700",
+		color: "#000000 !important"
 	},
+	// 当前选中的搜索匹配 - 淡红色 (当前焦点)
 	".cm-searchMatch-selected": {
-		backgroundColor: "hsla(45, 100%, 50%, 0.4)",
-		boxShadow: "0 0 0 1px hsla(45, 100%, 45%, 0.3)"
+		backgroundColor: "#FF5555 !important",
+		borderRadius: "2px",
+		outline: "3px solid #FF5555",
+		boxShadow: "0 0 8px rgba(255, 85, 85, 0.8)",
+		color: "#FFFFFF !important"
 	},
+	// 其他相同的词 - 金黄色
 	".cm-selectionMatch": {
-		backgroundColor: "hsla(var(--interactive-accent-hsl), 0.15)",
+		backgroundColor: "rgba(255, 215, 0, 0.6) !important",
+		color: "#000000 !important",
 		borderRadius: "2px"
 	}
 });
@@ -862,8 +875,10 @@ export class CodeSpaceView extends TextFileView {
 			keymap.of([
 				...defaultKeymap,
 				...historyKeymap,
-				// 移除默认的 searchKeymap，使用我们自己的快捷键
-				indentWithTab,
+				indentWithTab
+			]),
+			// 使用最高优先级注册自定义快捷键，防止被 Obsidian 全局快捷键拦截
+			Prec.highest(keymap.of([
 				{
 					key: "Mod-s",
 					run: () => {
@@ -871,7 +886,7 @@ export class CodeSpaceView extends TextFileView {
 						return true;
 					}
 				}
-			]),
+			])),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
 					// 如果正在设置数据，不标记为 dirty
