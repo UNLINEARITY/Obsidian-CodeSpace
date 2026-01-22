@@ -304,6 +304,7 @@ export default class CodeSpacePlugin extends Plugin {
 		// 检查是否已经有大纲视图
 		const existingLeaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
 		if (existingLeaves.length > 0) {
+			void workspace.revealLeaf(existingLeaves[0]!);
 			return;
 		}
 
@@ -315,6 +316,7 @@ export default class CodeSpacePlugin extends Plugin {
 					type: VIEW_TYPE_CODE_OUTLINE,
 					active: true
 				});
+				void workspace.revealLeaf(leaf);
 				console.debug("Code Space: Outline created successfully");
 			}
 		} catch (error) {

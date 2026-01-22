@@ -947,32 +947,21 @@ export class CodeSpaceView extends TextFileView {
 		// 创建自定义搜索面板
 		this.searchPanel = new CustomSearchPanel(this.editorView, root);
 
-		// 创建浮动搜索按钮
-		this.createSearchButton(root);
+		// 添加标题栏搜索按钮
+		this.addAction("search", "Search", () => {
+			this.toggleSearchPanel();
+		});
+
+		// 添加标题栏 Outline 按钮
+		this.addAction("code", "Outline", () => {
+			const plugin = this.getPlugin();
+			if (plugin) {
+				plugin.activateOutlineInSidebar();
+			}
+		});
 
 		// 设置缩放功能
 		this.setupZoomHandler(root);
-	}
-
-	private createSearchButton(container: HTMLElement) {
-		// 创建浮动按钮容器
-		const buttonContainer = container.createDiv({
-			cls: "code-search-float-button"
-		});
-
-		// 设置搜索图标
-		setIcon(buttonContainer, "search");
-
-		// 点击事件：切换搜索面板
-		buttonContainer.addEventListener("click", (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			this.searchPanel?.toggle();
-		});
-
-		// 鼠标悬停提示
-		buttonContainer.setAttribute("aria-label", "Search and replace");
-		buttonContainer.setAttribute("data-tooltip", "Search and replace");
 	}
 
 	// 添加 Ctrl+滚轮缩放功能
