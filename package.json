@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-codespace",
-	"version": "1.0.0",
-	"description": "A powerful, minimalist integrated development environment for managing and editing code snippets within Obsidian.",
+	"version": "1.1.0",
+	"description": "Professional code file management with visual dashboard, syntax highlighting editor, and Markdown embedding.",
 	"author": "unlinearity <unlinearity@gmail.com>",
 	"main": "main.js",
 	"type": "module",
@@ -12,8 +12,16 @@
 		"lint": "eslint .",
 		"dev:copy": "npm run build && robocopy . \"C:\\Nonlinear\\ob\\.obsidian\\plugins\\code-space\" main.js manifest.json styles.css /IS /IT /NJH /NJS /nc /ns /np || exit 0"
 	},
-	"keywords": [],
-	"license": "0-BSD",
+	"keywords": [
+		"code",
+		"editor",
+		"ide",
+		"syntax-highlighting",
+		"dashboard",
+		"code-management",
+		"obsidian-plugin"
+	],
+	"license": "MIT",
 	"devDependencies": {
 		"@eslint/js": "9.30.1",
 		"@types/node": "^16.11.6",
