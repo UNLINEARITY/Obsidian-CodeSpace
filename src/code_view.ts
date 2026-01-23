@@ -956,7 +956,15 @@ export class CodeSpaceView extends TextFileView {
 		this.addAction("code", "Outline", () => {
 			const plugin = this.getPlugin();
 			if (plugin) {
-				plugin.activateOutlineInSidebar();
+				void plugin.activateOutlineInSidebar();
+			}
+		});
+
+		// 添加标题栏 Play 按钮 (Open in default app)
+		this.addAction("play", "Open in default app", () => {
+			if (this.file) {
+				type AppWithOpen = App & { openWithDefaultApp(path: string): void };
+				(this.app as unknown as AppWithOpen).openWithDefaultApp(this.file.path);
 			}
 		});
 

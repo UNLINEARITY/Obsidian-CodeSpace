@@ -178,7 +178,7 @@ export class CodeOutlineView extends ItemView {
 				};
 				dispatch(transaction: {
 					selection: { anchor: number; head: number };
-					effects?: any[];
+					effects?: unknown[];
 					scrollIntoView?: boolean;
 				}): void;
 			};
