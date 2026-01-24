@@ -44,15 +44,16 @@ body .code-space-container .cm-activeLine::selection {
 
 /* 优化编辑器行号 */
 .code-space-container .cm-gutters {
-    background-color: transparent !important;
+    background-color: var(--background-primary) !important;
     color: var(--text-muted);
     border-right: 1px solid var(--background-modifier-border-hover);
-    min-width: 48px;
-    padding-right: 8px;
+    min-width: 32px;
+    padding-right: 0;
 }
 
 .code-space-container .cm-lineNumbers .cm-gutterElement {
-    padding: 0 4px 0 12px;
+    padding: 0 8px !important;
+    background-color: var(--background-primary) !important;
     min-width: 24px;
     text-align: right;
     font-variant-numeric: tabular-nums;

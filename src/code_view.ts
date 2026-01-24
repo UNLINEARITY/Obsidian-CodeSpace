@@ -527,7 +527,7 @@ const baseTheme = EditorView.theme({
 		backgroundColor: "var(--background-primary) !important",
 		color: "var(--text-muted)",
 		borderRight: "1px solid var(--background-modifier-border)",
-		minWidth: "40px",
+		minWidth: "32px",
 		zIndex: "10"
 	},
 	".cm-activeLineGutter": {
@@ -535,6 +535,10 @@ const baseTheme = EditorView.theme({
 	},
 	".cm-activeLine": {
 		backgroundColor: "var(--background-modifier-active-hover)"
+	},
+	".cm-gutterElement": {
+		padding: "0 8px !important",
+		backgroundColor: "var(--background-primary) !important",
 	},
 	// 确保活动行内的选区也是淡红色
 	".cm-activeLine .cm-selectionBackground": {

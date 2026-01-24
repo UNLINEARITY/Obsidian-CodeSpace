@@ -2,15 +2,13 @@
 
 <h1 align="center">
     为 Obsidian 提供专业的代码文件管理
+    <p align='center'><img src='img\pre0.png' width=70%></p> 
+    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
+    <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
 </h1>
 
 <p align="center">
-    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
-    <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
-</p>
-
-<p align="center">
-    <span>一个为 Obsidian 提供代码文件全方位支持的插件</span>
+    <span>一款功能全面的插件，在 Obsidian 中查看、管理和编辑代码文件</span>
     <br/>
     <a href="/README.md">English</a>
     ·

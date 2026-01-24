@@ -1,16 +1,14 @@
 # Code Space
 
 <h1 align="center">
-    Professional Code File Management for Obsidian
+     Code File Management for Obsidian
+     <p align='center'><img src='img\pre0.png' width=70%></p> 
+     <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
+    <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
 </h1>
 
 <p align="center">
-    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
-    <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
-</p>
-
-<p align="center">
-    <span>A comprehensive plugin for code file management in Obsidian</span>
+    <span>A comprehensive plugin for code file viewing, management, and editing in Obsidian</span>
     <br/>
     <a href="/README.md">English</a>
     ·
