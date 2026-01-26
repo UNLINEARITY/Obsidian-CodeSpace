@@ -256,3 +256,7 @@ This project is built upon the following excellent projects:
 ---
 
 **Making code management simple and efficient in Obsidian!**
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left)](https://www.star-history.com/#UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left)
