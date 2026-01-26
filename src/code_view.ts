@@ -1,6 +1,6 @@
 import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
-import { EditorState, Compartment, Extension, Prec } from "@codemirror/state";
+import { EditorState, Compartment, Extension, Prec, Transaction } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
@@ -1091,7 +1091,8 @@ export class CodeSpaceView extends TextFileView {
 			this.isSettingData = true;
 
 			this.editorView.dispatch({
-				changes: { from: 0, to: this.editorView.state.doc.length, insert: data }
+				changes: { from: 0, to: this.editorView.state.doc.length, insert: data },
+				annotations: [Transaction.addToHistory.of(false)]
 			});
 
 			// dispatch 完成后清除标志（使用 setTimeout 确保在事件循环中执行）

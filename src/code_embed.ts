@@ -64,7 +64,7 @@ const darkHighlightStyle = HighlightStyle.define([
 const readOnlyTheme = EditorView.theme({
 	"&": {
 		backgroundColor: "transparent",
-		fontFamily: "var(--font-monospace, 'Fira Code', 'JetBrains Mono', 'Cascadia Code', monospace)",
+		fontFamily: "var(--font-monospace), 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Consolas, 'Courier New', monospace",
 		fontSize: "13px",
 		textAlign: "left",
 	},
@@ -86,6 +86,7 @@ const readOnlyTheme = EditorView.theme({
 	".cm-line": {
 		padding: "0 8px",
 		textAlign: "left",
+		lineHeight: "20px",
 	},
 	".cm-gutters": {
 		backgroundColor: "transparent !important",
@@ -100,6 +101,7 @@ const readOnlyTheme = EditorView.theme({
 		fontSize: "12px",
 		color: "var(--text-muted)",
 		opacity: 0.6,
+		lineHeight: "20px",
 	},
 });
 
@@ -122,7 +124,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 		const isDark = document.body.classList.contains("theme-dark");
 		const langExt = LANGUAGE_PACKAGES[this.extension] || [];
 
-		console.debug("Code Embed: CodeEmbedChild.onload - extension:", this.extension, "content length:", this.content.length);
+		console.debug("Code Embed: CodeEmbedChild.onload - extension:", this.extension);
 
 		const state = EditorState.create({
 			doc: this.content,
