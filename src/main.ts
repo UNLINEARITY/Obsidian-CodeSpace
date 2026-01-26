@@ -163,7 +163,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 		// Automatically create the outline view in the right sidebar when layout is ready
 		this.app.workspace.onLayoutReady(() => {
-			void this.activateOutlineInSidebar();
+			// void this.activateOutlineInSidebar(); // Disabled to respect user's previous state
 		});
 	}
 
@@ -301,27 +301,42 @@ export default class CodeSpacePlugin extends Plugin {
 	async activateOutlineInSidebar() {
 		const { workspace } = this.app;
 		
-		// 检查是否已经有大纲视图
-		const existingLeaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
-		if (existingLeaves.length > 0) {
-			void workspace.revealLeaf(existingLeaves[0]!);
-			return;
-		}
-
-		// 创建新的大纲视图
-		try {
-			const leaf = workspace.getRightLeaf(false);
-			if (leaf) {
-				await leaf.setViewState({
+		let leaf = workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE)[0];
+		
+		// 1. 确保视图存在
+		if (!leaf) {
+			const rightLeaf = workspace.getRightLeaf(false);
+			if (rightLeaf) {
+				await rightLeaf.setViewState({
 					type: VIEW_TYPE_CODE_OUTLINE,
 					active: true
 				});
-				void workspace.revealLeaf(leaf);
-				console.debug("Code Space: Outline created successfully");
+				leaf = workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE)[0];
 			}
-		} catch (error) {
-			console.error("Code Space: Failed to create outline", error);
-			new Notice("Failed to create code outline");
+		}
+
+		if (!leaf) return;
+
+		// 2. 实现 Toggle 逻辑
+		const rightSplit = workspace.rightSplit;
+		
+		if (rightSplit.collapsed) {
+			// 如果侧边栏折叠，展开并显示
+			void rightSplit.expand();
+			void workspace.revealLeaf(leaf);
+		} else {
+			// 如果侧边栏展开
+			// 检查当前 Leaf 是否可见（即是否是当前选中的 Tab）
+			// 使用 offsetParent 判断元素是否显示
+			const isVisible = leaf.view.containerEl.offsetParent !== null;
+			
+			if (isVisible) {
+				// 如果当前可见，则折叠侧边栏
+				void rightSplit.collapse();
+			} else {
+				// 如果当前被遮挡（其他 Tab 激活），则显示它
+				void workspace.revealLeaf(leaf);
+			}
 		}
 	}
 
