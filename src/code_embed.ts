@@ -1,4 +1,4 @@
-import { MarkdownRenderChild, TFile } from "obsidian";
+import { MarkdownRenderChild, TFile, EventRef } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { lineNumbers } from "@codemirror/view";
@@ -109,11 +109,13 @@ class CodeEmbedChild extends MarkdownRenderChild {
 	private editorView: EditorView | null = null;
 	private languageCompartment: Compartment;
 	private themeCompartment: Compartment;
+	private themeEventRef: EventRef | null = null;
 
 	constructor(
 		containerEl: HTMLElement,
 		private content: string,
-		private extension: string
+		private extension: string,
+		private plugin: CodeSpacePlugin
 	) {
 		super(containerEl);
 		this.languageCompartment = new Compartment();
@@ -141,9 +143,23 @@ class CodeEmbedChild extends MarkdownRenderChild {
 			state,
 			parent: this.containerEl,
 		});
+
+		// Listen for theme changes
+		this.themeEventRef = this.plugin.app.workspace.on("css-change", () => {
+			const isDark = document.body.classList.contains("theme-dark");
+			if (this.editorView) {
+				this.editorView.dispatch({
+					effects: this.themeCompartment.reconfigure(syntaxHighlighting(isDark ? darkHighlightStyle : lightHighlightStyle))
+				});
+			}
+		});
 	}
 
 	onunload() {
+		if (this.themeEventRef) {
+			this.plugin.app.workspace.offref(this.themeEventRef);
+			this.themeEventRef = null;
+		}
 		if (this.editorView) {
 			this.editorView.destroy();
 		}
@@ -342,7 +358,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	}
 
 	// Create the code editor
-	const child = new CodeEmbedChild(editorContainer, content, ext);
+	const child = new CodeEmbedChild(editorContainer, content, ext, plugin);
 
 	// Manually call onload since addChild is not available here
 	child.onload();
