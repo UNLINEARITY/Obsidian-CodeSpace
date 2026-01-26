@@ -364,20 +364,46 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	async openFile(file: TFile) {
-		// 在新的标签页中用 CodeSpaceView 打开文件
-		const leaf = this.app.workspace.getLeaf(true);
-		await leaf.setViewState({
-			type: "code-space-view",
-			active: true,
-			state: { file: file.path }
-		});
-		await this.app.workspace.revealLeaf(leaf);
+		// Obsidian 原生支持的二进制文件类型列表
+		const nativeBinaryExtensions = [
+			// 图片
+			'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'psd',
+			// PDF
+			'pdf',
+			// 音频
+			'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma',
+			// 视频
+			'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'm4v',
+			// 压缩文件
+			'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz',
+			// Office 文档
+			'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+			// 其他二进制文件
+			'exe', 'dll', 'so', 'dylib', 'bin', 'dat'
+		];
 
-		// 更新侧边栏大纲
-		type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
-		const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
-		if (plugin) {
-			await plugin.updateOutline(file);
+		const ext = file.extension.toLowerCase();
+		const leaf = this.app.workspace.getLeaf(true);
+
+		if (nativeBinaryExtensions.includes(ext)) {
+			// 二进制文件：直接用 Obsidian 默认方式打开
+			await leaf.openFile(file);
+		} else {
+			// 代码文件：强制用 Code Space 打开
+			await leaf.setViewState({
+				type: "code-space-view",
+				active: true,
+				state: { file: file.path }
+			});
+			
+			// 更新侧边栏大纲
+			type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
+			const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
+			if (plugin) {
+				await plugin.updateOutline(file);
+			}
 		}
+		
+		await this.app.workspace.revealLeaf(leaf);
 	}
 }
