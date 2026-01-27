@@ -629,6 +629,7 @@ body .code-space-container .cm-activeLine::selection {
     font-family: var(--font-monospace), 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Consolas, 'Courier New', monospace;
     font-feature-settings: "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
+    cursor: text; /* 强制显示文本光标 */
 }
 
 .code-embed-editor.code-embed-scrollable {
@@ -645,6 +646,7 @@ body .code-space-container .cm-activeLine::selection {
 .code-embed-editor .cm-content {
 	text-align: left; /* 确保内容左对齐 */
 	padding-left: 0; /* 移除额外 padding */
+	cursor: text; /* 强制显示文本光标 */
 }
 
 .code-embed-editor .cm-line {

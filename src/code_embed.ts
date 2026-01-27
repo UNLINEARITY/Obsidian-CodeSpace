@@ -326,7 +326,22 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		cls: "code-embed-container",
 	});
 
-	const header = embedContainer.createEl("div", { cls: "code-embed-header" });
+	// Prevent default single-click navigation (stop propagation to Obsidian's file-embed handler)
+	embedContainer.addEventListener("click", (e) => {
+		e.stopPropagation();
+	});
+
+	// Handle double-click to open file
+	embedContainer.addEventListener("dblclick", (e) => {
+		e.stopPropagation();
+		e.preventDefault();
+		void plugin.app.workspace.getLeaf(false).openFile(tFile);
+	});
+
+	const header = embedContainer.createEl("div", { 
+		cls: "code-embed-header",
+		attr: { "title": "Double click to open file" }
+	});
 	header.createEl("span", { cls: "code-embed-filename", text: tFile.name });
 
 	// 如果有行数限制，显示行数信息
