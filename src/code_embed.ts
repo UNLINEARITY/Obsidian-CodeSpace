@@ -331,13 +331,6 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		e.stopPropagation();
 	});
 
-	// Handle double-click to open file (on the whole container)
-	embedContainer.addEventListener("dblclick", (e) => {
-		e.stopPropagation();
-		e.preventDefault();
-		void plugin.app.workspace.getLeaf(false).openFile(tFile);
-	});
-
 	const header = embedContainer.createEl("div", { 
 		cls: "code-embed-header",
 		attr: { "title": "Click to open file" }
