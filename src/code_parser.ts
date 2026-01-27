@@ -23,6 +23,7 @@ export function parseCodeSymbols(file: TFile, content: string): CodeSymbol[] {
 		case "mjs":
 		case "cjs":
 			return parseJavaScript(lines);
+		case "c":
 		case "cpp":
 		case "cc":
 		case "cxx":
@@ -31,6 +32,12 @@ export function parseCodeSymbols(file: TFile, content: string): CodeSymbol[] {
 			return parseCpp(lines);
 		case "java":
 			return parseJava(lines);
+		case "cs":
+			return parseCSharp(lines);
+		case "go":
+			return parseGo(lines);
+		case "rs":
+			return parseRust(lines);
 		case "php":
 			return parsePhp(lines);
 		default:
@@ -123,13 +130,25 @@ function parseJavaScript(lines: string[]): CodeSymbol[] {
 	return symbols;
 }
 
-// C++ 解析器
+// C/C++ 解析器 (Improved)
 function parseCpp(lines: string[]): CodeSymbol[] {
 	const symbols: CodeSymbol[] = [];
-	const classRegex = /^class\s+([A-Za-z_][A-Za-z0-9_]*)/;
-	const funcRegex = /^(?:\w+\s+)+(\w+)\s*\([^)]*\)\s*(?:const\s*)?{/;
+	// Class/Struct: class Name or struct Name
+	const classRegex = /^\s*(?:class|struct)\s+([A-Za-z_][A-Za-z0-9_]*)/;
+	
+	// Function: ReturnType FunctionName(Args...)
+	// Allow pointers (*), references (&), namespaces (::), templates (<>) in return type
+	// Simplified regex: Look for "Word(" at start of line (ignoring return type complexity)
+	// Or stricter: Return type followed by Name(
+	const funcRegex = /^\s*(?:(?:[\w:*&<>]|::)+\s+)+([*&]?\w+|operator\s*[^(\s]+)\s*\(/;
+
+	// Macros like #define
+	const macroRegex = /^\s*#define\s+([A-Za-z_][A-Za-z0-9_]*)/;
 
 	lines.forEach((line, index) => {
+		// Ignore comments
+		if (line.trim().startsWith("//") || line.trim().startsWith("/*")) return;
+
 		const classMatch = line.match(classRegex);
 		if (classMatch && classMatch[1]) {
 			symbols.push({
@@ -141,9 +160,9 @@ function parseCpp(lines: string[]): CodeSymbol[] {
 		}
 
 		const funcMatch = line.match(funcRegex);
-		if (funcMatch && funcMatch[1] && !line.includes("//")) {
-			// 排除关键字
-			const keywords = ["if", "for", "while", "switch", "catch"];
+		if (funcMatch && funcMatch[1]) {
+			// Filter out common control keywords that look like functions
+			const keywords = ["if", "for", "while", "switch", "catch", "return", "sizeof"];
 			if (!keywords.includes(funcMatch[1])) {
 				symbols.push({
 					name: funcMatch[1],
@@ -151,6 +170,16 @@ function parseCpp(lines: string[]): CodeSymbol[] {
 					line: index + 1
 				});
 			}
+			return;
+		}
+
+		const macroMatch = line.match(macroRegex);
+		if (macroMatch && macroMatch[1]) {
+			symbols.push({
+				name: macroMatch[1],
+				type: "method", // Reuse method icon for macros
+				line: index + 1
+			});
 		}
 	});
 
@@ -159,10 +188,10 @@ function parseCpp(lines: string[]): CodeSymbol[] {
 
 // Java 解析器
 function parseJava(lines: string[]): CodeSymbol[] {
+	// ... (Keep existing Java logic) ...
 	const symbols: CodeSymbol[] = [];
-	const classRegex = /^(?:public|private|protected)?\s*(?:abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)/;
-	const interfaceRegex = /^(?:public|private|protected)?\s*interface\s+([A-Za-z_][A-Za-z0-9_]*)/;
-	const methodRegex = /^(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)+(\w+)\s*\([^)]*\)/;
+	const classRegex = /^\s*(?:public|private|protected)?\s*(?:abstract\s+)?(?:class|interface|enum)\s+([A-Za-z_][A-Za-z0-9_]*)/;
+	const methodRegex = /^\s*(?:public|private|protected)?\s*(?:static\s+)?(?:[\w<>[\]]+\s+)+(\w+)\s*\([^)]*\)/;
 
 	lines.forEach((line, index) => {
 		const classMatch = line.match(classRegex);
@@ -175,10 +204,44 @@ function parseJava(lines: string[]): CodeSymbol[] {
 			return;
 		}
 
-		const interfaceMatch = line.match(interfaceRegex);
-		if (interfaceMatch && interfaceMatch[1]) {
+		const methodMatch = line.match(methodRegex);
+		if (methodMatch && methodMatch[1]) {
+			const keywords = ["if", "for", "while", "switch", "catch", "new", "return"];
+			if (!keywords.includes(methodMatch[1])) {
+				symbols.push({
+					name: methodMatch[1],
+					type: "method",
+					line: index + 1
+				});
+			}
+		}
+	});
+
+	return symbols;
+}
+
+// C# 解析器 (Based on Java but tailored)
+function parseCSharp(lines: string[]): CodeSymbol[] {
+	const symbols: CodeSymbol[] = [];
+	const classRegex = /^\s*(?:public|private|protected|internal)?\s*(?:static\s+|sealed\s+|abstract\s+|partial\s+)*(?:class|interface|enum|struct)\s+([A-Za-z_][A-Za-z0-9_]*)/;
+	const methodRegex = /^\s*(?:public|private|protected|internal)?\s*(?:static\s+|virtual\s+|override\s+|async\s+|unsafe\s+)*(?:[\w<>[\]?]+\s+)+(\w+)\s*\(/;
+	const namespaceRegex = /^\s*namespace\s+([\w.]+)/;
+
+	lines.forEach((line, index) => {
+		const nsMatch = line.match(namespaceRegex);
+		if (nsMatch && nsMatch[1]) {
 			symbols.push({
-				name: interfaceMatch[1],
+				name: nsMatch[1],
+				type: "class", // Use class icon for namespace
+				line: index + 1
+			});
+			return;
+		}
+
+		const classMatch = line.match(classRegex);
+		if (classMatch && classMatch[1]) {
+			symbols.push({
+				name: classMatch[1],
 				type: "class",
 				line: index + 1
 			});
@@ -187,7 +250,7 @@ function parseJava(lines: string[]): CodeSymbol[] {
 
 		const methodMatch = line.match(methodRegex);
 		if (methodMatch && methodMatch[1]) {
-			const keywords = ["if", "for", "while", "switch", "catch"];
+			const keywords = ["if", "for", "while", "switch", "catch", "new", "return", "using", "foreach", "lock", "fixed"];
 			if (!keywords.includes(methodMatch[1])) {
 				symbols.push({
 					name: methodMatch[1],
@@ -195,6 +258,106 @@ function parseJava(lines: string[]): CodeSymbol[] {
 					line: index + 1
 				});
 			}
+		}
+	});
+
+	return symbols;
+}
+
+// Go 解析器
+function parseGo(lines: string[]): CodeSymbol[] {
+	const symbols: CodeSymbol[] = [];
+	// func FunctionName(...)
+	const funcRegex = /^func\s+(\w+)\s*\(/;
+	// func (r Receiver) MethodName(...)
+	const methodRegex = /^func\s*\([^)]+\)\s*(\w+)\s*\(/;
+	// type Name struct/interface
+	const typeRegex = /^type\s+(\w+)\s+(?:struct|interface)/;
+
+	lines.forEach((line, index) => {
+		const funcMatch = line.match(funcRegex);
+		if (funcMatch && funcMatch[1]) {
+			symbols.push({
+				name: funcMatch[1],
+				type: "function",
+				line: index + 1
+			});
+			return;
+		}
+
+		const methodMatch = line.match(methodRegex);
+		if (methodMatch && methodMatch[1]) {
+			symbols.push({
+				name: methodMatch[1],
+				type: "method",
+				line: index + 1
+			});
+			return;
+		}
+
+		const typeMatch = line.match(typeRegex);
+		if (typeMatch && typeMatch[1]) {
+			symbols.push({
+				name: typeMatch[1],
+				type: "class",
+				line: index + 1
+			});
+		}
+	});
+
+	return symbols;
+}
+
+// Rust 解析器
+function parseRust(lines: string[]): CodeSymbol[] {
+	const symbols: CodeSymbol[] = [];
+	// fn function_name
+	const funcRegex = /^\s*(?:pub\s+)?(?:unsafe\s+|async\s+|const\s+|extern\s+)*fn\s+(\w+)/;
+	// struct/enum/trait Name
+	const typeRegex = /^\s*(?:pub\s+)?(?:struct|enum|trait|type)\s+(\w+)/;
+	// impl Name
+	const implRegex = /^\s*impl(?:<[^>]+>)?\s+(?:[\w:]+\s+for\s+)?([\w:]+)/;
+	// macro_rules! name
+	const macroRegex = /^\s*macro_rules!\s+(\w+)/;
+
+	lines.forEach((line, index) => {
+		const funcMatch = line.match(funcRegex);
+		if (funcMatch && funcMatch[1]) {
+			symbols.push({
+				name: funcMatch[1],
+				type: "function",
+				line: index + 1
+			});
+			return;
+		}
+
+		const typeMatch = line.match(typeRegex);
+		if (typeMatch && typeMatch[1]) {
+			symbols.push({
+				name: typeMatch[1],
+				type: "class",
+				line: index + 1
+			});
+			return;
+		}
+
+		const implMatch = line.match(implRegex);
+		if (implMatch && implMatch[1]) {
+			symbols.push({
+				name: `impl ${implMatch[1]}`,
+				type: "class",
+				line: index + 1
+			});
+			return;
+		}
+
+		const macroMatch = line.match(macroRegex);
+		if (macroMatch && macroMatch[1]) {
+			symbols.push({
+				name: macroMatch[1] + "!",
+				type: "method",
+				line: index + 1
+			});
 		}
 	});
 
