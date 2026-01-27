@@ -170,7 +170,6 @@ export default class CodeSpacePlugin extends Plugin {
 
 	async reloadPlugin() {
 		const pluginId = 'code-space';
-		const pluginName = 'Code Space';
 
 		try {
 			console.debug(`Code Space: Reloading plugin...`);
