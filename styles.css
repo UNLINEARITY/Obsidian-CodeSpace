@@ -44,12 +44,13 @@ body .code-space-container .cm-activeLine::selection {
 }
 
 /* 优化编辑器行号 */
-.code-space-container .cm-gutters {
+.cm-gutters {
     background-color: var(--background-primary) !important;
     color: var(--text-muted);
-    border-right: 1px solid var(--background-modifier-border-hover);
+    border-right: 1px solid var(--background-modifier-border);
     min-width: 32px;
-    padding-right: 0;
+    z-index: 10;
+    user-select: none !important; /* 禁止选中行号区域 */
 }
 
 .code-space-container .cm-lineNumbers .cm-gutterElement {
@@ -610,6 +611,12 @@ body .code-space-container .cm-activeLine::selection {
 	border-bottom: 1px solid var(--background-modifier-border);
 	font-size: 12px;
 	text-align: left;
+	cursor: pointer; /* 标题栏单击可跳转 */
+	transition: background-color 0.1s ease;
+}
+
+.code-embed-header:hover {
+	background-color: var(--background-modifier-border-hover);
 }
 
 .code-embed-filename {
