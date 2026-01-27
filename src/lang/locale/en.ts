@@ -14,7 +14,7 @@ export default {
     VIEW_TITLE: 'Code space',
     BUTTON_OPEN_SETTINGS: 'Open settings',
     BUTTON_CREATE_FILE: 'Create code file',
-    SUBTITLE_MANAGED_FILES: 'code files managed',
+    SUBTITLE_MANAGED_FILES: 'Code files managed',
     TOOLBAR_SEARCH_PLACEHOLDER: 'Search files...',
     TOOLBAR_FILTER_ALL: 'All languages',
     TOOLBAR_SORT_DATE: 'Date modified',
@@ -52,9 +52,9 @@ export default {
     RIBBON_OPEN_DASHBOARD: 'Open code space dashboard',
 
     // Notices
-    NOTICE_RELOAD_START: 'Reloading Code Space...',
-    NOTICE_RELOAD_SUCCESS: 'Code Space reloaded successfully!',
-    NOTICE_RELOAD_FAIL: 'Failed to reload Code Space',
+    NOTICE_RELOAD_START: 'Reloading code space...',
+    NOTICE_RELOAD_SUCCESS: 'Code space reloaded successfully!',
+    NOTICE_RELOAD_FAIL: 'Failed to reload code space',
     NOTICE_CREATE_SUCCESS: 'Created',
     NOTICE_CREATE_FAIL: 'Failed to create file. File may already exist.',
     NOTICE_RENAME_SUCCESS: 'Renamed to',
@@ -73,7 +73,7 @@ export default {
     OUTLINE_EMPTY_NO_SYMBOLS: 'No symbols found in this file',
 
     // Editor View
-    VIEW_DEFAULT_TITLE: 'Code Space',
+    VIEW_DEFAULT_TITLE: 'Code space',
     SEARCH_PLACEHOLDER: 'Search',
     SEARCH_REPLACE_PLACEHOLDER: 'Replace',
     SEARCH_BTN_CASE: 'Match case',
