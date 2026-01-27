@@ -9,6 +9,11 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { sql } from "@codemirror/lang-sql";
 import { php } from "@codemirror/lang-php";
+import { rust } from "@codemirror/lang-rust";
+import { java } from "@codemirror/lang-java";
+import { go } from "@codemirror/lang-go";
+import { yaml } from "@codemirror/lang-yaml";
+import { xml } from "@codemirror/lang-xml";
 import { tags } from "@lezer/highlight";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { Compartment, Extension } from "@codemirror/state";
@@ -31,6 +36,13 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'css': css(),
 	'sql': sql(),
 	'php': php(),
+	'rs': rust(),
+	'java': java(),
+	'cs': java(), // Use Java mode for C# as a close approximation
+	'go': go(),
+	'yaml': yaml(),
+	'yml': yaml(),
+	'xml': xml(),
 };
 
 // Syntax highlighting styles

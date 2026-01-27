@@ -12,7 +12,7 @@ export interface CodeSpaceSettings {
 }
 
 export const DEFAULT_SETTINGS: CodeSpaceSettings = {
-	extensions: "py, c, cpp, h, hpp, js, ts, jsx, tsx, json, mjs, cjs, css, scss, sass, less, html, htm, rs, go, java, sql, php, rb, sh, yaml, xml",
+	extensions: "py, c, cpp, h, hpp, js, ts, jsx, tsx, json, mjs, cjs, css, scss, sass, less, html, htm, rs, go, java, sql, php, rb, sh, yaml, xml, cs, yml",
 	showLineNumbers: true,
 	maxEmbedLines: 30 // 默认最大显示 30 行
 };

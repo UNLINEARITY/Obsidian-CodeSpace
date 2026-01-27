@@ -12,6 +12,11 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { sql } from "@codemirror/lang-sql";
 import { php } from "@codemirror/lang-php";
+import { rust } from "@codemirror/lang-rust";
+import { java } from "@codemirror/lang-java";
+import { go } from "@codemirror/lang-go";
+import { yaml } from "@codemirror/lang-yaml";
+import { xml } from "@codemirror/lang-xml";
 import { tags } from "@lezer/highlight";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
@@ -452,6 +457,18 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'sql': sql(),
 	// PHP
 	'php': php(),
+	// Rust
+	'rs': rust(),
+	// Java / C#
+	'java': java(),
+	'cs': java(),
+	// Go
+	'go': go(),
+	// YAML
+	'yaml': yaml(),
+	'yml': yaml(),
+	// XML
+	'xml': xml(),
 };
 
 // 1. 定义亮色模式高亮 (VS Code Light 风格)
