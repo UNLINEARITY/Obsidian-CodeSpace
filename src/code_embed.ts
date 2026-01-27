@@ -13,6 +13,7 @@ import { tags } from "@lezer/highlight";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { Compartment, Extension } from "@codemirror/state";
 import CodeSpacePlugin from "./main";
+import { t } from "./lang/helpers";
 
 // Language packages mapping
 const LANGUAGE_PACKAGES: Record<string, Extension> = {
@@ -333,7 +334,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 
 	const header = embedContainer.createEl("div", { 
 		cls: "code-embed-header",
-		attr: { "title": "Click to open file" }
+		attr: { "title": t('EMBED_TOOLTIP_OPEN') }
 	});
 
 	// Allow single-click on the header to open the file
@@ -348,12 +349,14 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	if (maxLines > 0 && lineCount > maxLines) {
 		header.createEl("span", {
 			cls: "code-embed-linerange",
-			text: `Showing ${maxLines} of ${lineCount} lines`
+			text: t('EMBED_LINES_SHOWING')
+				.replace('{0}', String(maxLines))
+				.replace('{1}', String(lineCount))
 		});
 	} else {
 		header.createEl("span", {
 			cls: "code-embed-linerange",
-			text: `${lineCount} lines`
+			text: t('EMBED_LINES_TOTAL').replace('{0}', String(lineCount))
 		});
 	}
 

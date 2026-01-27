@@ -3,6 +3,7 @@ import { EditorView } from "@codemirror/view";
 import CodeSpacePlugin from "./main";
 import { parseCodeSymbols, CodeSymbol } from "./code_parser";
 import { CodeSpaceView } from "./code_view";
+import { t } from "./lang/helpers";
 
 export const VIEW_TYPE_CODE_OUTLINE = "code-space-outline";
 
@@ -20,7 +21,7 @@ export class CodeOutlineView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Code outline";
+		return t('OUTLINE_TITLE');
 	}
 
 	getIcon(): string {
@@ -83,13 +84,13 @@ export class CodeOutlineView extends ItemView {
 
 		// 标题
 		container.createEl("h2", {
-			text: "Code outline",
+			text: t('OUTLINE_TITLE'),
 			cls: "code-outline-header"
 		});
 
 		if (!this.currentFile) {
 			container.createEl("p", {
-				text: "Open a code file to see its structure",
+				text: t('OUTLINE_EMPTY_OPEN'),
 				cls: "code-outline-empty"
 			});
 			return;
@@ -106,7 +107,7 @@ export class CodeOutlineView extends ItemView {
 
 		if (this.symbols.length === 0) {
 			symbolsList.createEl("p", {
-				text: "No symbols found in this file",
+				text: t('OUTLINE_EMPTY_NO_SYMBOLS'),
 				cls: "code-outline-empty"
 			});
 			return;

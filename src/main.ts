@@ -4,6 +4,7 @@ import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
+import { t } from "./lang/helpers";
 
 // 文件创建模态框
 class CreateCodeFileModal extends Modal {
@@ -13,17 +14,17 @@ class CreateCodeFileModal extends Modal {
 	constructor(app: App, onSubmit: (result: string) => void) {
 		super(app);
 		this.onSubmit = onSubmit;
-		this.setTitle("Create file");
+		this.setTitle(t('MODAL_CREATE_TITLE'));
 
 		// 文件名输入
 		const nameContainer = this.contentEl.createDiv({ cls: "create-file-input-container" });
-		nameContainer.createEl("label", { text: "File name:" });
+		nameContainer.createEl("label", { text: t('MODAL_CREATE_LABEL') });
 		const nameInput = new TextComponent(nameContainer);
 		nameInput.setPlaceholder("Example: script.py");
 
 		// 提示文本
 		nameContainer.createEl("div", {
-			text: "Enter file name with extension (e.g., test.py, script.js). Default: .md",
+			text: t('MODAL_CREATE_DESC'),
 			cls: "setting-item-description"
 		});
 
@@ -31,7 +32,7 @@ class CreateCodeFileModal extends Modal {
 		const buttonContainer = this.contentEl.createDiv({ cls: "modal-button-container" });
 
 		const submitBtn = new ButtonComponent(buttonContainer);
-		submitBtn.setButtonText("Create");
+		submitBtn.setButtonText(t('MODAL_CREATE_BUTTON_SUBMIT'));
 		submitBtn.setCta();
 		submitBtn.onClick(() => {
 			const fileName = nameInput.getValue().trim();
@@ -44,7 +45,7 @@ class CreateCodeFileModal extends Modal {
 		});
 
 		const cancelBtn = new ButtonComponent(buttonContainer);
-		cancelBtn.setButtonText("Cancel");
+		cancelBtn.setButtonText(t('MODAL_CREATE_BUTTON_CANCEL'));
 		cancelBtn.onClick(() => {
 			this.close();
 		});
@@ -105,13 +106,13 @@ export default class CodeSpacePlugin extends Plugin {
 		registerCodeEmbedProcessor(this);
 		console.debug("Code Space: Code embed processor registered");
 
-		this.addRibbonIcon('code-glyph', 'Open code space dashboard', () => {
+		this.addRibbonIcon('code-glyph', t('RIBBON_OPEN_DASHBOARD'), () => {
 			void this.activateDashboard();
 		});
 
 		this.addCommand({
 			id: 'open-dashboard',
-			name: 'Open dashboard',
+			name: t('CMD_OPEN_DASHBOARD'),
 			callback: () => {
 				void this.activateDashboard();
 			}
@@ -119,7 +120,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 		this.addCommand({
 			id: 'create-code-file',
-			name: 'Create code file',
+			name: t('CMD_CREATE_FILE'),
 			callback: () => {
 				this.createCodeFile();
 			}
@@ -127,7 +128,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 		this.addCommand({
 			id: 'reload-plugin',
-			name: 'Reload plugin',
+			name: t('CMD_RELOAD_PLUGIN'),
 			callback: async () => {
 				await this.reloadPlugin();
 			}
@@ -135,7 +136,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 		this.addCommand({
 			id: 'toggle-outline',
-			name: 'Toggle code outline',
+			name: t('CMD_TOGGLE_OUTLINE'),
 			callback: () => {
 				void this.toggleOutline();
 			}
@@ -144,7 +145,7 @@ export default class CodeSpacePlugin extends Plugin {
 		// 添加代码编辑器搜索和替换命令（开关模式）
 		this.addCommand({
 			id: 'toggle-code-search',
-			name: 'Search and replace',
+			name: t('CMD_SEARCH_REPLACE'),
 			checkCallback: (checking: boolean) => {
 				// 检查当前是否有活动的 CodeSpaceView
 				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
@@ -173,7 +174,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 		try {
 			console.debug(`Code Space: Reloading plugin...`);
-			new Notice(`Reloading ${pluginName}...`, 2000);
+			new Notice(t('NOTICE_RELOAD_START'), 2000);
 
 			// 获取插件管理器
 			type AppWithPlugins = App & { plugins: { disablePlugin(id: string): Promise<void>; enablePlugin(id: string): Promise<void> } };
@@ -187,10 +188,10 @@ export default class CodeSpacePlugin extends Plugin {
 			await plugins.enablePlugin(pluginId);
 			console.debug(`Code Space: Plugin enabled`);
 
-			new Notice(`${pluginName} reloaded successfully!`, 3000);
+			new Notice(t('NOTICE_RELOAD_SUCCESS'), 3000);
 		} catch (error) {
 			console.error('Code Space: Failed to reload plugin:', error);
-			new Notice(`Failed to reload ${pluginName}: ${String(error)}`, 5000);
+			new Notice(`${t('NOTICE_RELOAD_FAIL')}: ${String(error)}`, 5000);
 		}
 	}
 
@@ -362,7 +363,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 					// 在 vault 根目录创建文件
 					const newFile = await this.app.vault.create(fileName, "");
-					new Notice(`Created ${fileName}`);
+					new Notice(`${t('NOTICE_CREATE_SUCCESS')} ${fileName}`);
 
 					// 根据文件类型决定是否在 Code Space 中打开
 					const ext = newFile.extension.toLowerCase();
@@ -386,7 +387,7 @@ export default class CodeSpacePlugin extends Plugin {
 					}
 				} catch (error) {
 					console.error("Failed to create file:", error);
-					new Notice("Failed to create file. File may already exist.");
+					new Notice(t('NOTICE_CREATE_FAIL'));
 				}
 			})();
 		}).open();

@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal, App } from "obsidian";
 import CodeSpacePlugin from "./main"; // 导入插件类型
 import { CustomDropdown } from "./dropdown";
+import { t } from "./lang/helpers";
 
 // 创建一个简单的输入对话框
 class RenameModal extends Modal {
@@ -18,14 +19,14 @@ class RenameModal extends Modal {
 
 		const buttonContainer = this.contentEl.createDiv({ cls: "modal-button-container" });
 		const submitBtn = new ButtonComponent(buttonContainer);
-		submitBtn.setButtonText("OK");
+		submitBtn.setButtonText(t('MODAL_RENAME_BUTTON_SUBMIT'));
 		submitBtn.onClick(() => {
 			this.result = input.getValue();
 			this.close();
 		});
 
 		const cancelBtn = new ButtonComponent(buttonContainer);
-		cancelBtn.setButtonText("Cancel");
+		cancelBtn.setButtonText(t('MODAL_RENAME_BUTTON_CANCEL'));
 		cancelBtn.onClick(() => {
 			this.close();
 		});
@@ -50,7 +51,7 @@ class FolderSuggestModal extends SuggestModal<string> {
 	constructor(app: App, onSubmit: (folder: string) => void) {
 		super(app);
 		this.onSubmit = onSubmit;
-		this.setPlaceholder("Type a folder");
+		this.setPlaceholder(t('MODAL_MOVE_PLACEHOLDER'));
 
 		// 获取所有文件夹
 		const files = this.app.vault.getAllLoadedFiles();
@@ -106,7 +107,7 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Code space";
+		return t('VIEW_TITLE');
 	}
 
 	getIcon(): string {
@@ -144,12 +145,12 @@ export class CodeDashboardView extends ItemView {
 		
 		// Title Group (Title + Buttons)
 		const titleGroup = headerContainer.createDiv({ cls: "code-dashboard-title-group" });
-		titleGroup.createEl("h1", { text: "Code space" });
+		titleGroup.createEl("h1", { text: t('VIEW_TITLE') });
 
 		// Settings Button
 		new ButtonComponent(titleGroup)
 			.setIcon("settings")
-			.setTooltip("Open settings")
+			.setTooltip(t('BUTTON_OPEN_SETTINGS'))
 			.setClass("clickable-icon")
 			.onClick((e) => {
 				e.stopPropagation();
@@ -162,7 +163,7 @@ export class CodeDashboardView extends ItemView {
 		// Create File Button
 		new ButtonComponent(titleGroup)
 			.setIcon("plus-circle")
-			.setTooltip("Create code file")
+			.setTooltip(t('BUTTON_CREATE_FILE'))
 			.setClass("clickable-icon")
 			.onClick((e) => {
 				e.stopPropagation();
@@ -176,7 +177,7 @@ export class CodeDashboardView extends ItemView {
 		const codeExtensions = this.getManagedExtensions();
 		let files = this.app.vault.getFiles().filter(f => codeExtensions.includes(f.extension.toLowerCase()));
 
-		headerContainer.createEl("p", { text: `${files.length} code files managed`, cls: "code-dashboard-subtitle" });
+		headerContainer.createEl("p", { text: `${files.length} ${t('SUBTITLE_MANAGED_FILES')}`, cls: "code-dashboard-subtitle" });
 
 		// Toolbar
 		const toolbar = root.createDiv({ cls: "code-dashboard-toolbar" });
@@ -187,7 +188,7 @@ export class CodeDashboardView extends ItemView {
 		setIcon(searchIcon, "search");
 
 		new TextComponent(searchContainer)
-			.setPlaceholder("Search files...")
+			.setPlaceholder(t('TOOLBAR_SEARCH_PLACEHOLDER'))
 			.setValue(this.state.searchQuery)
 			.onChange((value) => {
 				this.state.searchQuery = value;
@@ -198,7 +199,7 @@ export class CodeDashboardView extends ItemView {
 		const existingExts = [...new Set(files.map(f => f.extension))].sort();
 		const filterContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
 		const filterDropdown = new CustomDropdown(filterContainer);
-		filterDropdown.addOption("all", "All languages");
+		filterDropdown.addOption("all", t('TOOLBAR_FILTER_ALL'));
 		existingExts.forEach(ext => filterDropdown.addOption(ext, ext.toUpperCase()));
 		filterDropdown.setValue(this.state.filterExt);
 		filterDropdown.onChange((value: string) => {
@@ -209,9 +210,9 @@ export class CodeDashboardView extends ItemView {
 		// 4. Sort
 		const sortContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
 		const sortDropdown = new CustomDropdown(sortContainer);
-		sortDropdown.addOption("date", "Date modified");
-		sortDropdown.addOption("name", "Name");
-		sortDropdown.addOption("type", "Type");
+		sortDropdown.addOption("date", t('TOOLBAR_SORT_DATE'));
+		sortDropdown.addOption("name", t('TOOLBAR_SORT_NAME'));
+		sortDropdown.addOption("type", t('TOOLBAR_SORT_TYPE'));
 		sortDropdown.setValue(this.state.sortBy);
 		sortDropdown.onChange((value: string) => {
 			this.state.sortBy = value as 'date' | 'name' | 'type';
@@ -221,7 +222,7 @@ export class CodeDashboardView extends ItemView {
 		// 5. Sort Order
 		const sortBtn = new ButtonComponent(toolbar)
 			.setIcon(this.state.sortDesc ? "arrow-down-narrow-wide" : "arrow-up-narrow-wide")
-			.setTooltip("Toggle order")
+			.setTooltip(t('TOOLBAR_SORT_TOGGLE'))
 			.onClick(() => {
 				this.state.sortDesc = !this.state.sortDesc;
 				sortBtn.setIcon(this.state.sortDesc ? "arrow-down-narrow-wide" : "arrow-up-narrow-wide");
@@ -259,7 +260,7 @@ export class CodeDashboardView extends ItemView {
 		if (files.length === 0) {
 			const empty = grid.createDiv({ cls: "code-empty-state" });
 			setIcon(empty.createDiv({ cls: "code-empty-icon" }), "search-x");
-			empty.createDiv({ text: "No matching files found." });
+			empty.createDiv({ text: t('EMPTY_STATE_NO_FILES') });
 			return;
 		}
 
@@ -291,11 +292,11 @@ export class CodeDashboardView extends ItemView {
 		const menu = new Menu();
 
 		// Rename
-		menu.addItem((item) => item.setTitle("Rename").setIcon("pencil").onClick(() => {
+		menu.addItem((item) => item.setTitle(t('MENU_RENAME')).setIcon("pencil").onClick(() => {
 			new RenameModal(
 				this.app,
-				"Rename file",
-				"Enter new name (without extension)",
+				t('MODAL_RENAME_TITLE'),
+				t('MODAL_RENAME_PLACEHOLDER'),
 				file.basename,
 				(newName: string) => void (async () => {
 					try {
@@ -303,18 +304,18 @@ export class CodeDashboardView extends ItemView {
 							`/${newName}.${file.extension}` :
 							`${file.parent?.path}/${newName}.${file.extension}`;
 						await this.app.fileManager.renameFile(file, newPath);
-						new Notice(`Renamed to ${newName}.${file.extension}`);
+						new Notice(`${t('NOTICE_RENAME_SUCCESS')} ${newName}.${file.extension}`);
 						this.render(true);
 					} catch (error) {
 						console.error("Failed to rename file:", error);
-						new Notice("Failed to rename file");
+						new Notice(t('NOTICE_RENAME_FAIL'));
 					}
 				})()
 			).open();
 		}));
 
 		// Move file to - 使用文件夹选择器
-		menu.addItem((item) => item.setTitle("Move file to").setIcon("folder-input").onClick(() => {
+		menu.addItem((item) => item.setTitle(t('MENU_MOVE')).setIcon("folder-input").onClick(() => {
 			new FolderSuggestModal(
 				this.app,
 				(folderPath: string) => void (async () => {
@@ -323,11 +324,11 @@ export class CodeDashboardView extends ItemView {
 							`/${file.name}` :
 							`${folderPath}/${file.name}`;
 						await this.app.fileManager.renameFile(file, newPath);
-						new Notice(`Moved to ${newPath}`);
+						new Notice(`${t('NOTICE_MOVE_SUCCESS')} ${newPath}`);
 						this.render(true);
 					} catch (error) {
 						console.error("Failed to move file:", error);
-						new Notice("Failed to move file");
+						new Notice(t('NOTICE_MOVE_FAIL'));
 					}
 				})()
 			).open();
@@ -335,12 +336,12 @@ export class CodeDashboardView extends ItemView {
 
 		menu.addSeparator();
 
-		menu.addItem((item) => item.setTitle("Open in default app").setIcon("external-link").onClick(() => {
+		menu.addItem((item) => item.setTitle(t('MENU_OPEN_DEFAULT')).setIcon("external-link").onClick(() => {
 			type AppWithOpen = App & { openWithDefaultApp(path: string): void };
 			(this.app as unknown as AppWithOpen).openWithDefaultApp(file.path);
 		}));
 
-		menu.addItem((item) => item.setTitle("Reveal in navigation").setIcon("folder-open").onClick(() => {
+		menu.addItem((item) => item.setTitle(t('MENU_REVEAL')).setIcon("folder-open").onClick(() => {
 			const leaf = this.app.workspace.getLeavesOfType("file-explorer")[0];
 			if (leaf) {
 				void this.app.workspace.revealLeaf(leaf);
@@ -351,7 +352,7 @@ export class CodeDashboardView extends ItemView {
 
 		menu.addSeparator();
 
-		menu.addItem((item) => item.setTitle("Delete").setIcon("trash").setWarning(true).onClick(async () => {
+		menu.addItem((item) => item.setTitle(t('MENU_DELETE')).setIcon("trash").setWarning(true).onClick(async () => {
 			try {
 				await this.app.fileManager.trashFile(file);
 				this.render(true);

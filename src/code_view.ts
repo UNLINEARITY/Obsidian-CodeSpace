@@ -14,6 +14,7 @@ import { sql } from "@codemirror/lang-sql";
 import { php } from "@codemirror/lang-php";
 import { tags } from "@lezer/highlight";
 import CodeSpacePlugin from "./main";
+import { t } from "./lang/helpers";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
 
@@ -63,23 +64,23 @@ class CustomSearchPanel {
 		this.searchInput = searchRow.createEl("input", {
 			cls: "custom-search-input",
 			type: "text",
-			attr: { placeholder: "Search" }
+			attr: { placeholder: t('SEARCH_PLACEHOLDER') }
 		});
 
 		// 选项按钮组
 		const optionsGroup = searchRow.createDiv({ cls: "custom-search-options" });
 
-		this.caseSensitiveBtn = this.createOptionButton(optionsGroup, "case-sensitive", "Match case");
-		this.regexpBtn = this.createOptionButton(optionsGroup, "regex", "Use regular expression");
-		this.wholeWordBtn = this.createOptionButton(optionsGroup, "hashtag", "Match whole word");
+		this.caseSensitiveBtn = this.createOptionButton(optionsGroup, "case-sensitive", t('SEARCH_BTN_CASE'));
+		this.regexpBtn = this.createOptionButton(optionsGroup, "regex", t('SEARCH_BTN_REGEX'));
+		this.wholeWordBtn = this.createOptionButton(optionsGroup, "hashtag", t('SEARCH_BTN_WHOLE'));
 
 		// 导航按钮
 		const navGroup = searchRow.createDiv({ cls: "custom-search-nav" });
-		this.prevBtn = this.createNavButton(navGroup, "arrow-left", "Previous match");
-		this.nextBtn = this.createNavButton(navGroup, "arrow-right", "Next match");
+		this.prevBtn = this.createNavButton(navGroup, "arrow-left", t('SEARCH_BTN_PREV'));
+		this.nextBtn = this.createNavButton(navGroup, "arrow-right", t('SEARCH_BTN_NEXT'));
 
 		// 关闭按钮
-		this.closeBtn = this.createIconButton(searchRow, "x", "Close");
+		this.closeBtn = this.createIconButton(searchRow, "x", t('SEARCH_BTN_CLOSE'));
 
 		// 替换行
 		const replaceRow = this.panelEl.createDiv({ cls: "custom-search-row custom-search-replace-row" });
@@ -92,13 +93,13 @@ class CustomSearchPanel {
 		this.replaceInput = replaceRow.createEl("input", {
 			cls: "custom-search-input",
 			type: "text",
-			attr: { placeholder: "Replace" }
+			attr: { placeholder: t('SEARCH_REPLACE_PLACEHOLDER') }
 		});
 
 		// 替换按钮组
 		const replaceBtnGroup = replaceRow.createDiv({ cls: "custom-search-replace-btns" });
-		this.replaceBtn = this.createReplaceButton(replaceBtnGroup, "Replace", false);
-		this.replaceAllBtn = this.createReplaceButton(replaceBtnGroup, "Replace all", true);
+		this.replaceBtn = this.createReplaceButton(replaceBtnGroup, t('SEARCH_BTN_REPLACE'), false);
+		this.replaceAllBtn = this.createReplaceButton(replaceBtnGroup, t('SEARCH_BTN_REPLACE_ALL'), true);
 	}
 
 	private createPanel(): HTMLElement {
@@ -687,7 +688,7 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	getDisplayText(): string {
-		return this.file ? this.file.name : "Code Space";
+		return this.file ? this.file.name : t('VIEW_DEFAULT_TITLE');
 	}
 
 	// 重写 canSave，只有真正有未保存修改时才返回 true
@@ -787,7 +788,7 @@ export class CodeSpaceView extends TextFileView {
 			this.isDirty = true;
 			this.updateTitle();
 			console.error("Code Space: Failed to save file:", error);
-			new Notice("Failed to save file");
+			new Notice(t('NOTICE_SAVE_FAIL'));
 		}
 	}
 
@@ -952,12 +953,12 @@ export class CodeSpaceView extends TextFileView {
 		this.searchPanel = new CustomSearchPanel(this.editorView, root);
 
 		// 添加标题栏搜索按钮
-		this.addAction("search", "Search", () => {
+		this.addAction("search", t('HEADER_ACTION_SEARCH'), () => {
 			this.toggleSearchPanel();
 		});
 
 		// 添加标题栏 Outline 按钮
-		this.addAction("code", "Outline", () => {
+		this.addAction("code", t('HEADER_ACTION_OUTLINE'), () => {
 			const plugin = this.getPlugin();
 			if (plugin) {
 				void plugin.activateOutlineInSidebar();
@@ -965,7 +966,7 @@ export class CodeSpaceView extends TextFileView {
 		});
 
 		// 添加标题栏 Play 按钮 (Open in default app)
-		this.addAction("play", "Open in default app", () => {
+		this.addAction("play", t('HEADER_ACTION_PLAY'), () => {
 			if (this.file) {
 				type AppWithOpen = App & { openWithDefaultApp(path: string): void };
 				(this.app as unknown as AppWithOpen).openWithDefaultApp(this.file.path);
@@ -1015,7 +1016,7 @@ export class CodeSpaceView extends TextFileView {
 				// 如果有未保存的修改，不要重新加载（保护用户的编辑）
 				if (this.isDirty) {
 					console.debug("Code Space: File modified externally but has unsaved changes");
-					new Notice("File modified externally. You have unsaved changes.", 5000);
+					new Notice(t('NOTICE_MODIFIED_EXTERNALLY'), 5000);
 					return;
 				}
 

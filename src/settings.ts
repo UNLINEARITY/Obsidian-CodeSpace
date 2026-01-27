@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting, Plugin } from "obsidian";
 import CodeSpacePlugin from "./main";
+import { t } from "./lang/helpers";
 
 export interface CodeSpaceSettings {
 	// 用户自定义的扩展名列表
@@ -30,14 +31,14 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setHeading()
-			.setName("Code space settings");
+			.setName(t('SETTINGS_HEADING'));
 
 		new Setting(containerEl)
-			.setName("Managed extensions")
-			.setDesc("Comma separated list of file extensions to manage (e.g., py, js, cpp). Restart required to apply changes to file association.")
+			.setName(t('SETTINGS_EXTENSIONS_NAME'))
+			.setDesc(t('SETTINGS_EXTENSIONS_DESC'))
 			.addTextArea((text) =>
 				text
-					.setPlaceholder("For example: py, js, c, cpp")
+					.setPlaceholder(t('SETTINGS_EXTENSIONS_PLACEHOLDER'))
 					.setValue(this.plugin.settings.extensions)
 					.onChange(async (value) => {
 						this.plugin.settings.extensions = value;
@@ -46,8 +47,8 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Show line numbers")
-			.setDesc("Toggle line numbers in the code editor.")
+			.setName(t('SETTINGS_LINE_NUMBERS_NAME'))
+			.setDesc(t('SETTINGS_LINE_NUMBERS_DESC'))
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.showLineNumbers)
@@ -58,11 +59,11 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Max embed lines")
-			.setDesc("Maximum number of lines to display in embedded code previews (0 for unlimited). If the file has fewer lines, all content is shown.")
+			.setName(t('SETTINGS_MAX_EMBED_LINES_NAME'))
+			.setDesc(t('SETTINGS_MAX_EMBED_LINES_DESC'))
 			.addText((text) =>
 				text
-					.setPlaceholder("30")
+					.setPlaceholder(t('SETTINGS_MAX_EMBED_LINES_PLACEHOLDER'))
 					.setValue(String(this.plugin.settings.maxEmbedLines))
 					.onChange(async (value) => {
 						const num = parseInt(value);
