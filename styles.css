@@ -1116,3 +1116,14 @@ body .code-space-container .cm-activeLine::selection {
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
 }
+
+/* Create File Modal */
+.create-file-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.create-file-filename-input {
+    flex: 1;
+}

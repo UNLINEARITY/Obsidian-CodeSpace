@@ -2,7 +2,7 @@ import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, A
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
-import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab } from "./settings";
+import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab, FolderSuggestModal } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
 import { t } from "./lang/helpers";
 
@@ -10,25 +10,37 @@ import { t } from "./lang/helpers";
 class CreateCodeFileModal extends Modal {
 	private result: string | null = null;
 	private onSubmit: (result: string) => void;
-	private basePath: string;
+	private currentPath: string;
+	private folderBtn: ButtonComponent;
 
 	constructor(app: App, basePath: string, onSubmit: (result: string) => void) {
 		super(app);
-		this.basePath = basePath;
+		this.currentPath = basePath;
 		this.onSubmit = onSubmit;
 		this.setTitle(t('MODAL_CREATE_TITLE'));
 
-		// 文件名输入
-		const nameContainer = this.contentEl.createDiv({ cls: "create-file-input-container" });
-		nameContainer.createEl("label", { text: t('MODAL_CREATE_LABEL') });
-		const nameInput = new TextComponent(nameContainer);
-		
-		const pathHint = this.basePath ? ` (in ${this.basePath}/)` : " (in root)";
-		nameInput.setPlaceholder(`Example: script.py${pathHint}`);
+		// Input Group Container
+		const inputGroup = this.contentEl.createDiv({ cls: "create-file-input-group" });
 
-		// 提示文本
-		nameContainer.createEl("div", {
-			text: t('MODAL_CREATE_DESC') + pathHint,
+		// Filename Input
+		const nameInput = new TextComponent(inputGroup);
+		nameInput.setPlaceholder("Example: script.py");
+		nameInput.inputEl.addClass("create-file-filename-input");
+
+		// Folder Selection Button
+		this.folderBtn = new ButtonComponent(inputGroup);
+		this.updateButtonText();
+		this.folderBtn.setTooltip(t('SETTINGS_NEW_FILE_LOCATION_BUTTON'));
+		this.folderBtn.onClick(() => {
+			new FolderSuggestModal(this.app, (folder) => {
+				this.currentPath = folder.path;
+				this.updateButtonText();
+			}).open();
+		});
+
+		// Description
+		this.contentEl.createDiv({
+			text: t('MODAL_CREATE_DESC'),
 			cls: "setting-item-description"
 		});
 
@@ -61,10 +73,24 @@ class CreateCodeFileModal extends Modal {
 		});
 	}
 
+	private updateButtonText() {
+		// Show "/" for root, otherwise folder path
+		const text = this.currentPath ? this.currentPath : "/";
+		this.folderBtn.setButtonText(text);
+	}
+
 	private submit(value: string) {
 		const fileName = value.trim();
 		if (fileName) {
-			this.result = fileName;
+			let fullPath = "";
+			// 如果用户输入了包含斜杠的路径，则忽略默认位置，直接使用用户输入的路径
+			if (fileName.includes("/")) {
+				fullPath = normalizePath(fileName);
+			} else {
+				// 否则使用选中的位置 + 文件名
+				fullPath = normalizePath(this.currentPath + "/" + fileName);
+			}
+			this.result = fullPath;
 			this.close();
 		} else {
 			new Notice("Please enter a file name");
@@ -373,26 +399,18 @@ export default class CodeSpacePlugin extends Plugin {
 		const basePath = this.settings.newFileFolderPath || "";
 
 		// 打开创建文件模态框
-		new CreateCodeFileModal(this.app, basePath, (fileName: string) => {
+		new CreateCodeFileModal(this.app, basePath, (fullPath: string) => {
 			void (async () => {
 				try {
 					// 1. 处理扩展名
-					// 检查是否有扩展名，没有则默认 .md (或者根据用户偏好？这里暂时保持 .md)
-					if (!fileName.includes(".")) {
-						fileName = fileName + ".md";
+					// 检查是否有扩展名，没有则默认 .md
+					if (!fullPath.includes(".")) {
+						fullPath = fullPath + ".md";
 					}
+					
+					// fullPath is already normalized and combined by the Modal
 
-					// 2. 决定完整路径
-					let fullPath = "";
-					// 如果用户输入了包含斜杠的路径，则忽略默认位置，直接使用用户输入的路径
-					if (fileName.includes("/")) {
-						fullPath = normalizePath(fileName);
-					} else {
-						// 否则使用默认位置 + 文件名
-						fullPath = normalizePath(basePath + "/" + fileName);
-					}
-
-					// 3. 确保文件夹存在
+					// 2. 确保文件夹存在
 					const folderPath = fullPath.substring(0, fullPath.lastIndexOf("/"));
 					if (folderPath) {
 						const folder = this.app.vault.getAbstractFileByPath(folderPath);
@@ -401,7 +419,7 @@ export default class CodeSpacePlugin extends Plugin {
 						}
 					}
 
-					// 4. 创建文件
+					// 3. 创建文件
 					const newFile = await this.app.vault.create(fullPath, "");
 					new Notice(`${t('NOTICE_CREATE_SUCCESS')} ${fullPath}`);
 
