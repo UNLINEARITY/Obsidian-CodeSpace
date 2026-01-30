@@ -16,7 +16,6 @@
 </p>
 
 ---
-
 ## 关于插件
 
 Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space 插件为解决这一问题而生。
@@ -28,6 +27,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 3. **嵌入空间**：与 Obsidian 原生功能深度融合，支持代码文件的引用和嵌入式预览
 
 
+[![Star History Chart](https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left)](https://www.star-history.com/#UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left)
 ---
 
 ## 核心功能
@@ -54,8 +54,6 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - **交互优化**：支持 Ctrl+滚轮缩放字体，并提供浮动搜索按钮以快速触达查找功能。
 
 <p align='center'><img src='img\pre22.png' width=95%></p> 
-
-<p align='center'><img src='img\pre2.png' width=95%></p> 
 
 ### 3. Obsidian 原生嵌入空间
 
@@ -109,7 +107,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 | `Ctrl+P` → "Create code file" | 创建新代码文件 |
 | `Ctrl+P` → "Reload code space plugin" | 重新加载插件 |
 | `Ctrl+P` → "Toggle code outline" | 开关代码大纲视图（默认打开） |
-
+| `Ctrl+P` → "Search and replace" | 在代码界面搜索和替换 |
 
 ---
 
@@ -127,41 +125,22 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 | `Ctrl+Y` 或 `Ctrl+Shift+Z` | 重做 |
 | `Tab` | 增加缩进 |
 | `Shift+Tab` | 减少缩进 |
+| `Enter`           | 换行并保持缩进 |
 
-### 光标导航
 
-| 快捷键 | 功能 |
-|--------|------|
-| `↑` `↓` `←` `→` | 上下左右移动光标 |
-| `Home` | 跳转到行首 |
-| `End` | 跳转到行尾 |
-| `Ctrl+←` | 向左移动一个单词 |
-| `Ctrl+→` | 向右移动一个单词 |
-| `Ctrl+Home` | 跳转到文件开头 |
-| `Ctrl+End` | 跳转到文件末尾 |
-| `Page Up` | 向上翻页 |
-| `Page Down` | 向下翻页 |
 
-### 选择操作
+| 光标导航            |          | 选择编辑              |         |
+| --------------- | -------- | ----------------- | ------- |
+| `↑` `↓` `←` `→` | 上下左右移动光标 | `Shift+方向键`       | 扩展选择    |
+| `Home`          | 跳转到行首    | `Ctrl+Shift+←`    | 选择到单词开头 |
+| `End`           | 跳转到行尾    | `Ctrl+Shift+→`    | 选择到单词结尾 |
+| `Ctrl+←`        | 向左移动一个单词 | `Ctrl+Shift+Home` | 选择到文件开头 |
+| `Ctrl+→`        | 向右移动一个单词 | `Ctrl+Shift+End`  | 选择到文件结尾 |
+| `Ctrl+Home`     | 跳转到文件开头  | `Backspace`       | 删除光标前字符 |
+| `Ctrl+End`      | 跳转到文件末尾  | `Delete`          | 删除光标后字符 |
+| `Page Up`       | 向上翻页     | `Ctrl+Backspace`  | 删除光标前单词 |
+| `Page Down`     | 向下翻页     | `Ctrl+Delete`     | 删除光标后单词 |
 
-| 快捷键 | 功能 |
-|--------|------|
-| `Shift+方向键` | 扩展选择 |
-| `Ctrl+Shift+←` | 选择到单词开头 |
-| `Ctrl+Shift+→` | 选择到单词结尾 |
-| `Ctrl+Shift+Home` | 选择到文件开头 |
-| `Ctrl+Shift+End` | 选择到文件结尾 |
-| `Ctrl+A` | 全选 |
-
-### 编辑操作
-
-| 快捷键 | 功能 |
-|--------|------|
-| `Backspace` | 删除光标前字符 |
-| `Delete` | 删除光标后字符 |
-| `Ctrl+Backspace` | 删除光标前单词 |
-| `Ctrl+Delete` | 删除光标后单词 |
-| `Enter` | 换行并保持缩进 |
 
 ---
 
@@ -180,6 +159,12 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 1. 访问 [Releases](https://github.com/unlinearity/Obsidian-Codespace/releases/latest) 
 2. 下载 main.js、manifest.json、styles.css，放置在你的obsidian库的插件目录：`.obsidian/plugins/code-space/`，code-space 这个文件夹如果不存在请手动创建
 3. 在 Obsidian 设置中重新加载并启用插件
+
+### 方式三：BRAT 下载
+
+先下载好BRAT插件，设置中添加Beta插件时，填写本仓库地址：https://github.com/UNLINEARITY/Obsidian-CodeSpace ，选择最新版本。
+
+<p align='center'><img src='img\pre6.png' width=85%></p> 
 
 ---
 
@@ -219,6 +204,7 @@ obsidian-codespace/
 
 ---
 
+
 ## 贡献
 
 欢迎通过 Pull Request 贡献代码！
@@ -229,10 +215,11 @@ obsidian-codespace/
 3. 提交信息清晰明确
 
 如有问题或建议，请使用 [GitHub Issues](https://github.com/unlinearity/Obsidian-Codespace/issues)。
+- 作者：unlinearity
+- 邮箱：unlinearity@gmail.com
+- [MIT License](LICENSE) - Copyright (c) 2026 unlinearity
 
----
-
-## 已知限制
+已知限制：
 - 代码文件内容目前不被 Obsidian 的全局搜索引擎索引。
 
 ---
@@ -245,14 +232,6 @@ obsidian-codespace/
 - [TypeScript](https://www.typescriptlang.org/): 提供稳健的类型安全保障。
 - [esbuild](https://esbuild.github.io/): 极速的 JavaScript 打包工具。
 
----
-
-## 联系方式
-
-- 作者：unlinearity
-- 邮箱：unlinearity@gmail.com
-- 问题反馈：[GitHub Issues](https://github.com/unlinearity/Obsidian-Codespace/issues)
-- [MIT License](LICENSE) - Copyright (c) 2026 unlinearity
 ---
 
 **让代码管理在 Obsidian 中变得简单而高效！**

@@ -1,7 +1,8 @@
-import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal, App } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal, App, debounce } from "obsidian";
 import CodeSpacePlugin from "./main"; // 导入插件类型
 import { CustomDropdown } from "./dropdown";
 import { t } from "./lang/helpers";
+import { DashboardState } from "./settings";
 
 // 创建一个简单的输入对话框
 class RenameModal extends Modal {
@@ -82,24 +83,19 @@ class FolderSuggestModal extends SuggestModal<string> {
 
 export const VIEW_TYPE_CODE_DASHBOARD = "code-space-dashboard";
 
-interface DashboardState {
-	searchQuery: string;
-	filterExt: string;
-	sortBy: 'date' | 'name' | 'type';
-	sortDesc: boolean;
-}
-
 export class CodeDashboardView extends ItemView {
 	plugin: CodeSpacePlugin; 
-	state: DashboardState = {
-		searchQuery: "",
-		filterExt: "all",
-		sortBy: "date",
-		sortDesc: true
-	};
+	state: DashboardState;
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
+		// Default state
+		this.state = {
+			searchQuery: "",
+			filterExt: "all",
+			sortBy: "date",
+			sortDesc: true
+		};
 	}
 
 	getViewType(): string {
@@ -116,12 +112,33 @@ export class CodeDashboardView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		await Promise.resolve(); // Required for async function
+
+		// Get plugin instance to access settings
+		type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
+		const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
+		if (plugin) {
+			this.plugin = plugin;
+			// Load saved state if available
+			if (this.plugin.settings && this.plugin.settings.dashboardState) {
+				// Merge saved state with defaults to ensure all fields exist
+				this.state = { ...this.state, ...this.plugin.settings.dashboardState };
+			}
+		}
+
 		this.render();
 		this.registerEvent(this.app.vault.on("create", () => this.render(true)));
 		this.registerEvent(this.app.vault.on("delete", () => this.render(true)));
 		this.registerEvent(this.app.vault.on("rename", () => this.render(true)));
 		this.registerEvent(this.app.vault.on("modify", () => this.render(true)));
 	}
+
+	// Persist state to settings with debounce to avoid excessive file writes
+	saveState = debounce(async () => {
+		if (this.plugin) {
+			this.plugin.settings.dashboardState = { ...this.state };
+			await this.plugin.saveSettings();
+		}
+	}, 500, true);
 
 	// 获取配置的后缀列表
 	getManagedExtensions(): string[] {
@@ -192,6 +209,7 @@ export class CodeDashboardView extends ItemView {
 			.setValue(this.state.searchQuery)
 			.onChange((value) => {
 				this.state.searchQuery = value;
+				this.saveState();
 				this.refreshFileList(fileListContainer, files);
 			});
 
@@ -204,6 +222,7 @@ export class CodeDashboardView extends ItemView {
 		filterDropdown.setValue(this.state.filterExt);
 		filterDropdown.onChange((value: string) => {
 			this.state.filterExt = value;
+			this.saveState();
 			this.refreshFileList(fileListContainer, files);
 		});
 
@@ -216,6 +235,7 @@ export class CodeDashboardView extends ItemView {
 		sortDropdown.setValue(this.state.sortBy);
 		sortDropdown.onChange((value: string) => {
 			this.state.sortBy = value as 'date' | 'name' | 'type';
+			this.saveState();
 			this.refreshFileList(fileListContainer, files);
 		});
 
@@ -225,6 +245,7 @@ export class CodeDashboardView extends ItemView {
 			.setTooltip(t('TOOLBAR_SORT_TOGGLE'))
 			.onClick(() => {
 				this.state.sortDesc = !this.state.sortDesc;
+				this.saveState();
 				sortBtn.setIcon(this.state.sortDesc ? "arrow-down-narrow-wide" : "arrow-up-narrow-wide");
 				this.refreshFileList(fileListContainer, files);
 			});
