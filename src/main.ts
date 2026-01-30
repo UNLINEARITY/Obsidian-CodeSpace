@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, normalizePath } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
@@ -10,9 +10,11 @@ import { t } from "./lang/helpers";
 class CreateCodeFileModal extends Modal {
 	private result: string | null = null;
 	private onSubmit: (result: string) => void;
+	private basePath: string;
 
-	constructor(app: App, onSubmit: (result: string) => void) {
+	constructor(app: App, basePath: string, onSubmit: (result: string) => void) {
 		super(app);
+		this.basePath = basePath;
 		this.onSubmit = onSubmit;
 		this.setTitle(t('MODAL_CREATE_TITLE'));
 
@@ -20,11 +22,13 @@ class CreateCodeFileModal extends Modal {
 		const nameContainer = this.contentEl.createDiv({ cls: "create-file-input-container" });
 		nameContainer.createEl("label", { text: t('MODAL_CREATE_LABEL') });
 		const nameInput = new TextComponent(nameContainer);
-		nameInput.setPlaceholder("Example: script.py");
+		
+		const pathHint = this.basePath ? ` (in ${this.basePath}/)` : " (in root)";
+		nameInput.setPlaceholder(`Example: script.py${pathHint}`);
 
 		// 提示文本
 		nameContainer.createEl("div", {
-			text: t('MODAL_CREATE_DESC'),
+			text: t('MODAL_CREATE_DESC') + pathHint,
 			cls: "setting-item-description"
 		});
 
@@ -35,13 +39,7 @@ class CreateCodeFileModal extends Modal {
 		submitBtn.setButtonText(t('MODAL_CREATE_BUTTON_SUBMIT'));
 		submitBtn.setCta();
 		submitBtn.onClick(() => {
-			const fileName = nameInput.getValue().trim();
-			if (fileName) {
-				this.result = fileName;
-				this.close();
-			} else {
-				new Notice("Please enter a file name");
-			}
+			this.submit(nameInput.getValue());
 		});
 
 		const cancelBtn = new ButtonComponent(buttonContainer);
@@ -58,13 +56,19 @@ class CreateCodeFileModal extends Modal {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				e.stopPropagation();
-				const fileName = nameInput.getValue().trim();
-				if (fileName) {
-					this.result = fileName;
-					this.close();
-				}
+				this.submit(nameInput.getValue());
 			}
 		});
+	}
+
+	private submit(value: string) {
+		const fileName = value.trim();
+		if (fileName) {
+			this.result = fileName;
+			this.close();
+		} else {
+			new Notice("Please enter a file name");
+		}
 	}
 
 	onClose() {
@@ -365,18 +369,41 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	createCodeFile() {
+		// Get base path from settings
+		const basePath = this.settings.newFileFolderPath || "";
+
 		// 打开创建文件模态框
-		new CreateCodeFileModal(this.app, (fileName: string) => {
+		new CreateCodeFileModal(this.app, basePath, (fileName: string) => {
 			void (async () => {
 				try {
-					// 检查是否有扩展名，没有则默认 .md
+					// 1. 处理扩展名
+					// 检查是否有扩展名，没有则默认 .md (或者根据用户偏好？这里暂时保持 .md)
 					if (!fileName.includes(".")) {
 						fileName = fileName + ".md";
 					}
 
-					// 在 vault 根目录创建文件
-					const newFile = await this.app.vault.create(fileName, "");
-					new Notice(`${t('NOTICE_CREATE_SUCCESS')} ${fileName}`);
+					// 2. 决定完整路径
+					let fullPath = "";
+					// 如果用户输入了包含斜杠的路径，则忽略默认位置，直接使用用户输入的路径
+					if (fileName.includes("/")) {
+						fullPath = normalizePath(fileName);
+					} else {
+						// 否则使用默认位置 + 文件名
+						fullPath = normalizePath(basePath + "/" + fileName);
+					}
+
+					// 3. 确保文件夹存在
+					const folderPath = fullPath.substring(0, fullPath.lastIndexOf("/"));
+					if (folderPath) {
+						const folder = this.app.vault.getAbstractFileByPath(folderPath);
+						if (!folder) {
+							await this.app.vault.createFolder(folderPath);
+						}
+					}
+
+					// 4. 创建文件
+					const newFile = await this.app.vault.create(fullPath, "");
+					new Notice(`${t('NOTICE_CREATE_SUCCESS')} ${fullPath}`);
 
 					// 根据文件类型决定是否在 Code Space 中打开
 					const ext = newFile.extension.toLowerCase();
@@ -400,7 +427,7 @@ export default class CodeSpacePlugin extends Plugin {
 					}
 				} catch (error) {
 					console.error("Failed to create file:", error);
-					new Notice(t('NOTICE_CREATE_FAIL'));
+					new Notice(t('NOTICE_CREATE_FAIL') + ": " + String(error));
 				}
 			})();
 		}).open();

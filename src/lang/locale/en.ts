@@ -11,7 +11,11 @@ export default {
     SETTINGS_EMBED_FONT_SIZE_NAME: 'Embed font size',
     SETTINGS_EMBED_FONT_SIZE_DESC: 'Font size for embedded code blocks (9-36px).',
     SETTINGS_MAX_EMBED_LINES_NAME: 'Max embed lines',
-    SETTINGS_MAX_EMBED_LINES_DESC: 'Maximum number of lines to display in embedded code previews (0 for unlimited). If the file has fewer lines, all content is shown.',
+    SETTINGS_MAX_EMBED_LINES_DESC: 'Maximum number of lines to display in code embed blocks (0 for unlimited).',
+    SETTINGS_NEW_FILE_LOCATION_NAME: 'Default location for new code files',
+    SETTINGS_NEW_FILE_LOCATION_DESC: 'Leave empty to create at the vault root. Click the button to browse folders.',
+    SETTINGS_NEW_FILE_LOCATION_BUTTON: 'Browse',
+    SETTINGS_NEW_FILE_FOLDER_PLACEHOLDER: 'Example: Scripts/Python',
     SETTINGS_MAX_EMBED_LINES_PLACEHOLDER: '30',
 
     // Dashboard

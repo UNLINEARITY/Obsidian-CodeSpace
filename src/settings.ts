@@ -1,6 +1,30 @@
-import { App, PluginSettingTab, Setting, Plugin } from "obsidian";
+import { App, PluginSettingTab, Setting, Plugin, FuzzySuggestModal, TFolder } from "obsidian";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
+
+// Suggester for folder selection
+export class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
+	onSelect: (folder: TFolder) => void;
+
+	constructor(app: App, onSelect: (folder: TFolder) => void) {
+		super(app);
+		this.onSelect = onSelect;
+	}
+
+	getItems(): TFolder[] {
+		// Get all folders in the vault
+		return this.app.vault.getAllLoadedFiles().filter(f => f instanceof TFolder);
+	}
+
+	getItemText(folder: TFolder): string {
+		// Display folder path
+		return folder.path;
+	}
+
+	onChooseItem(folder: TFolder, evt: MouseEvent | KeyboardEvent): void {
+		this.onSelect(folder);
+	}
+}
 
 export interface DashboardState {
 	searchQuery: string;
@@ -20,6 +44,8 @@ export interface CodeSpaceSettings {
 	embedFontSize: number;
 	// 代码嵌入最大显示行数（0 表示不限制）
 	maxEmbedLines: number;
+	// 指定的文件夹路径
+	newFileFolderPath: string;
 	// Dashboard 状态记忆
 	dashboardState: DashboardState;
 }
@@ -30,6 +56,7 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	editorFontSize: 18,
 	embedFontSize: 15,
 	maxEmbedLines: 20, // 默认最大显示 30 行
+	newFileFolderPath: '',
 	dashboardState: {
 		searchQuery: "",
 		filterExt: "all",
@@ -128,5 +155,30 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 						}
 					})
 			);
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_NEW_FILE_LOCATION_NAME'))
+			.setDesc(t('SETTINGS_NEW_FILE_LOCATION_DESC'))
+			.addText((text) => {
+				text
+					.setPlaceholder(t('SETTINGS_NEW_FILE_FOLDER_PLACEHOLDER'))
+					.setValue(this.plugin.settings.newFileFolderPath)
+					.onChange(async (value) => {
+						this.plugin.settings.newFileFolderPath = value;
+						await this.plugin.saveSettings();
+					});
+			})
+			.addButton((button) => {
+				button
+					.setButtonText(t('SETTINGS_NEW_FILE_LOCATION_BUTTON'))
+					.onClick(() => {
+						new FolderSuggestModal(this.app, (folder) => {
+							this.plugin.settings.newFileFolderPath = folder.path;
+							void this.plugin.saveSettings();
+							// Refresh display to show the new value
+							this.display();
+						}).open();
+					});
+			});
 	}
 }

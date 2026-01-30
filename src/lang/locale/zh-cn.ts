@@ -11,7 +11,11 @@ export default {
     SETTINGS_EMBED_FONT_SIZE_NAME: '引用块字体大小',
     SETTINGS_EMBED_FONT_SIZE_DESC: '嵌入式代码块的字体大小 (9-36px)。',
     SETTINGS_MAX_EMBED_LINES_NAME: '引用最大显示行数',
-    SETTINGS_MAX_EMBED_LINES_DESC: '嵌入式代码预览的最大显示行数（0 为不限制）。',
+    SETTINGS_MAX_EMBED_LINES_DESC: '嵌入式代码块最大显示的行数（0 表示不限制）。',
+    SETTINGS_NEW_FILE_LOCATION_NAME: '新代码文件默认位置',
+    SETTINGS_NEW_FILE_LOCATION_DESC: '留空则在仓库根目录创建。点击按钮可浏览文件夹。',
+    SETTINGS_NEW_FILE_LOCATION_BUTTON: '浏览',
+    SETTINGS_NEW_FILE_FOLDER_PLACEHOLDER: '例如：Scripts/Python',
     SETTINGS_MAX_EMBED_LINES_PLACEHOLDER: '30',
 
     // Dashboard
