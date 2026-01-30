@@ -57,15 +57,17 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(t('SETTINGS_EXTENSIONS_NAME'))
 			.setDesc(t('SETTINGS_EXTENSIONS_DESC'))
-			.addTextArea((text) =>
+			.addTextArea((text) => {
 				text
 					.setPlaceholder(t('SETTINGS_EXTENSIONS_PLACEHOLDER'))
 					.setValue(this.plugin.settings.extensions)
 					.onChange(async (value) => {
 						this.plugin.settings.extensions = value;
 						await this.plugin.saveSettings();
-					})
-			);
+					});
+				// Make the textarea larger by default
+				text.inputEl.rows = 6;
+			});
 
 		new Setting(containerEl)
 			.setName(t('SETTINGS_LINE_NUMBERS_NAME'))
