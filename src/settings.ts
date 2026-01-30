@@ -14,6 +14,10 @@ export interface CodeSpaceSettings {
 	extensions: string;
 	// 是否显示行号
 	showLineNumbers: boolean;
+	// 编辑器字体大小
+	editorFontSize: number;
+	// 引用块字体大小
+	embedFontSize: number;
 	// 代码嵌入最大显示行数（0 表示不限制）
 	maxEmbedLines: number;
 	// Dashboard 状态记忆
@@ -23,6 +27,8 @@ export interface CodeSpaceSettings {
 export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	extensions: "py, c, cpp, h, hpp, js, ts, jsx, tsx, json, mjs, cjs, css, scss, sass, less, html, htm, rs, go, java, sql, php, rb, sh, yaml, xml, cs, yml",
 	showLineNumbers: true,
+	editorFontSize: 18,
+	embedFontSize: 15,
 	maxEmbedLines: 20, // 默认最大显示 30 行
 	dashboardState: {
 		searchQuery: "",
@@ -70,6 +76,38 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.showLineNumbers = value;
 						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_EDITOR_FONT_SIZE_NAME'))
+			.setDesc(t('SETTINGS_EDITOR_FONT_SIZE_DESC'))
+			.addText((text) =>
+				text
+					.setPlaceholder("16")
+					.setValue(String(this.plugin.settings.editorFontSize))
+					.onChange(async (value) => {
+						const num = parseInt(value);
+						if (!isNaN(num) && num >= 9 && num <= 36) {
+							this.plugin.settings.editorFontSize = num;
+							await this.plugin.saveSettings();
+						}
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_EMBED_FONT_SIZE_NAME'))
+			.setDesc(t('SETTINGS_EMBED_FONT_SIZE_DESC'))
+			.addText((text) =>
+				text
+					.setPlaceholder("13")
+					.setValue(String(this.plugin.settings.embedFontSize))
+					.onChange(async (value) => {
+						const num = parseInt(value);
+						if (!isNaN(num) && num >= 9 && num <= 36) {
+							this.plugin.settings.embedFontSize = num;
+							await this.plugin.saveSettings();
+						}
 					})
 			);
 

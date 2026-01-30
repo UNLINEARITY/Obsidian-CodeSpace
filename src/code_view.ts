@@ -506,7 +506,8 @@ const baseTheme = EditorView.theme({
 	"&": {
 		height: "100%",
 		backgroundColor: "transparent !important",
-		color: "var(--text-normal)"
+		color: "var(--text-normal)",
+		fontFamily: "var(--font-monospace)"
 	},
 	".cm-content": {
 		caretColor: "var(--text-accent) !important",
@@ -743,27 +744,37 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	getFontSizeExtension(): Extension {
-		// 使用 EditorView.theme 统一设置所有元素的字体大小
+		// 使用 EditorView.theme 统一设置所有元素的字体大小和行高
+		const lineHeight = 1.5;
 		return EditorView.theme({
 			"&": {
 				fontSize: `${this.fontSize}px`
 			},
 			".cm-content": {
-				fontSize: `${this.fontSize}px`
+				fontSize: `${this.fontSize}px`,
+				lineHeight: `${lineHeight}`
 			},
 			".cm-gutters": {
 				fontSize: `${this.fontSize}px`
 			},
 			".cm-line": {
-				fontSize: `${this.fontSize}px`
+				fontSize: `${this.fontSize}px`,
+				lineHeight: `${lineHeight}`
 			}
 		});
 	}
 
 	// 供外部调用的刷新方法
 	refreshSettings() {
+		const plugin = this.getPlugin();
+		if (plugin && plugin.settings) {
+			this.fontSize = plugin.settings.editorFontSize || 16;
+		}
 		this.editorView.dispatch({
-			effects: this.lineNumbersCompartment.reconfigure(this.getLineNumbersExtension())
+			effects: [
+				this.lineNumbersCompartment.reconfigure(this.getLineNumbersExtension()),
+				this.fontSizeCompartment.reconfigure(this.getFontSizeExtension())
+			]
 		});
 	}
 
@@ -881,6 +892,13 @@ export class CodeSpaceView extends TextFileView {
 
 	async onOpen(): Promise<void> {
 		await Promise.resolve(); // Required for async function
+
+		// 从设置中初始化字体大小
+		const plugin = this.getPlugin();
+		if (plugin && plugin.settings) {
+			this.fontSize = plugin.settings.editorFontSize || 16;
+		}
+
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();

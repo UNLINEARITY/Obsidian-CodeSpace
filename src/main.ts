@@ -81,6 +81,9 @@ export default class CodeSpacePlugin extends Plugin {
 	async onload() {
 		console.debug("Code Space: Plugin loading...");
 		await this.loadSettings();
+		
+		// Apply CSS variables for embed font size
+		this.updateCSSVariables();
 
 		this.addSettingTab(new CodeSpaceSettingTab(this.app, this));
 
@@ -240,6 +243,9 @@ export default class CodeSpacePlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		
+		// Update CSS variables
+		this.updateCSSVariables();
 
 		// 重新注册扩展名（必须在刷新视图之前）
 		this.registerCodeExtensions();
@@ -259,6 +265,14 @@ export default class CodeSpacePlugin extends Plugin {
 				leaf.view.refreshSettings();
 			}
 		});
+	}
+	
+	updateCSSVariables() {
+		// Update CSS variables for embed view
+		// Use 1.5 line height ratio for consistency
+		const embedFontSize = this.settings.embedFontSize;
+		document.body.style.setProperty("--code-space-embed-font-size", `${embedFontSize}px`);
+		document.body.style.setProperty("--code-space-embed-line-height", `${embedFontSize * 1.5}px`);
 	}
 
 	async activateDashboard() {

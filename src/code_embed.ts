@@ -78,7 +78,7 @@ const readOnlyTheme = EditorView.theme({
 	"&": {
 		backgroundColor: "transparent",
 		fontFamily: "var(--font-monospace), 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Consolas, 'Courier New', monospace",
-		fontSize: "13px",
+		fontSize: "var(--code-space-embed-font-size, 13px) !important",
 		textAlign: "left",
 	},
 	".cm-content": {
@@ -99,7 +99,7 @@ const readOnlyTheme = EditorView.theme({
 	".cm-line": {
 		padding: "0 8px",
 		textAlign: "left",
-		lineHeight: "20px",
+		lineHeight: "var(--code-space-embed-line-height, 20px) !important",
 	},
 	".cm-gutters": {
 		backgroundColor: "transparent !important",
@@ -111,10 +111,10 @@ const readOnlyTheme = EditorView.theme({
 		padding: "0 8px 0 16px",
 		minWidth: "20px",
 		textAlign: "right",
-		fontSize: "12px",
+		fontSize: "calc(var(--code-space-embed-font-size, 13px) - 1px) !important",
 		color: "var(--text-muted)",
 		opacity: 0.6,
-		lineHeight: "20px",
+		lineHeight: "var(--code-space-embed-line-height, 20px) !important",
 	},
 });
 
@@ -378,13 +378,14 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 
 	// 根据行数和设置动态设置高度
 	if (maxLines > 0 && lineCount > maxLines) {
-		// 计算高度：每行 20px
-		const totalHeight = maxLines * 20;
-
-		// Use CSS custom property for dynamic height
-		editorContainer.style.setProperty("--embed-max-height", `${totalHeight}px`);
+		// Use CSS calc() with the CSS variable to ensure the container height
+		// updates reactively when the user changes font size/line height settings.
+		// Fallback to 20px if variable is missing.
+		// +6px buffer for top/bottom padding.
+		editorContainer.style.maxHeight = `calc(var(--code-space-embed-line-height, 20px) * ${maxLines} + 6px)`;
 		editorContainer.classList.add("code-embed-scrollable");
-		console.debug("Code Embed: Setting max height to", totalHeight, "px for", maxLines, "lines");
+		
+		console.debug("Code Embed: Setting dynamic max height for", maxLines, "lines");
 	}
 
 	// Create the code editor

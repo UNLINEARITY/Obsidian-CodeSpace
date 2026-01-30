@@ -594,40 +594,41 @@ body .code-space-container .cm-activeLine::selection {
    Code Embed Styles
    ================================================================= */
 .code-embed-container {
-	margin: 12px 0;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
+	border-radius: 6px;
+	margin: 12px 0;
 	overflow: hidden;
-	background-color: var(--background-secondary);
-	text-align: left; /* 确保左对齐 */
+	background-color: var(--background-primary);
+	font-family: var(--font-monospace);
+	/* Use CSS variables for dynamic font size adjustment */
+	font-size: var(--code-space-embed-font-size, 13px);
+	line-height: var(--code-space-embed-line-height, 20px);
 }
 
 .code-embed-header {
 	display: flex;
-	align-items: center;
 	justify-content: space-between;
-	padding: 8px 12px;
-	background-color: var(--background-modifier-border);
+	align-items: center;
+	padding: 6px 12px;
+	background-color: var(--background-secondary);
 	border-bottom: 1px solid var(--background-modifier-border);
-	font-size: 12px;
-	text-align: left;
-	cursor: pointer; /* 标题栏单击可跳转 */
-	transition: background-color 0.1s ease;
+	cursor: pointer;
+	transition: background-color 0.2s ease;
 }
 
 .code-embed-header:hover {
-	background-color: var(--background-modifier-border-hover);
+	background-color: var(--background-modifier-hover);
 }
 
 .code-embed-filename {
-    font-weight: 600;
-    color: var(--text-normal);
-    font-family: var(--font-monospace), 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Consolas, 'Courier New', monospace;
+	font-weight: 600;
+	color: var(--text-normal);
+	font-size: calc(var(--code-space-embed-font-size, 13px) - 1px);
 }
 
 .code-embed-linerange {
-    color: var(--text-muted);
-    font-size: 11px;
+	font-size: calc(var(--code-space-embed-font-size, 13px) - 2px);
+	color: var(--text-muted);
 }
 
 .code-embed-editor {
