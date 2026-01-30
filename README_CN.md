@@ -2,8 +2,9 @@
 
 <h1 align="center">
     为 Obsidian 提供专业的代码文件管理
-    <p align='center'><img src='img\pre0.png' width=70%></p> 
+    <p align='center'><img src='img\Code.webp' width=80%></p> 
     <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
+    <img alt="GitHub stars" src="https://img.shields.io/github/stars/unlinearity/Obsidian-Codespace?style=for-the-badge">
     <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
 </h1>
 
