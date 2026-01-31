@@ -15,7 +15,7 @@ export default {
     SETTINGS_NEW_FILE_LOCATION_NAME: 'Default location for new code files',
     SETTINGS_NEW_FILE_LOCATION_DESC: 'Leave empty to create at the vault root. Click the button to browse folders.',
     SETTINGS_NEW_FILE_LOCATION_BUTTON: 'Browse',
-    SETTINGS_NEW_FILE_FOLDER_PLACEHOLDER: 'Example: Scripts/Python',
+    SETTINGS_NEW_FILE_FOLDER_PLACEHOLDER: 'Example: scripts/python',
     SETTINGS_MAX_EMBED_LINES_PLACEHOLDER: '30',
 
     // Dashboard
