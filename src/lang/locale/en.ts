@@ -126,4 +126,5 @@ export default {
     HEADER_ACTION_PLAY: 'Open in default app',
     NOTICE_MODIFIED_EXTERNALLY: 'File modified externally. You have unsaved changes.',
     NOTICE_SAVE_FAIL: 'Failed to save file',
+    TAG_EXTERNAL_MOUNT: 'External mount',
 };

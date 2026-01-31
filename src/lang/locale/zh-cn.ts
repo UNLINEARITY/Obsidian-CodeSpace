@@ -127,4 +127,5 @@ export default {
     HEADER_ACTION_PLAY: '用默认应用打开',
     NOTICE_MODIFIED_EXTERNALLY: '文件已被外部修改。当前有未保存的更改。',
     NOTICE_SAVE_FAIL: '保存文件失败',
+    TAG_EXTERNAL_MOUNT: '外部挂载',
 };

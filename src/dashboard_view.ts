@@ -258,6 +258,16 @@ export class CodeDashboardView extends ItemView {
 	refreshFileList(container: HTMLElement, allFiles: TFile[]) {
 		container.empty();
 		const grid = container.createDiv({ cls: "code-file-list" });
+		const externalMounts = this.plugin?.settings?.externalMounts ?? [];
+		const externalMountPaths = externalMounts
+			.map((mount) => mount.mountPath.replace(/^\/+/, "").replace(/\/+$/, ""))
+			.filter((mountPath) => mountPath.length > 0);
+		const isExternalFile = (file: TFile): boolean => {
+			if (externalMountPaths.length === 0) return false;
+			return externalMountPaths.some((mountPath) =>
+				file.path === mountPath || file.path.startsWith(`${mountPath}/`)
+			);
+		};
 
 		// Filter
 		let files = allFiles.filter(f => {
@@ -287,6 +297,10 @@ export class CodeDashboardView extends ItemView {
 
 		files.forEach(file => {
 			const item = grid.createDiv({ cls: "code-file-item" });
+			const isExternal = isExternalFile(file);
+			if (isExternal) {
+				item.addClass("code-file-item-external");
+			}
 			
 			// Icon
 			const iconBox = item.createDiv({ cls: "code-file-icon-box" });
@@ -299,7 +313,13 @@ export class CodeDashboardView extends ItemView {
 
 			// Meta
 			const meta = item.createDiv({ cls: "code-file-meta" });
-			meta.createDiv({ cls: "code-file-tag", text: file.extension.toUpperCase() });
+			const tagRow = meta.createDiv({ cls: "code-file-tag-row" });
+			tagRow.createDiv({ cls: "code-file-tag", text: file.extension.toUpperCase() });
+			if (isExternal) {
+				const externalBadge = tagRow.createDiv({ cls: "code-file-external-badge" });
+				externalBadge.setAttr("title", t("TAG_EXTERNAL_MOUNT"));
+				setIcon(externalBadge, "link");
+			}
 			meta.createDiv({ cls: "code-file-time", text: moment(file.stat.mtime).fromNow() });
 
 			item.addEventListener("click", () => {
