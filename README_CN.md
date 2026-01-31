@@ -193,17 +193,24 @@ npm run lint         # 运行 ESLint
 ```
 obsidian-codespace/
 ├── src/
-│   ├── main.ts           # 插件入口：负责命令注册、视图挂载及生命周期管理
-│   ├── code_view.ts      # 编辑器核心：基于 CodeMirror 6 的代码编辑环境实现
-│   ├── dashboard_view.ts # 仪表盘视图：可视化文件索引与管理界面
-│   ├── outline_view.ts   # 大纲视图：侧边栏结构化导航实现
-│   ├── code_parser.ts    # 符号解析器：多语言代码结构分析工具
-│   ├── code_embed.ts     # 嵌入处理器：Markdown 引用与预览逻辑
-│   ├── dropdown.ts       # UI 组件：自定义下拉交互菜单
-│   └── settings.ts       # 设置面板：插件配置项实现
-├── styles.css            # 插件样式：涵盖编辑器、仪表盘及大纲的视觉定义
-├── manifest.json         # 插件元数据
-└── package.json          # 项目依赖与构建脚本
+│   ├── main.ts                # 插件入口：命令注册、视图挂载、生命周期管理
+│   ├── code_view.ts           # 编辑器核心：CodeMirror 6 编辑环境
+│   ├── dashboard_view.ts      # 面板视图：文件索引与管理界面
+│   ├── outline_view.ts        # 大纲视图：侧边栏结构化导航
+│   ├── code_parser.ts         # 语法解析：多语言结构分析
+│   ├── code_embed.ts          # 嵌入处理：引用与预览逻辑
+│   ├── dropdown.ts            # UI 组件：下拉/多选
+│   ├── folder_filter_modal.ts # 文件夹筛选弹窗
+│   ├── external_mount.ts      # 外部挂载：symlink/junction 管理
+│   ├── settings.ts            # 设置面板：插件配置
+│   └── lang/
+│       ├── helpers.ts         # 本地化工具
+│       └── locale/
+│           ├── en.ts          # 英文文案
+│           └── zh-cn.ts       # 中文文案
+├── styles.css                 # 样式入口
+├── manifest.json              # 插件元数据
+└── package.json               # 依赖与脚本
 ```
 
 ---
