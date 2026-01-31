@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Plugin, FuzzySuggestModal, TFolder, Notice, Platform, TextComponent, ButtonComponent, Modal } from "obsidian";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
-import { ExternalMount, ExternalMountManager, pickExternalFolder, suggestMountPath } from "./external_mount";
+import { ExternalMount, ExternalMountLinkType, ExternalMountManager, pickExternalFolder, suggestMountPath } from "./external_mount";
 
 // Suggester for folder selection
 export class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
@@ -143,6 +143,7 @@ export interface CodeSpaceSettings {
 	// Dashboard 状态记忆
 	dashboardState: DashboardState;
 	externalMounts: ExternalMount[];
+	externalMountLinkType: ExternalMountLinkType;
 }
 
 export const DEFAULT_SETTINGS: CodeSpaceSettings = {
@@ -158,7 +159,8 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 		sortBy: "date",
 		sortDesc: true
 	},
-	externalMounts: []
+	externalMounts: [],
+	externalMountLinkType: "auto"
 };
 
 export class CodeSpaceSettingTab extends PluginSettingTab {
@@ -292,6 +294,22 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 			return;
 		}
 
+		if (Platform.isWin) {
+			new Setting(containerEl)
+				.setName(t("SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_NAME"))
+				.setDesc(t("SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_DESC"))
+				.addDropdown((dropdown) => {
+					dropdown.addOption("auto", t("SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_AUTO"));
+					dropdown.addOption("symlink", t("SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_SYMLINK"));
+					dropdown.addOption("junction", t("SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_JUNCTION"));
+					dropdown.setValue(this.plugin.settings.externalMountLinkType ?? "auto");
+					dropdown.onChange(async (value) => {
+						this.plugin.settings.externalMountLinkType = value as ExternalMountLinkType;
+						await this.plugin.saveSettings();
+					});
+				});
+		}
+
 		const statusLabels: Record<string, string> = {
 			linked: t("SETTINGS_EXTERNAL_MOUNT_STATUS_LINKED"),
 			"missing-target": t("SETTINGS_EXTERNAL_MOUNT_STATUS_MISSING"),
@@ -326,7 +344,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					.onClick(() => {
 						void (async () => {
 							try {
-								await mountManager.relinkMount(mount);
+								await mountManager.relinkMount(mount, this.plugin.settings.externalMountLinkType);
 								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_RELINKED"));
 								this.display();
 							} catch (error) {
@@ -383,7 +401,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 								};
 
 								try {
-									await mountManager.createMount(mount);
+									await mountManager.createMount(mount, this.plugin.settings.externalMountLinkType);
 									this.plugin.settings.externalMounts.push(mount);
 									await this.plugin.saveSettings();
 									new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_CREATED"));

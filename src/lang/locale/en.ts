@@ -46,6 +46,11 @@ export default {
     SETTINGS_EXTERNAL_MOUNT_MODAL_TITLE: 'Add external folder',
     SETTINGS_EXTERNAL_MOUNT_MODAL_CREATE: 'Mount',
     SETTINGS_EXTERNAL_MOUNT_MODAL_CANCEL: 'Cancel',
+    SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_NAME: 'Link type',
+    SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_DESC: 'Auto tries symlink first, then junction. Symlink may require Developer Mode or admin.',
+    SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_AUTO: 'Auto',
+    SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_SYMLINK: 'Symlink',
+    SETTINGS_EXTERNAL_MOUNT_LINK_TYPE_JUNCTION: 'Junction',
 
     // Dashboard
     VIEW_TITLE: 'Code space',

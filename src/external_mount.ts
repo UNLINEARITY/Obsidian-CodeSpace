@@ -50,6 +50,8 @@ export interface ExternalMount {
 	mountPath: string;
 }
 
+export type ExternalMountLinkType = "auto" | "symlink" | "junction";
+
 export type ExternalMountStatusState =
 	| "linked"
 	| "missing-target"
@@ -111,7 +113,7 @@ export class ExternalMountManager {
 		return pathModule.join(basePath, ...segments);
 	}
 
-	async createMount(mount: ExternalMount): Promise<void> {
+	async createMount(mount: ExternalMount, linkType: ExternalMountLinkType = "auto"): Promise<void> {
 		if (!this.isDesktop()) {
 			throw new Error("Desktop only");
 		}
@@ -141,8 +143,7 @@ export class ExternalMountManager {
 		const fsPromises = getFs();
 		const pathModule = getPath();
 		await fsPromises.mkdir(pathModule.dirname(targetPath), { recursive: true });
-		const linkType: SymlinkType = Platform.isWin ? "junction" : "dir";
-		await fsPromises.symlink(sourcePath, targetPath, linkType);
+		await this.createLink(sourcePath, targetPath, linkType);
 	}
 
 	async removeMount(mount: ExternalMount): Promise<void> {
@@ -165,13 +166,13 @@ export class ExternalMountManager {
 		await fsPromises.unlink(targetPath);
 	}
 
-	async relinkMount(mount: ExternalMount): Promise<void> {
+	async relinkMount(mount: ExternalMount, linkType: ExternalMountLinkType = "auto"): Promise<void> {
 		try {
 			await this.removeMount(mount);
 		} catch {
 			// Ignore removal errors to allow relink attempts.
 		}
-		await this.createMount(mount);
+		await this.createMount(mount, linkType);
 	}
 
 	async getStatus(mount: ExternalMount): Promise<ExternalMountStatus> {
@@ -217,6 +218,28 @@ export class ExternalMountManager {
 		} catch {
 			return null;
 		}
+	}
+
+	private async createLink(sourcePath: string, targetPath: string, linkType: ExternalMountLinkType): Promise<void> {
+		const fsPromises = getFs();
+		if (Platform.isWin) {
+			if (linkType === "junction") {
+				await fsPromises.symlink(sourcePath, targetPath, "junction");
+				return;
+			}
+			if (linkType === "symlink") {
+				await fsPromises.symlink(sourcePath, targetPath, "dir");
+				return;
+			}
+			try {
+				await fsPromises.symlink(sourcePath, targetPath, "dir");
+			} catch {
+				await fsPromises.symlink(sourcePath, targetPath, "junction");
+			}
+			return;
+		}
+
+		await fsPromises.symlink(sourcePath, targetPath, "dir");
 	}
 }
 
