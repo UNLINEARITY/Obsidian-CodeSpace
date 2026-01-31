@@ -296,6 +296,10 @@ export default class CodeSpacePlugin extends Plugin {
 			}
 		});
 	}
+
+	async saveDashboardState() {
+		await this.saveData(this.settings);
+	}
 	
 	updateCSSVariables() {
 		// Update CSS variables for embed view

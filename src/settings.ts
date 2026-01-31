@@ -122,7 +122,8 @@ function createMountId(): string {
 
 export interface DashboardState {
 	searchQuery: string;
-	filterExt: string;
+	filterExt: string[];
+	filterFolder: string[];
 	sortBy: 'date' | 'name' | 'type';
 	sortDesc: boolean;
 }
@@ -155,7 +156,8 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	newFileFolderPath: '',
 	dashboardState: {
 		searchQuery: "",
-		filterExt: "all",
+		filterExt: [],
+		filterFolder: [],
 		sortBy: "date",
 		sortDesc: true
 	},

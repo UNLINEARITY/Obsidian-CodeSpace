@@ -302,6 +302,31 @@ body .code-space-container .cm-activeLine::selection {
 	user-select: none;
 }
 
+.code-folder-filter-button {
+	height: 32px;
+	padding: 0 14px;
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	font-size: 13px;
+	color: var(--text-normal);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.code-folder-filter-button:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.code-folder-filter-button:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.2);
+}
+
 .custom-dropdown-select:hover {
 	background-color: var(--background-modifier-hover);
 	border-color: var(--interactive-accent);
@@ -355,13 +380,14 @@ body .code-space-container .cm-activeLine::selection {
 }
 
 .custom-dropdown-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 	padding: 8px 14px;
 	font-size: 13px;
 	color: var(--text-normal);
 	cursor: pointer;
-	white-space: nowrap;
 	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 .custom-dropdown-item:hover {
@@ -371,6 +397,45 @@ body .code-space-container .cm-activeLine::selection {
 .custom-dropdown-item.is-selected {
 	background-color: hsla(var(--interactive-accent-hsl), 0.15);
 	color: var(--interactive-accent);
+	font-weight: 500;
+}
+
+.custom-dropdown-check {
+	width: 14px;
+	height: 14px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	color: var(--interactive-accent);
+	flex-shrink: 0;
+}
+
+.custom-dropdown-check svg {
+	width: 12px;
+	height: 12px;
+	stroke-width: 2px;
+}
+
+.custom-dropdown-item.is-selected .custom-dropdown-check {
+	opacity: 1;
+}
+
+.custom-dropdown-text {
+	flex: 1;
+	min-width: 0;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	white-space: normal;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.3;
+	max-height: 2.6em;
+}
+
+.custom-dropdown-clear {
+	color: var(--text-muted);
 	font-weight: 500;
 }
 
@@ -442,7 +507,8 @@ body .code-space-container .cm-activeLine::selection {
 
 .code-file-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
     padding: 14px;
     background-color: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
@@ -488,6 +554,7 @@ body .code-space-container .cm-activeLine::selection {
 .code-file-info {
     flex: 1;
     overflow: hidden;
+    min-width: 0;
 }
 
 .code-file-name {
@@ -495,9 +562,14 @@ body .code-space-container .cm-activeLine::selection {
     font-weight: 500;
     letter-spacing: -0.1px;
     color: var(--text-normal);
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: normal;
+    line-height: 1.3;
+    max-height: 2.6em;
 }
 
 .code-file-path {
@@ -517,6 +589,82 @@ body .code-space-container .cm-activeLine::selection {
     align-items: flex-end;
     gap: 6px;
     margin-left: 12px;
+}
+
+.folder-filter-search-row {
+	margin-bottom: 10px;
+}
+
+.folder-filter-search-row input {
+	width: 100%;
+}
+
+.folder-filter-count {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-bottom: 8px;
+}
+
+.folder-filter-list {
+	max-height: 360px;
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 6px 0;
+	background-color: var(--background-primary);
+}
+
+.folder-filter-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 8px 12px;
+	cursor: pointer;
+	border-radius: 4px;
+}
+
+.folder-filter-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.folder-filter-item.is-selected {
+	background-color: hsla(var(--interactive-accent-hsl), 0.15);
+}
+
+.folder-filter-check {
+	width: 16px;
+	height: 16px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--interactive-accent);
+	opacity: 0;
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.folder-filter-item.is-selected .folder-filter-check {
+	opacity: 1;
+}
+
+.folder-filter-text {
+	flex: 1;
+	min-width: 0;
+	white-space: normal;
+	word-break: break-word;
+}
+
+.folder-filter-empty {
+	padding: 12px;
+	color: var(--text-muted);
+	text-align: center;
+}
+
+.folder-filter-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 12px;
 }
 
 .code-file-tag-row {

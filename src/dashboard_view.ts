@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal, App, debounce } from "obsidian";
 import CodeSpacePlugin from "./main"; // 导入插件类型
-import { CustomDropdown } from "./dropdown";
+import { CustomDropdown, MultiSelectDropdown } from "./dropdown";
+import { FolderFilterModal } from "./folder_filter_modal";
 import { t } from "./lang/helpers";
 import { DashboardState } from "./settings";
 
@@ -92,7 +93,8 @@ export class CodeDashboardView extends ItemView {
 		// Default state
 		this.state = {
 			searchQuery: "",
-			filterExt: "all",
+			filterExt: [],
+			filterFolder: [],
 			sortBy: "date",
 			sortDesc: true
 		};
@@ -136,7 +138,7 @@ export class CodeDashboardView extends ItemView {
 	saveState = debounce(async () => {
 		if (this.plugin) {
 			this.plugin.settings.dashboardState = { ...this.state };
-			await this.plugin.saveSettings();
+			await this.plugin.saveDashboardState();
 		}
 	}, 500, true);
 
@@ -213,20 +215,68 @@ export class CodeDashboardView extends ItemView {
 				this.refreshFileList(fileListContainer, files);
 			});
 
-		// 3. Filter
+		const normalizeFilterValues = (value: unknown): string[] => {
+			if (!value) return [];
+			if (Array.isArray(value)) {
+				return value.filter((item) => typeof item === "string");
+			}
+			if (typeof value === "string") {
+				if (value === "all") return [];
+				return [value];
+			}
+			return [];
+		};
+
+		this.state.filterFolder = normalizeFilterValues(this.state.filterFolder);
+		this.state.filterExt = normalizeFilterValues(this.state.filterExt);
+
+		const folderFilterLabel = () => {
+			const selectedCount = this.state.filterFolder.length;
+			if (selectedCount === 0) return t('TOOLBAR_FILTER_FOLDER_ALL');
+			return `${t('TOOLBAR_FILTER_FOLDER_LABEL')} (${selectedCount})`;
+		};
+
+		// 3. Folder Filter
+		const folderPaths = [...new Set(files.map(f => f.parent?.path ?? "/"))]
+			.sort((a, b) => a.localeCompare(b));
+		const folderFilterContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
+		const folderFilterButton = new ButtonComponent(folderFilterContainer)
+			.setButtonText(folderFilterLabel())
+			.setTooltip(t('TOOLBAR_FILTER_FOLDER_BUTTON'))
+			.setClass("code-folder-filter-button")
+			.onClick(() => {
+				new FolderFilterModal(this.app, folderPaths, this.state.filterFolder, (values) => {
+					const availableFolderSet = new Set(folderPaths);
+					this.state.filterFolder = values.filter((value) => availableFolderSet.has(value));
+					this.saveState();
+					folderFilterButton.setButtonText(folderFilterLabel());
+					this.refreshFileList(fileListContainer, files);
+				}).open();
+			});
+		const availableFolderSet = new Set(folderPaths);
+		this.state.filterFolder = this.state.filterFolder.filter((value) => availableFolderSet.has(value));
+		folderFilterButton.setButtonText(folderFilterLabel());
+
+		// 4. Filter
 		const existingExts = [...new Set(files.map(f => f.extension))].sort();
 		const filterContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
-		const filterDropdown = new CustomDropdown(filterContainer);
-		filterDropdown.addOption("all", t('TOOLBAR_FILTER_ALL'));
+		const filterDropdown = new MultiSelectDropdown(filterContainer, {
+			emptyLabel: t('TOOLBAR_FILTER_ALL'),
+			countLabel: (count) => `${t('TOOLBAR_FILTER_EXTENSION_LABEL')} (${count})`,
+			clearLabel: t('TOOLBAR_FILTER_CLEAR')
+		});
 		existingExts.forEach(ext => filterDropdown.addOption(ext, ext.toUpperCase()));
-		filterDropdown.setValue(this.state.filterExt);
-		filterDropdown.onChange((value: string) => {
-			this.state.filterExt = value;
+		const availableExtSet = new Set(existingExts);
+		const normalizedExts = this.state.filterExt.filter((value) => availableExtSet.has(value));
+		this.state.filterExt = normalizedExts;
+		filterDropdown.setValues(normalizedExts);
+		filterDropdown.onChange((values: string[]) => {
+			this.state.filterExt = values;
 			this.saveState();
 			this.refreshFileList(fileListContainer, files);
 		});
 
-		// 4. Sort
+		// 5. Sort
 		const sortContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
 		const sortDropdown = new CustomDropdown(sortContainer);
 		sortDropdown.addOption("date", t('TOOLBAR_SORT_DATE'));
@@ -239,7 +289,7 @@ export class CodeDashboardView extends ItemView {
 			this.refreshFileList(fileListContainer, files);
 		});
 
-		// 5. Sort Order
+		// 6. Sort Order
 		const sortBtn = new ButtonComponent(toolbar)
 			.setIcon(this.state.sortDesc ? "arrow-down-narrow-wide" : "arrow-up-narrow-wide")
 			.setTooltip(t('TOOLBAR_SORT_TOGGLE'))
@@ -273,8 +323,12 @@ export class CodeDashboardView extends ItemView {
 		let files = allFiles.filter(f => {
 			const q = this.state.searchQuery.toLowerCase();
 			const matchQuery = f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q);
-			const matchExt = this.state.filterExt === 'all' || f.extension === this.state.filterExt;
-			return matchQuery && matchExt;
+			const folderPath = f.parent?.path ?? "/";
+			const folderFilters = Array.isArray(this.state.filterFolder) ? this.state.filterFolder : [];
+			const extFilters = Array.isArray(this.state.filterExt) ? this.state.filterExt : [];
+			const matchFolder = folderFilters.length === 0 || folderFilters.includes(folderPath);
+			const matchExt = extFilters.length === 0 || extFilters.includes(f.extension);
+			return matchQuery && matchFolder && matchExt;
 		});
 
 		// Sort
@@ -308,8 +362,13 @@ export class CodeDashboardView extends ItemView {
 			
 			// Info
 			const info = item.createDiv({ cls: "code-file-info" });
-			info.createDiv({ cls: "code-file-name", text: file.name });
-			info.createDiv({ cls: "code-file-path", text: file.parent?.path === "/" ? "" : file.parent?.path });
+			const nameEl = info.createDiv({ cls: "code-file-name", text: file.name });
+			nameEl.setAttr("title", file.name);
+			const pathText = file.parent?.path === "/" ? "" : file.parent?.path ?? "";
+			const pathEl = info.createDiv({ cls: "code-file-path", text: pathText });
+			if (pathText) {
+				pathEl.setAttr("title", pathText);
+			}
 
 			// Meta
 			const meta = item.createDiv({ cls: "code-file-meta" });
