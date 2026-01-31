@@ -28,7 +28,10 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 3. **嵌入空间**：与 Obsidian 原生功能深度融合，支持代码文件的引用和嵌入式预览
 
 
-[![Star History Chart](https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left)](https://www.star-history.com/#UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left)
+<p align="center">
+  <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left" alt="Star History Chart">
+</p>
+
 ---
 
 ## 核心功能

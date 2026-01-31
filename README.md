@@ -28,7 +28,10 @@ Obsidian does not support **viewing, managing, and editing code files** out of t
 3. **Embedding space**: Deeply integrates with Obsidian's native features to support references and embedded previews of code files.
 
 
-[![Star History Chart](https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left)](https://www.star-history.com/#UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left)
+<p align="center">
+  <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left" alt="Star History Chart">
+</p>
+
 ---
 
 ## Core features
