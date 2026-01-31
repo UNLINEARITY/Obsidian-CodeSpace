@@ -1,6 +1,7 @@
-import { App, PluginSettingTab, Setting, Plugin, FuzzySuggestModal, TFolder } from "obsidian";
+import { App, PluginSettingTab, Setting, Plugin, FuzzySuggestModal, TFolder, Notice, Platform, TextComponent, ButtonComponent, Modal } from "obsidian";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
+import { ExternalMount, ExternalMountManager, pickExternalFolder, suggestMountPath } from "./external_mount";
 
 // Suggester for folder selection
 export class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
@@ -26,6 +27,99 @@ export class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
 	}
 }
 
+class ExternalMountModal extends Modal {
+	private sourcePath = "";
+	private mountPath = "";
+	private onSubmit: (sourcePath: string, mountPath: string) => void;
+
+	constructor(app: App, onSubmit: (sourcePath: string, mountPath: string) => void) {
+		super(app);
+		this.onSubmit = onSubmit;
+		this.setTitle(t("SETTINGS_EXTERNAL_MOUNT_MODAL_TITLE"));
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		let sourceInput: TextComponent | null = null;
+		let mountInput: TextComponent | null = null;
+
+		new Setting(contentEl)
+			.setName(t("SETTINGS_EXTERNAL_MOUNT_SOURCE_NAME"))
+			.setDesc(t("SETTINGS_EXTERNAL_MOUNT_SOURCE_DESC"))
+			.addText((text) => {
+				sourceInput = text;
+				text
+					.setPlaceholder(t("SETTINGS_EXTERNAL_MOUNT_SOURCE_PLACEHOLDER"))
+					.setValue(this.sourcePath)
+					.onChange((value) => {
+						this.sourcePath = value;
+					});
+			})
+			.addButton((button) => {
+				button
+					.setButtonText(t("SETTINGS_EXTERNAL_MOUNT_BROWSE"))
+					.onClick(async () => {
+						const picked = await pickExternalFolder();
+						if (!picked.path) {
+							if (picked.unavailable) {
+								new Notice(t("SETTINGS_EXTERNAL_MOUNT_DIALOG_UNAVAILABLE"));
+							}
+							return;
+						}
+						this.sourcePath = picked.path;
+						sourceInput?.setValue(picked.path);
+						if (!this.mountPath) {
+							const suggested = suggestMountPath(picked.path);
+							this.mountPath = suggested;
+							mountInput?.setValue(suggested);
+						}
+					});
+			});
+
+		new Setting(contentEl)
+			.setName(t("SETTINGS_EXTERNAL_MOUNT_MOUNT_NAME"))
+			.setDesc(t("SETTINGS_EXTERNAL_MOUNT_MOUNT_DESC"))
+			.addText((text) => {
+				mountInput = text;
+				text
+					.setPlaceholder(t("SETTINGS_EXTERNAL_MOUNT_MOUNT_PLACEHOLDER"))
+					.setValue(this.mountPath)
+					.onChange((value) => {
+						this.mountPath = value;
+					});
+			});
+
+		const buttonContainer = contentEl.createDiv({ cls: "modal-button-container" });
+		const submitBtn = new ButtonComponent(buttonContainer);
+		submitBtn.setButtonText(t("SETTINGS_EXTERNAL_MOUNT_MODAL_CREATE"));
+		submitBtn.setCta();
+		submitBtn.onClick(() => {
+			this.submit();
+		});
+
+		const cancelBtn = new ButtonComponent(buttonContainer);
+		cancelBtn.setButtonText(t("SETTINGS_EXTERNAL_MOUNT_MODAL_CANCEL"));
+		cancelBtn.onClick(() => this.close());
+	}
+
+	private submit() {
+		const sourcePath = this.sourcePath.trim();
+		const mountPath = this.mountPath.trim();
+		if (!sourcePath || !mountPath) {
+			new Notice(t("SETTINGS_EXTERNAL_MOUNT_INVALID"));
+			return;
+		}
+		this.close();
+		this.onSubmit(sourcePath, mountPath);
+	}
+}
+
+function createMountId(): string {
+	return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export interface DashboardState {
 	searchQuery: string;
 	filterExt: string;
@@ -48,6 +142,7 @@ export interface CodeSpaceSettings {
 	newFileFolderPath: string;
 	// Dashboard 状态记忆
 	dashboardState: DashboardState;
+	externalMounts: ExternalMount[];
 }
 
 export const DEFAULT_SETTINGS: CodeSpaceSettings = {
@@ -62,7 +157,8 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 		filterExt: "all",
 		sortBy: "date",
 		sortDesc: true
-	}
+	},
+	externalMounts: []
 };
 
 export class CodeSpaceSettingTab extends PluginSettingTab {
@@ -177,6 +273,125 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 							void this.plugin.saveSettings();
 							// Refresh display to show the new value
 							this.display();
+						}).open();
+					});
+			});
+
+		const mountManager = new ExternalMountManager(this.app);
+
+		new Setting(containerEl)
+			.setHeading()
+			.setName(t('SETTINGS_EXTERNAL_MOUNT_NAME'))
+			.setDesc(t('SETTINGS_EXTERNAL_MOUNT_DESC'));
+
+		if (!Platform.isDesktopApp) {
+			containerEl.createDiv({
+				cls: "setting-item-description",
+				text: t("SETTINGS_EXTERNAL_MOUNT_DESKTOP_ONLY")
+			});
+			return;
+		}
+
+		const statusLabels: Record<string, string> = {
+			linked: t("SETTINGS_EXTERNAL_MOUNT_STATUS_LINKED"),
+			"missing-target": t("SETTINGS_EXTERNAL_MOUNT_STATUS_MISSING"),
+			"source-missing": t("SETTINGS_EXTERNAL_MOUNT_STATUS_SOURCE_MISSING"),
+			conflict: t("SETTINGS_EXTERNAL_MOUNT_STATUS_CONFLICT"),
+			unavailable: t("SETTINGS_EXTERNAL_MOUNT_STATUS_UNAVAILABLE")
+		};
+
+		const mounts = this.plugin.settings.externalMounts ?? [];
+
+		if (mounts.length === 0) {
+			containerEl.createDiv({
+				cls: "setting-item-description",
+				text: t("SETTINGS_EXTERNAL_MOUNT_EMPTY")
+			});
+		}
+
+		const updateStatus = async (setting: Setting, mount: ExternalMount) => {
+			const status = await mountManager.getStatus(mount);
+			const label = statusLabels[status.state] ?? status.state;
+			setting.setDesc(`${mount.sourcePath} • ${label}`);
+		};
+
+		mounts.forEach((mount) => {
+			const setting = new Setting(containerEl)
+				.setName(mount.mountPath)
+				.setDesc(mount.sourcePath);
+
+			setting.addButton((button) => {
+				button
+					.setButtonText(t("SETTINGS_EXTERNAL_MOUNT_RELINK"))
+					.onClick(() => {
+						void (async () => {
+							try {
+								await mountManager.relinkMount(mount);
+								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_RELINKED"));
+								this.display();
+							} catch (error) {
+								new Notice(`${t("SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED")}: ${String(error)}`);
+							}
+						})();
+					});
+			});
+
+			setting.addButton((button) => {
+				button
+					.setButtonText(t("SETTINGS_EXTERNAL_MOUNT_REMOVE"))
+					.setWarning()
+					.onClick(() => {
+						void (async () => {
+							try {
+								await mountManager.removeMount(mount);
+								this.plugin.settings.externalMounts = this.plugin.settings.externalMounts.filter((item) => item.id !== mount.id);
+								await this.plugin.saveSettings();
+								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_REMOVED"));
+								this.display();
+							} catch (error) {
+								new Notice(`${t("SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED")}: ${String(error)}`);
+							}
+						})();
+					});
+			});
+
+			void updateStatus(setting, mount);
+		});
+
+		new Setting(containerEl)
+			.addButton((button) => {
+				button
+					.setButtonText(t("SETTINGS_EXTERNAL_MOUNT_ADD"))
+					.setCta()
+					.onClick(() => {
+						new ExternalMountModal(this.app, (sourcePath, mountPath) => {
+							void (async () => {
+								const normalizedMountPath = mountManager.normalizeMountPath(mountPath);
+								if (!normalizedMountPath) {
+									new Notice(t("SETTINGS_EXTERNAL_MOUNT_INVALID"));
+									return;
+								}
+								if (this.plugin.settings.externalMounts.some((item) => item.mountPath === normalizedMountPath)) {
+									new Notice(t("SETTINGS_EXTERNAL_MOUNT_DUPLICATE"));
+									return;
+								}
+
+								const mount: ExternalMount = {
+									id: createMountId(),
+									sourcePath: sourcePath.trim(),
+									mountPath: normalizedMountPath
+								};
+
+								try {
+									await mountManager.createMount(mount);
+									this.plugin.settings.externalMounts.push(mount);
+									await this.plugin.saveSettings();
+									new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_CREATED"));
+									this.display();
+								} catch (error) {
+									new Notice(`${t("SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED")}: ${String(error)}`);
+								}
+							})();
 						}).open();
 					});
 			});

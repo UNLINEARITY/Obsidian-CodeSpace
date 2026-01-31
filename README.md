@@ -75,6 +75,9 @@ Access configuration via **Settings > Community Plugins > Code Space**:
 - **Managed Extensions**: Specify file extensions to be managed by Code Space (comma-separated).
 - **Show Line Numbers**: Toggle line number display (Default: On).
 - **Max Embed Lines**: Maximum lines to display in embedded previews (Default: 30, 0 for unlimited).
+- **External folders (desktop only)**: Mount external folders into the vault using a system symlink/junction.
+
+Note: External mounts allow access to files outside the vault. Use only folders you trust.
 
 ## Supported Languages (Extensible)
 
