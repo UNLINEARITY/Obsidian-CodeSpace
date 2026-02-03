@@ -1,4 +1,4 @@
-import { MarkdownRenderChild, TFile, EventRef } from "obsidian";
+import { MarkdownRenderChild, TFile, EventRef, normalizePath } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { lineNumbers } from "@codemirror/view";
@@ -18,7 +18,6 @@ import { tags } from "@lezer/highlight";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { Compartment, Extension } from "@codemirror/state";
 import CodeSpacePlugin from "./main";
-import { t } from "./lang/helpers";
 
 // Language packages mapping
 const LANGUAGE_PACKAGES: Record<string, Extension> = {
@@ -179,49 +178,148 @@ class CodeEmbedChild extends MarkdownRenderChild {
 	}
 }
 
+type PendingEmbedRequest = {
+	sourcePath: string;
+};
+
+const pendingEmbedTimers = new WeakMap<HTMLElement, number>();
+const pendingEmbedRequests = new WeakMap<HTMLElement, PendingEmbedRequest>();
+const embedRenderTokens = new WeakMap<HTMLElement, number>();
+const embedObserversByDoc = new WeakMap<Document, MutationObserver>();
+const CODE_SPACE_POPOUT_STYLE_ID = "code-space-popout-styles";
+
+function ensureCodeSpaceStylesInDocument(targetDoc: Document) {
+	// Some Obsidian popout windows do not automatically include plugin CSS. Copy the existing stylesheet
+	// reference from the main window so the embed UI renders consistently.
+	if (targetDoc.getElementById(CODE_SPACE_POPOUT_STYLE_ID)) return;
+
+	try {
+		const mainDoc = document;
+		const maybeLink1 = mainDoc.querySelector('link[href*="plugins/code-space/styles.css"]');
+		const maybeLink2 = mainDoc.querySelector('link[href*="/plugins/code-space/styles.css"]');
+		const link =
+			(maybeLink1 instanceof HTMLLinkElement ? maybeLink1 : null) ??
+			(maybeLink2 instanceof HTMLLinkElement ? maybeLink2 : null);
+
+		if (link?.href) {
+			const newLink = targetDoc.createElement("link");
+			newLink.id = CODE_SPACE_POPOUT_STYLE_ID;
+			newLink.rel = "stylesheet";
+			newLink.type = "text/css";
+			newLink.href = link.href;
+			targetDoc.head?.appendChild(newLink);
+		}
+	} catch {
+		// Ignore.
+	}
+}
+
+function resolveSourcePathForEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin): string {
+	// Use the leaf's file path (works across popout windows) instead of activeFile.
+	try {
+		const leaves = plugin.app.workspace.getLeavesOfType("markdown");
+		for (const leaf of leaves) {
+			const view = leaf.view as unknown as { file?: TFile; containerEl?: HTMLElement } | null;
+			const containerEl = view?.containerEl;
+			if (containerEl && containerEl.contains(embedEl)) {
+				const filePath = view?.file?.path;
+				if (filePath) return filePath;
+			}
+		}
+	} catch {
+		// Ignore and fall back.
+	}
+
+	return plugin.app.workspace.getActiveFile()?.path ?? "";
+}
+
+function installEmbedObserverForDocument(doc: Document, docWindow: Window, plugin: CodeSpacePlugin) {
+	if (embedObserversByDoc.has(doc)) return;
+	if (!doc.body) {
+		// Popout windows may fire before body is ready; retry shortly.
+		docWindow.setTimeout(() => installEmbedObserverForDocument(doc, docWindow, plugin), 80);
+		return;
+	}
+
+	const observer = new MutationObserver((mutations) => {
+		for (const mutation of mutations) {
+			for (const node of Array.from(mutation.addedNodes)) {
+				// Cross-window safe: use numeric constant instead of `node instanceof Element`.
+				if (node.nodeType !== 1) continue;
+
+				const elem = node as Element;
+				const embeds: HTMLElement[] = [];
+
+				if (elem.classList.contains("file-embed")) {
+					embeds.push(elem as HTMLElement);
+				} else {
+					elem.querySelectorAll?.("div.file-embed").forEach((e) => embeds.push(e as HTMLElement));
+				}
+
+				for (const embedEl of embeds) {
+					const sourcePath = resolveSourcePathForEmbed(embedEl, plugin);
+					// For ambiguous bare filenames, we need a real sourcePath; wait for the leaf to be ready.
+					if (!sourcePath) {
+						docWindow.setTimeout(() => {
+							const retrySourcePath = resolveSourcePathForEmbed(embedEl, plugin);
+							if (!retrySourcePath) return;
+							scheduleProcessCodeEmbed(embedEl, plugin, retrySourcePath);
+						}, 120);
+						continue;
+					}
+					scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
+				}
+			}
+		}
+	});
+
+	observer.observe(doc.body, { childList: true, subtree: true });
+	embedObserversByDoc.set(doc, observer);
+
+	// Also process any existing embeds already present in this window.
+	doc.querySelectorAll("div.file-embed").forEach((e) => {
+		const embedEl = e as HTMLElement;
+		const sourcePath = resolveSourcePathForEmbed(embedEl, plugin);
+		if (!sourcePath) {
+			docWindow.setTimeout(() => {
+				const retrySourcePath = resolveSourcePathForEmbed(embedEl, plugin);
+				if (!retrySourcePath) return;
+				scheduleProcessCodeEmbed(embedEl, plugin, retrySourcePath);
+			}, 120);
+			return;
+		}
+		scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
+	});
+}
+
+function scheduleProcessCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, sourcePath: string) {
+	// Obsidian may update embed attributes shortly after insertion; debounce to avoid duplicate renders.
+	pendingEmbedRequests.set(embedEl, { sourcePath });
+
+	const existing = pendingEmbedTimers.get(embedEl);
+	if (existing) window.clearTimeout(existing);
+
+	const timer = window.setTimeout(() => {
+		pendingEmbedTimers.delete(embedEl);
+		const req = pendingEmbedRequests.get(embedEl);
+		pendingEmbedRequests.delete(embedEl);
+
+		// Token-gate async read/render so stale runs can't overwrite newer renders (prevents flicker).
+		const token = (embedRenderTokens.get(embedEl) ?? 0) + 1;
+		embedRenderTokens.set(embedEl, token);
+
+		void processCodeEmbed(embedEl, plugin, req?.sourcePath ?? sourcePath, token);
+	}, 40);
+
+	pendingEmbedTimers.set(embedEl, timer);
+}
+
 export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	console.debug("Code Embed: Registering code embed processor...");
 
-	// Approach: Use MutationObserver to watch for file-embed elements
-	const observer = new MutationObserver((mutations) => {
-		mutations.forEach((mutation) => {
-			mutation.addedNodes.forEach((node) => {
-				if (node.nodeType === Node.ELEMENT_NODE) {
-					const elem = node as Element;
-
-					// Check if this is a file-embed or contains one
-					if (elem.classList.contains('file-embed') || elem.querySelector('.file-embed')) {
-						console.debug("Code Embed: Found file-embed via MutationObserver!", elem);
-
-						const embedEl = elem.classList.contains('file-embed') ? elem : elem.querySelector('.file-embed');
-
-						if (embedEl) {
-							// Get source path from the active file
-							let sourcePath = "";
-							const activeFile = plugin.app.workspace.getActiveFile();
-							if (activeFile?.path) {
-								sourcePath = activeFile.path;
-							}
-
-							console.debug("Code Embed: Using sourcePath:", sourcePath);
-							void processCodeEmbed(embedEl as HTMLElement, plugin, sourcePath);
-						}
-					}
-				}
-			});
-		});
-	});
-
-	// Start observing the document
-	observer.observe(document.body, {
-		childList: true,
-		subtree: true
-	});
-
-	console.debug("Code Embed: MutationObserver started");
-
-	// Also register the markdown post processor as a backup
-	plugin.registerMarkdownPostProcessor(async (el, ctx) => {
+	// Use Obsidian's official markdown post processor so we always get a correct ctx.sourcePath.
+	// This avoids races where MutationObserver runs before embed link attributes are stable.
+	plugin.registerMarkdownPostProcessor((el, ctx) => {
 		console.debug("Code Embed: Post processor called!", "element:", el);
 
 		// Obsidian renders embedded code files as div.file-embed with div.file-embed-title
@@ -231,63 +329,95 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 
 		for (let i = 0; i < embeds.length; i++) {
 			const embedEl = embeds[i] as HTMLElement;
-			await processCodeEmbed(embedEl, plugin, ctx.sourcePath);
+			scheduleProcessCodeEmbed(embedEl, plugin, ctx.sourcePath);
 		}
 	});
+
+	// Popout windows: markdown post processors are not guaranteed to be installed in new windows
+	// depending on how Obsidian spins up workspace windows. Use a per-window observer to ensure embeds render.
+	plugin.registerEvent(
+		plugin.app.workspace.on("window-open", (win, window) => {
+			try {
+				const doc = win.doc ?? window.document;
+				ensureCodeSpaceStylesInDocument(doc);
+				installEmbedObserverForDocument(doc, window, plugin);
+			} catch (e) {
+				console.warn("Code Embed: Failed to install observer for popout window", e);
+			}
+		})
+	);
+
+	plugin.registerEvent(
+		plugin.app.workspace.on("window-close", (win, window) => {
+			const doc = win.doc ?? window.document;
+			const observer = embedObserversByDoc.get(doc);
+			if (observer) {
+				observer.disconnect();
+				embedObserversByDoc.delete(doc);
+			}
+		})
+	);
 }
 
-async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, sourcePath: string) {
+async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, sourcePath: string, renderToken: number) {
+	const effectiveSourcePath = sourcePath || resolveSourcePathForEmbed(embedEl, plugin) || "";
+
+	// If another debounced run already rendered this embed for the same file, skip.
+	const lastRenderedFor = embedEl.getAttribute("data-code-space-rendered-for");
+
 	// Get the file path from the title element or src attribute
 	const titleEl = embedEl.querySelector('.file-embed-title');
 
-	// Try multiple sources for the file path
-	let linkText = titleEl?.getAttribute('data-href') ||
-	                titleEl?.textContent ||
-	                embedEl.getAttribute('src') ||
-	                embedEl.getAttribute('alt') ||
-	                "";
+	// Prefer Obsidian's internal-link attributes. Title text may lag behind and can be ambiguous.
+	const internalLink = (embedEl.querySelector("a.internal-link") ?? titleEl?.querySelector("a.internal-link")) as
+		| HTMLAnchorElement
+		| null;
 
-	linkText = linkText.trim();
+	let linkText =
+		internalLink?.getAttribute("data-href") ??
+		internalLink?.getAttribute("href") ??
+		embedEl.getAttribute("data-href") ??
+		embedEl.getAttribute("src") ??
+		embedEl.getAttribute("data-src") ??
+		titleEl?.textContent ??
+		embedEl.getAttribute("alt") ??
+		"";
 
-	console.debug("Code Embed: Processing file-embed", linkText, "title:", titleEl?.textContent, "sourcePath:", sourcePath);
+	// Normalize wiki-linkish strings if they leak through.
+	linkText = linkText.replace(/^!?\[\[/, "").replace(/\]\]$/, "").trim();
 
-	if (!linkText) return;
+	// Strip alias and block/heading fragments.
+	const pipeIndex = linkText.indexOf("|");
+	if (pipeIndex !== -1) linkText = linkText.substring(0, pipeIndex);
 
-	// Remove any line range syntax if present (Obsidian doesn't support it for code files)
 	const hashIndex = linkText.indexOf("#");
 	const filePath = hashIndex !== -1 ? linkText.substring(0, hashIndex) : linkText;
+
+	// Normalize to vault-style paths.
+	const normalizedFilePath = normalizePath(filePath.replace(/\\/g, "/")).trim();
+
+	console.debug("Code Embed: Processing file-embed", linkText, "title:", titleEl?.textContent, "sourcePath:", effectiveSourcePath);
+
+	if (!normalizedFilePath) return;
 
 	// Try to find the file using multiple methods
 	let tFile: TFile | null = null;
 
-	// Method 1: Use sourcePath if it's a valid file in the vault
-	if (sourcePath && !sourcePath.startsWith("Untitled")) {
-		tFile = plugin.app.metadataCache.getFirstLinkpathDest(filePath, sourcePath);
-		console.debug("Code Embed: Tried with sourcePath:", sourcePath, "result:", tFile?.path);
+	// Prefer direct path when the link includes folders.
+	if (normalizedFilePath.includes("/")) {
+		const byPath = plugin.app.vault.getAbstractFileByPath(normalizedFilePath);
+		tFile = byPath instanceof TFile ? byPath : null;
 	}
 
-	// Method 2: Try without sourcePath (for absolute paths or files in root)
-	if (!tFile) {
-		tFile = plugin.app.metadataCache.getFirstLinkpathDest(filePath, "");
-		console.debug("Code Embed: Tried without sourcePath, result:", tFile?.path);
+	// Fall back to Obsidian's own link resolver (uses ctx.sourcePath rules).
+	if (!tFile && effectiveSourcePath && !effectiveSourcePath.startsWith("Untitled")) {
+		tFile = plugin.app.metadataCache.getFirstLinkpathDest(normalizedFilePath, effectiveSourcePath);
 	}
 
-	// Method 3: Try to get file directly by path
-	if (!tFile) {
-		const abstractFile = plugin.app.vault.getAbstractFileByPath(filePath);
-		tFile = abstractFile instanceof TFile ? abstractFile : null;
-		console.debug("Code Embed: Tried direct path, result:", tFile?.path);
-	}
+	if (!tFile) return;
 
-	// Method 4: Search all files with matching name
-	if (!tFile) {
-		const allFiles = plugin.app.vault.getFiles();
-		tFile = allFiles.find(f => f.name === filePath || f.path === filePath) ?? null;
-		console.debug("Code Embed: Tried file search, result:", tFile?.path);
-	}
-
-	if (!tFile) {
-		console.debug("Code Embed: File not found", filePath, "tried all methods");
+	if (lastRenderedFor && lastRenderedFor === tFile.path) {
+		// Already rendered for this exact file (common during fast re-renders).
 		return;
 	}
 
@@ -315,14 +445,18 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	console.debug("Code Embed: Reading file content...");
 
 	// Read file content and render
-	await renderCodeEmbed(embedEl, tFile, plugin);
+	await renderCodeEmbed(embedEl, tFile, plugin, renderToken);
+	if (embedRenderTokens.get(embedEl) !== renderToken) return;
+	embedEl.setAttribute("data-code-space-rendered-for", tFile.path);
 }
 
-async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeSpacePlugin) {
+async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeSpacePlugin, renderToken: number) {
 	console.debug("Code Embed: Reading file content...");
 
 	// Read file content
 	const content = await plugin.app.vault.read(tFile);
+	if (embedRenderTokens.get(embedEl) !== renderToken) return;
+
 	const ext = tFile.extension.toLowerCase();
 
 	// 计算文件的行数
@@ -331,49 +465,25 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 
 	console.debug("Code Embed: Content loaded, length:", content.length, "lines:", lineCount, "maxLines:", maxLines);
 
-	// Replace the embed content with our custom code embed
+	// Preserve Obsidian's native embed chrome when possible to reduce visual "jump".
+	const maybePreservedTitle = embedEl.querySelector(".file-embed-title");
+	const preservedTitle = maybePreservedTitle instanceof HTMLElement ? maybePreservedTitle : null;
+
+	// Replace the embed content with our code embed.
 	embedEl.empty();
+	embedEl.classList.add("code-space-embed");
 
-	// Create embed container
-	const embedContainer = embedEl.createDiv({
-		cls: "code-embed-container",
-	});
-
-	// Prevent default single-click navigation (stop propagation to Obsidian's file-embed handler)
-	embedContainer.addEventListener("click", (e) => {
-		e.stopPropagation();
-	});
-
-	const header = embedContainer.createEl("div", { 
-		cls: "code-embed-header",
-		attr: { "title": t('EMBED_TOOLTIP_OPEN') }
-	});
-
-	// Allow single-click on the header to open the file
-	header.addEventListener("click", (e) => {
-		e.stopPropagation();
-		e.preventDefault();
-		void plugin.app.workspace.getLeaf(false).openFile(tFile);
-	});
-	header.createEl("span", { cls: "code-embed-filename", text: tFile.name });
-
-	// 如果有行数限制，显示行数信息
-	if (maxLines > 0 && lineCount > maxLines) {
-		header.createEl("span", {
-			cls: "code-embed-linerange",
-			text: t('EMBED_LINES_SHOWING')
-				.replace('{0}', String(maxLines))
-				.replace('{1}', String(lineCount))
-		});
-	} else {
-		header.createEl("span", {
-			cls: "code-embed-linerange",
-			text: t('EMBED_LINES_TOTAL').replace('{0}', String(lineCount))
-		});
+	if (preservedTitle) {
+		embedEl.appendChild(preservedTitle);
 	}
 
-	const editorContainer = embedContainer.createEl("div", {
-		cls: "code-embed-editor"
+	const editorContainer = embedEl.createEl("div", {
+		cls: "code-embed-editor",
+	});
+
+	// Prevent default single-click navigation when interacting with the code block.
+	editorContainer.addEventListener("click", (e) => {
+		e.stopPropagation();
 	});
 
 	// 根据行数和设置动态设置高度
