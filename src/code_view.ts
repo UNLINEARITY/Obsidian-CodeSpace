@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon } from "obsidian";
+import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment, Extension, Prec, Transaction } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
@@ -338,7 +338,8 @@ class CustomSearchPanel {
 
 	private replace() {
 		const query = this.getQuery();
-		if (!query.search || !query.replace) return;
+		// Allow empty replacement (delete match) by only requiring a search term.
+		if (!query.search) return;
 
 		const { from, to } = this.view.state.selection.main;
 		const currentText = this.view.state.sliceDoc(from, to);
@@ -362,7 +363,8 @@ class CustomSearchPanel {
 
 	private replaceAll() {
 		const query = this.getQuery();
-		if (!query.search || !query.replace) return;
+		// Allow empty replacement (delete matches) by only requiring a search term.
+		if (!query.search) return;
 
 		const searchString = this.view.state.doc.toString();
 		const changes: { from: number; to: number; insert: string }[] = [];
@@ -416,6 +418,17 @@ class CustomSearchPanel {
 			this.open();
 		} else {
 			this.close();
+		}
+	}
+
+	isOpen(): boolean {
+		return !this.panelEl.hasClass("is-hidden");
+	}
+
+	setSearchValue(value: string, selectValue: boolean = true) {
+		this.searchInput.value = value;
+		if (selectValue) {
+			this.searchInput.select();
 		}
 	}
 
@@ -672,6 +685,8 @@ export class CodeSpaceView extends TextFileView {
 	private isDirty: boolean = false; // 新增：跟踪是否有未保存的修改
 	private isSettingData: boolean = false; // 新增：标记是否正在设置数据
 	private searchPanel?: CustomSearchPanel; // 自定义搜索面板
+	private rootEl?: HTMLElement;
+	private cleanupMobileViewportFix?: () => void;
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -783,6 +798,72 @@ export class CodeSpaceView extends TextFileView {
 		if (this.searchPanel) {
 			this.searchPanel.toggle();
 		}
+	}
+
+	private getSelectedTextForSearch(): string | null {
+		if (!this.editorView) return null;
+
+		const sel = this.editorView.state.selection.main;
+		if (sel.empty) return null;
+
+		const text = this.editorView.state.sliceDoc(sel.from, sel.to);
+		// Avoid huge selections being dumped into the search box.
+		if (text.length > 500) return null;
+		return text;
+	}
+
+	private openSearchFromHotkey(mode: "find" | "replace") {
+		if (!this.searchPanel) return;
+
+		const isOpen = this.searchPanel.isOpen();
+		const activeEl = document.activeElement;
+		const focusInPanel = activeEl instanceof HTMLElement && this.searchPanel.panelEl.contains(activeEl);
+
+		// Ctrl/Cmd+F acts like a toggle: if focus is already in the panel, close it.
+		if (mode === "find" && isOpen && focusInPanel) {
+			this.searchPanel.close();
+			return;
+		}
+
+		const selected = this.getSelectedTextForSearch();
+
+		if (mode === "replace") {
+			this.searchPanel.focusReplace();
+			if (selected) {
+				// Do not steal focus from the replace input.
+				this.searchPanel.setSearchValue(selected, false);
+			}
+			return;
+		}
+
+		// Find
+		this.searchPanel.open();
+		if (selected) {
+			this.searchPanel.setSearchValue(selected, true);
+		}
+	}
+
+	private setupMobileViewportFix(root: HTMLElement) {
+		if (!Platform.isMobileApp) return;
+		const vv = window.visualViewport;
+		if (!vv) return;
+
+		const apply = () => {
+			// Use the visual viewport to avoid layout issues when the on-screen keyboard is shown.
+			root.setCssProps({ height: `${vv.height}px` });
+			this.editorView?.requestMeasure();
+		};
+
+		apply();
+
+		vv.addEventListener("resize", apply);
+		vv.addEventListener("scroll", apply);
+
+		this.cleanupMobileViewportFix = () => {
+			vv.removeEventListener("resize", apply);
+			vv.removeEventListener("scroll", apply);
+			root.setCssProps({ height: "" });
+		};
 	}
 
 	// 重写 save 方法，只在真正有未保存修改时才保存
@@ -904,6 +985,7 @@ export class CodeSpaceView extends TextFileView {
 		container.empty();
 
 		const root = container.createDiv({ cls: "code-space-container" });
+		this.rootEl = root;
 
 		// Debug: Log file extension and language extension
 		const ext = this.file?.extension.toLowerCase();
@@ -942,7 +1024,22 @@ export class CodeSpaceView extends TextFileView {
 				{
 					key: "Mod-f",
 					run: () => {
-						this.searchPanel?.toggle();
+						this.openSearchFromHotkey("find");
+						return true;
+					}
+				},
+				{
+					key: "Mod-h",
+					run: () => {
+						this.openSearchFromHotkey("replace");
+						return true;
+					}
+				},
+				// macOS: Cmd+Alt+F is a common "Replace" shortcut (Cmd+H is reserved by the OS).
+				{
+					key: "Mod-Alt-f",
+					run: () => {
+						this.openSearchFromHotkey("replace");
 						return true;
 					}
 				}
@@ -993,24 +1090,31 @@ export class CodeSpaceView extends TextFileView {
 
 		// 创建自定义搜索面板
 		this.searchPanel = new CustomSearchPanel(this.editorView, root);
-		// 兜底拦截 Ctrl/Cmd+F，避免被全局搜索抢占（仅限 Code Space 编辑器）
+		// 兜底拦截 Ctrl/Cmd+F/H，避免被全局搜索抢占（仅限 Code Space 编辑器）
 		this.registerDomEvent(window, "keydown", (event: KeyboardEvent) => {
 			if (event.isComposing) return;
-			if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-			if (event.key.toLowerCase() !== "f") return;
+			if (!(event.ctrlKey || event.metaKey)) return;
+
+			const key = event.key.toLowerCase();
+			const isFind = key === "f" && !event.altKey;
+			const isReplace = (key === "h" && !event.altKey) || (Platform.isMacOS && event.metaKey && event.altKey && key === "f");
+			if (!isFind && !isReplace) return;
 			if (!this.editorView) return;
 
 			const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
 			if (activeView !== this) return;
 
 			const target = event.target as HTMLElement | null;
-			if (target && !this.editorView.dom.contains(target)) return;
+			if (target && this.rootEl && !this.rootEl.contains(target)) return;
 
 			event.preventDefault();
 			event.stopPropagation();
 			event.stopImmediatePropagation();
-			this.searchPanel?.toggle();
+			this.openSearchFromHotkey(isReplace ? "replace" : "find");
 		}, { capture: true });
+
+		// Mobile-only: mitigate keyboard/viewport resize glitches.
+		this.setupMobileViewportFix(root);
 
 		// 添加标题栏搜索按钮
 		this.addAction("search", t('HEADER_ACTION_SEARCH'), () => {
@@ -1130,6 +1234,9 @@ export class CodeSpaceView extends TextFileView {
 
 	async onClose(): Promise<void> {
 		await Promise.resolve(); // Required for async function
+		this.cleanupMobileViewportFix?.();
+		this.cleanupMobileViewportFix = undefined;
+		this.rootEl = undefined;
 		// 销毁自定义搜索面板
 		if (this.searchPanel) {
 			this.searchPanel.destroy();
