@@ -938,6 +938,13 @@ export class CodeSpaceView extends TextFileView {
 						void this.save();
 						return true;
 					}
+				},
+				{
+					key: "Mod-f",
+					run: () => {
+						this.searchPanel?.toggle();
+						return true;
+					}
 				}
 			])),
 			EditorView.updateListener.of((update) => {
@@ -986,6 +993,24 @@ export class CodeSpaceView extends TextFileView {
 
 		// 创建自定义搜索面板
 		this.searchPanel = new CustomSearchPanel(this.editorView, root);
+		// 兜底拦截 Ctrl/Cmd+F，避免被全局搜索抢占（仅限 Code Space 编辑器）
+		this.registerDomEvent(window, "keydown", (event: KeyboardEvent) => {
+			if (event.isComposing) return;
+			if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+			if (event.key.toLowerCase() !== "f") return;
+			if (!this.editorView) return;
+
+			const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
+			if (activeView !== this) return;
+
+			const target = event.target as HTMLElement | null;
+			if (target && !this.editorView.dom.contains(target)) return;
+
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+			this.searchPanel?.toggle();
+		}, { capture: true });
 
 		// 添加标题栏搜索按钮
 		this.addAction("search", t('HEADER_ACTION_SEARCH'), () => {
