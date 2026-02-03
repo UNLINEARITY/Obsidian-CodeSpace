@@ -18,6 +18,7 @@ import { tags } from "@lezer/highlight";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { Compartment, Extension } from "@codemirror/state";
 import CodeSpacePlugin from "./main";
+import { t } from "./lang/helpers";
 
 // Language packages mapping
 const LANGUAGE_PACKAGES: Record<string, Extension> = {
@@ -122,6 +123,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 	private languageCompartment: Compartment;
 	private themeCompartment: Compartment;
 	private themeEventRef: EventRef | null = null;
+	private ownerDoc: Document;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -132,10 +134,11 @@ class CodeEmbedChild extends MarkdownRenderChild {
 		super(containerEl);
 		this.languageCompartment = new Compartment();
 		this.themeCompartment = new Compartment();
+		this.ownerDoc = containerEl.ownerDocument;
 	}
 
 	onload(): void {
-		const isDark = document.body.classList.contains("theme-dark");
+		const isDark = this.ownerDoc.body.classList.contains("theme-dark");
 		const langExt = LANGUAGE_PACKAGES[this.extension] || [];
 
 		console.debug("Code Embed: CodeEmbedChild.onload - extension:", this.extension);
@@ -158,7 +161,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 
 		// Listen for theme changes
 		this.themeEventRef = this.plugin.app.workspace.on("css-change", () => {
-			const isDark = document.body.classList.contains("theme-dark");
+			const isDark = this.ownerDoc.body.classList.contains("theme-dark");
 			if (this.editorView) {
 				this.editorView.dispatch({
 					effects: this.themeCompartment.reconfigure(syntaxHighlighting(isDark ? darkHighlightStyle : lightHighlightStyle))
@@ -188,7 +191,7 @@ const embedRenderTokens = new WeakMap<HTMLElement, number>();
 const embedObserversByDoc = new WeakMap<Document, MutationObserver>();
 const CODE_SPACE_POPOUT_STYLE_ID = "code-space-popout-styles";
 
-function ensureCodeSpaceStylesInDocument(targetDoc: Document) {
+function ensureCodeSpaceStylesInDocument(targetDoc: Document, plugin: CodeSpacePlugin) {
 	// Some Obsidian popout windows do not automatically include plugin CSS. Copy the existing stylesheet
 	// reference from the main window so the embed UI renders consistently.
 	if (targetDoc.getElementById(CODE_SPACE_POPOUT_STYLE_ID)) return;
@@ -208,9 +211,24 @@ function ensureCodeSpaceStylesInDocument(targetDoc: Document) {
 			newLink.type = "text/css";
 			newLink.href = link.href;
 			targetDoc.head?.appendChild(newLink);
+			return;
 		}
 	} catch {
 		// Ignore.
+	}
+
+	// Fallback: clone the inline style tag if Obsidian injected plugin CSS as <style>.
+	const styleTags = Array.from(document.querySelectorAll("style"));
+	const codeSpaceStyle = styleTags.find((styleEl) => {
+		const text = styleEl.textContent ?? "";
+		return text.includes(".code-embed-container") || text.includes(".code-space-container");
+	});
+
+	if (codeSpaceStyle?.textContent) {
+		const newStyle = targetDoc.createElement("style");
+		newStyle.id = CODE_SPACE_POPOUT_STYLE_ID;
+		newStyle.textContent = codeSpaceStyle.textContent;
+		targetDoc.head?.appendChild(newStyle);
 	}
 }
 
@@ -339,7 +357,7 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 		plugin.app.workspace.on("window-open", (win, window) => {
 			try {
 				const doc = win.doc ?? window.document;
-				ensureCodeSpaceStylesInDocument(doc);
+				ensureCodeSpaceStylesInDocument(doc, plugin);
 				installEmbedObserverForDocument(doc, window, plugin);
 			} catch (e) {
 				console.warn("Code Embed: Failed to install observer for popout window", e);
@@ -392,9 +410,15 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 
 	const hashIndex = linkText.indexOf("#");
 	const filePath = hashIndex !== -1 ? linkText.substring(0, hashIndex) : linkText;
+	const hadLeadingSlash = /^[\\/]/.test(filePath.trim());
 
 	// Normalize to vault-style paths.
 	const normalizedFilePath = normalizePath(filePath.replace(/\\/g, "/")).trim();
+	const sourceDir =
+		effectiveSourcePath && effectiveSourcePath.includes("/")
+			? effectiveSourcePath.substring(0, effectiveSourcePath.lastIndexOf("/"))
+			: "";
+	const isSourceRoot = sourceDir === "";
 
 	console.debug("Code Embed: Processing file-embed", linkText, "title:", titleEl?.textContent, "sourcePath:", effectiveSourcePath);
 
@@ -403,8 +427,14 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	// Try to find the file using multiple methods
 	let tFile: TFile | null = null;
 
+	// Explicit root path (e.g., ![[/foo.ts]]) should resolve directly.
+	if (hadLeadingSlash) {
+		const byPath = plugin.app.vault.getAbstractFileByPath(normalizedFilePath);
+		tFile = byPath instanceof TFile ? byPath : null;
+	}
+
 	// Prefer direct path when the link includes folders.
-	if (normalizedFilePath.includes("/")) {
+	if (!tFile && normalizedFilePath.includes("/")) {
 		const byPath = plugin.app.vault.getAbstractFileByPath(normalizedFilePath);
 		tFile = byPath instanceof TFile ? byPath : null;
 	}
@@ -412,6 +442,12 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	// Fall back to Obsidian's own link resolver (uses ctx.sourcePath rules).
 	if (!tFile && effectiveSourcePath && !effectiveSourcePath.startsWith("Untitled")) {
 		tFile = plugin.app.metadataCache.getFirstLinkpathDest(normalizedFilePath, effectiveSourcePath);
+	}
+
+	// Root-level file fallback: when the source note is in root, a bare filename should resolve to root.
+	if (!tFile && !normalizedFilePath.includes("/") && isSourceRoot) {
+		const byPath = plugin.app.vault.getAbstractFileByPath(normalizedFilePath);
+		tFile = byPath instanceof TFile ? byPath : null;
 	}
 
 	if (!tFile) return;
@@ -496,6 +532,26 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		editorContainer.classList.add("code-embed-scrollable");
 		
 		console.debug("Code Embed: Setting dynamic max height for", maxLines, "lines");
+	}
+
+	// Restore the line count badge in the embed title for consistency with the main window.
+	const titleEl = embedEl.querySelector(".file-embed-title");
+	if (titleEl instanceof HTMLElement) {
+		titleEl.classList.add("code-embed-header");
+		const existingBadge = titleEl.querySelector(".code-embed-linerange");
+		if (existingBadge instanceof HTMLElement) existingBadge.remove();
+
+		const badgeText =
+			maxLines > 0 && lineCount > maxLines
+				? t("EMBED_LINES_SHOWING")
+						.replace("{0}", String(maxLines))
+						.replace("{1}", String(lineCount))
+				: t("EMBED_LINES_TOTAL").replace("{0}", String(lineCount));
+
+		titleEl.createEl("span", {
+			cls: "code-embed-linerange",
+			text: badgeText,
+		});
 	}
 
 	// Create the code editor
