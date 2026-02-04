@@ -271,7 +271,8 @@ function installEmbedObserverForDocument(doc: Document, docWindow: Window, plugi
 				if (elem.classList.contains("file-embed")) {
 					embeds.push(elem as HTMLElement);
 				} else {
-					elem.querySelectorAll?.("div.file-embed").forEach((e) => embeds.push(e as HTMLElement));
+					// Look for both div.file-embed and span.file-embed
+					elem.querySelectorAll?.(".file-embed").forEach((e) => embeds.push(e as HTMLElement));
 				}
 
 				for (const embedEl of embeds) {
@@ -295,7 +296,7 @@ function installEmbedObserverForDocument(doc: Document, docWindow: Window, plugi
 	embedObserversByDoc.set(doc, observer);
 
 	// Also process any existing embeds already present in this window.
-	doc.querySelectorAll("div.file-embed").forEach((e) => {
+	doc.querySelectorAll(".file-embed").forEach((e) => {
 		const embedEl = e as HTMLElement;
 		const sourcePath = resolveSourcePathForEmbed(embedEl, plugin);
 		if (!sourcePath) {
@@ -346,10 +347,11 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	// Use Obsidian's official markdown post processor so we always get a correct ctx.sourcePath.
 	// This avoids races where MutationObserver runs before embed link attributes are stable.
 	plugin.registerMarkdownPostProcessor((el, ctx) => {
-		console.debug("Code Embed: Post processor called!", "element:", el, "ctx.sourcePath:", ctx.sourcePath);
+		console.debug("Code Embed: Post processor called!", "element:", el.className, "ctx.sourcePath:", ctx.sourcePath);
 
-		// Obsidian renders embedded code files as div.file-embed with div.file-embed-title
-		const embeds = el.querySelectorAll('div.file-embed');
+		// Obsidian renders embedded code files as div.file-embed (edit mode) or span.file-embed (reading mode)
+		// with div.file-embed-title
+		const embeds = el.querySelectorAll('.file-embed');
 
 		console.debug("Code Embed: Processing element", el.className, "found", embeds.length, "file-embed elements");
 
@@ -364,6 +366,54 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 			// If sourcePath is unreliable, rely on the main window observer to pick it up.
 		}
 	});
+
+	// Re-process embeds when layout changes (includes switching between edit/reading modes).
+	// Reading mode uses a different rendering engine and may not trigger post processors reliably.
+	plugin.registerEvent(
+		plugin.app.workspace.on("layout-change", () => {
+			console.debug("Code Embed: layout-change triggered");
+			
+			// Scan all markdown leaves for unprocessed embeds
+			const leaves = plugin.app.workspace.getLeavesOfType("markdown");
+			console.debug("Code Embed: Found", leaves.length, "markdown leaves");
+			
+			for (const leaf of leaves) {
+				const view = leaf.view as unknown as { containerEl?: HTMLElement; file?: TFile; contentEl?: HTMLElement } | null;
+				const sourcePath = view?.file?.path ?? "";
+				console.debug("Code Embed: Processing leaf, sourcePath:", sourcePath);
+				
+				// Try multiple container selectors for both edit and reading modes
+				const possibleContainers = [
+					view?.contentEl,                                    // Reading mode
+					view?.containerEl?.querySelector(".markdown-preview-view"),  // Reading mode preview
+					view?.containerEl?.querySelector(".markdown-source-view"),   // Edit mode source
+					view?.containerEl,                                  // Fallback
+				];
+				
+				for (const container of possibleContainers) {
+					if (!container) continue;
+					
+					// Look for both div.file-embed (edit mode) and span.file-embed (reading mode)
+					const embeds = (container as HTMLElement).querySelectorAll(".file-embed");
+					console.debug("Code Embed: Found", embeds.length, "embeds in container", (container as HTMLElement).className || "(no class)");
+					
+					for (const embed of Array.from(embeds)) {
+						const embedEl = embed as HTMLElement;
+						// Check if already processed
+						if (embedEl.querySelector(".code-embed-container")) {
+							console.debug("Code Embed: Skipping already processed embed");
+							continue;
+						}
+						
+						console.debug("Code Embed: Scheduling process for embed, classes:", embedEl.className);
+						if (sourcePath) {
+							scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
+						}
+					}
+				}
+			}
+		})
+	);
 
 	// Popout windows: markdown post processors are not guaranteed to be installed in new windows
 	// depending on how Obsidian spins up workspace windows. Use a per-window observer to ensure embeds render.
@@ -619,7 +669,16 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		console.debug("Code Embed: Setting dynamic max height for", maxLines, "lines");
 	}
 
-	// Create the code editor
+	// Always render both CodeMirror (for interactive viewing) and static fallback (for PDF/print)
+	// The static version is hidden by default via CSS and only shown in print context
+	const staticContainer = embedContainer.createEl("div", {
+		cls: "code-embed-static-fallback",
+	});
+	const pre = staticContainer.createEl("pre", { cls: "code-embed-static" });
+	const code = pre.createEl("code", { cls: `language-${ext}` });
+	code.textContent = content;
+
+	// Create the code editor (interactive version)
 	const child = new CodeEmbedChild(editorContainer, content, ext, plugin);
 
 	// Manually call onload since addChild is not available here
