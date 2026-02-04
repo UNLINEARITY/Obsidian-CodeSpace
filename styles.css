@@ -822,14 +822,21 @@ body .code-space-container .cm-activeLine::selection {
 
 .code-embed-editor.code-embed-scrollable {
 	max-height: var(--embed-max-height);
-	overflow: auto;
+	overflow: hidden;
 }
 
 .code-embed-editor .cm-editor {
 	height: auto;
-	overflow: auto;
+	overflow: hidden;
 	text-align: left; /* 确保编辑器内容左对齐 */
 }
+
+.code-embed-editor.code-embed-scrollable .cm-editor {
+	height: 100%;
+	max-height: inherit;
+	overflow: hidden;
+}
+
 
 .code-embed-editor .cm-content {
 	text-align: left; /* 确保内容左对齐 */

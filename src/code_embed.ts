@@ -335,10 +335,18 @@ function scheduleProcessCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin,
 export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	console.debug("Code Embed: Registering code embed processor...");
 
+	// Install observer for the main window document to catch any embeds that the post processor misses.
+	// This is necessary because registerMarkdownPostProcessor may be called before the embed element
+	// is attached to the workspace leaf, causing resolveSourcePathForEmbed to fail.
+	const mainWindow = window;
+	const mainDoc = document;
+	ensureCodeSpaceStylesInDocument(mainDoc, plugin);
+	installEmbedObserverForDocument(mainDoc, mainWindow, plugin);
+
 	// Use Obsidian's official markdown post processor so we always get a correct ctx.sourcePath.
 	// This avoids races where MutationObserver runs before embed link attributes are stable.
 	plugin.registerMarkdownPostProcessor((el, ctx) => {
-		console.debug("Code Embed: Post processor called!", "element:", el);
+		console.debug("Code Embed: Post processor called!", "element:", el, "ctx.sourcePath:", ctx.sourcePath);
 
 		// Obsidian renders embedded code files as div.file-embed with div.file-embed-title
 		const embeds = el.querySelectorAll('div.file-embed');
@@ -347,7 +355,13 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 
 		for (let i = 0; i < embeds.length; i++) {
 			const embedEl = embeds[i] as HTMLElement;
-			scheduleProcessCodeEmbed(embedEl, plugin, ctx.sourcePath);
+			// Prefer ctx.sourcePath when available. When unreliable, the main window's
+			// MutationObserver (installed above) will catch it after DOM stabilizes.
+			const sourcePath = ctx.sourcePath;
+			if (sourcePath && !sourcePath.startsWith("Untitled")) {
+				scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
+			}
+			// If sourcePath is unreliable, rely on the main window observer to pick it up.
 		}
 	});
 
@@ -386,20 +400,66 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	// Get the file path from the title element or src attribute
 	const titleEl = embedEl.querySelector('.file-embed-title');
 
-	// Prefer Obsidian's internal-link attributes. Title text may lag behind and can be ambiguous.
-	const internalLink = (embedEl.querySelector("a.internal-link") ?? titleEl?.querySelector("a.internal-link")) as
-		| HTMLAnchorElement
-		| null;
+	// Prefer the embed title link; avoid picking unrelated links inside embed content.
+	const internalLink =
+		titleEl?.querySelector<HTMLAnchorElement>("a.internal-link") ??
+		embedEl.querySelector<HTMLAnchorElement>(".file-embed-title a.internal-link");
 
-	let linkText =
-		internalLink?.getAttribute("data-href") ??
-		internalLink?.getAttribute("href") ??
-		embedEl.getAttribute("data-href") ??
-		embedEl.getAttribute("src") ??
-		embedEl.getAttribute("data-src") ??
-		titleEl?.textContent ??
-		embedEl.getAttribute("alt") ??
-		"";
+	const vaultName = typeof plugin.app.vault.getName === "function" ? plugin.app.vault.getName() : "";
+	const stripVaultPrefix = (value: string) => {
+		const normalized = value.replace(/\\/g, "/").replace(/^\/+/, "");
+		if (!vaultName) return normalized;
+		if (normalized === vaultName) return "";
+		if (normalized.startsWith(`${vaultName}/`)) return normalized.slice(vaultName.length + 1);
+		return normalized;
+	};
+
+	const extractPathFromCandidate = (value: string | null | undefined): string => {
+		if (!value) return "";
+		let trimmed = value.trim();
+		if (!trimmed || trimmed.startsWith("#")) return "";
+
+		// Handle Obsidian/app URLs and extract the path portion when possible.
+		if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+			try {
+				const url = new URL(trimmed);
+				if (url.protocol === "obsidian:" || url.protocol === "app:") {
+					const pathParam = url.searchParams.get("path") ?? url.searchParams.get("file");
+					if (pathParam) return stripVaultPrefix(decodeURIComponent(pathParam));
+
+					const pathFromApp = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+					if (pathFromApp && pathFromApp !== "open") return stripVaultPrefix(pathFromApp);
+				}
+
+				// Ignore other URL schemes.
+				return "";
+			} catch {
+				return "";
+			}
+		}
+
+		return trimmed;
+	};
+
+	const candidates = [
+		internalLink?.getAttribute("data-href"),
+		titleEl?.getAttribute("data-href"),
+		embedEl.getAttribute("data-href"),
+		embedEl.getAttribute("data-src"),
+		embedEl.getAttribute("src"),
+		titleEl?.textContent,
+		embedEl.getAttribute("alt"),
+		internalLink?.getAttribute("href"),
+	];
+
+	let linkText = "";
+	for (const candidate of candidates) {
+		const path = extractPathFromCandidate(candidate);
+		if (path) {
+			linkText = path;
+			break;
+		}
+	}
 
 	// Normalize wiki-linkish strings if they leak through.
 	linkText = linkText.replace(/^!?\[\[/, "").replace(/\]\]$/, "").trim();
@@ -433,15 +493,15 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 		tFile = byPath instanceof TFile ? byPath : null;
 	}
 
-	// Prefer direct path when the link includes folders.
+	// Prefer Obsidian's own resolver for relative links (uses ctx.sourcePath rules).
+	if (!tFile && effectiveSourcePath && !effectiveSourcePath.startsWith("Untitled")) {
+		tFile = plugin.app.metadataCache.getFirstLinkpathDest(normalizedFilePath, effectiveSourcePath);
+	}
+
+	// Direct path fallback when the link includes folders.
 	if (!tFile && normalizedFilePath.includes("/")) {
 		const byPath = plugin.app.vault.getAbstractFileByPath(normalizedFilePath);
 		tFile = byPath instanceof TFile ? byPath : null;
-	}
-
-	// Fall back to Obsidian's own link resolver (uses ctx.sourcePath rules).
-	if (!tFile && effectiveSourcePath && !effectiveSourcePath.startsWith("Untitled")) {
-		tFile = plugin.app.metadataCache.getFirstLinkpathDest(normalizedFilePath, effectiveSourcePath);
 	}
 
 	// Root-level file fallback: when the source note is in root, a bare filename should resolve to root.
