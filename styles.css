@@ -779,10 +779,6 @@ body .code-space-container .cm-activeLine::selection {
 	margin: 12px 0;
 	overflow: hidden;
 	background-color: var(--background-primary);
-	font-family: var(--font-monospace);
-	/* Use CSS variables for dynamic font size adjustment */
-	font-size: var(--code-space-embed-font-size, 13px);
-	line-height: var(--code-space-embed-line-height, 20px);
 }
 
 .code-embed-header {
@@ -791,9 +787,7 @@ body .code-space-container .cm-activeLine::selection {
 	align-items: center;
 	padding: 6px 12px;
 	background-color: var(--background-secondary);
-	border-bottom: 1px solid var(--background-modifier-border);
 	cursor: pointer;
-	transition: background-color 0.2s ease;
 }
 
 .code-embed-header:hover {

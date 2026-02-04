@@ -561,25 +561,50 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 
 	console.debug("Code Embed: Content loaded, length:", content.length, "lines:", lineCount, "maxLines:", maxLines);
 
-	// Preserve Obsidian's native embed chrome when possible to reduce visual "jump".
-	const maybePreservedTitle = embedEl.querySelector(".file-embed-title");
-	const preservedTitle = maybePreservedTitle instanceof HTMLElement ? maybePreservedTitle : null;
-
-	// Replace the embed content with our code embed.
+	// Replace the embed content with our custom code embed.
 	embedEl.empty();
-	embedEl.classList.add("code-space-embed");
 
-	if (preservedTitle) {
-		embedEl.appendChild(preservedTitle);
-	}
-
-	const editorContainer = embedEl.createEl("div", {
-		cls: "code-embed-editor",
+	// Create embed container
+	const embedContainer = embedEl.createDiv({
+		cls: "code-embed-container",
 	});
 
-	// Prevent default single-click navigation when interacting with the code block.
-	editorContainer.addEventListener("click", (e) => {
+	// Prevent default single-click navigation (stop propagation to Obsidian's file-embed handler)
+	embedContainer.addEventListener("click", (e) => {
 		e.stopPropagation();
+	});
+
+	const header = embedContainer.createEl("div", {
+		cls: "code-embed-header",
+		attr: { title: t("EMBED_TOOLTIP_OPEN") },
+	});
+
+	// Allow single-click on the header to open the file
+	header.addEventListener("click", (e) => {
+		e.stopPropagation();
+		e.preventDefault();
+		void plugin.app.workspace.getLeaf(false).openFile(tFile);
+	});
+
+	header.createEl("span", { cls: "code-embed-filename", text: tFile.name });
+
+	// Show line count badge
+	if (maxLines > 0 && lineCount > maxLines) {
+		header.createEl("span", {
+			cls: "code-embed-linerange",
+			text: t("EMBED_LINES_SHOWING")
+				.replace("{0}", String(maxLines))
+				.replace("{1}", String(lineCount)),
+		});
+	} else {
+		header.createEl("span", {
+			cls: "code-embed-linerange",
+			text: t("EMBED_LINES_TOTAL").replace("{0}", String(lineCount)),
+		});
+	}
+
+	const editorContainer = embedContainer.createEl("div", {
+		cls: "code-embed-editor",
 	});
 
 	// 根据行数和设置动态设置高度
@@ -592,26 +617,6 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		editorContainer.classList.add("code-embed-scrollable");
 		
 		console.debug("Code Embed: Setting dynamic max height for", maxLines, "lines");
-	}
-
-	// Restore the line count badge in the embed title for consistency with the main window.
-	const titleEl = embedEl.querySelector(".file-embed-title");
-	if (titleEl instanceof HTMLElement) {
-		titleEl.classList.add("code-embed-header");
-		const existingBadge = titleEl.querySelector(".code-embed-linerange");
-		if (existingBadge instanceof HTMLElement) existingBadge.remove();
-
-		const badgeText =
-			maxLines > 0 && lineCount > maxLines
-				? t("EMBED_LINES_SHOWING")
-						.replace("{0}", String(maxLines))
-						.replace("{1}", String(lineCount))
-				: t("EMBED_LINES_TOTAL").replace("{0}", String(lineCount));
-
-		titleEl.createEl("span", {
-			cls: "code-embed-linerange",
-			text: badgeText,
-		});
 	}
 
 	// Create the code editor
