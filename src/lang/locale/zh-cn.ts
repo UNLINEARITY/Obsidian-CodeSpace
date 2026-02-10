@@ -23,7 +23,8 @@ export default {
     SETTINGS_MAX_EMBED_LINES_PLACEHOLDER: '30',
     SETTINGS_EXTERNAL_MOUNT_NAME: '外部文件夹（符号链接/目录联接）',
     SETTINGS_EXTERNAL_MOUNT_DESC: '仅桌面端可用。通过系统符号链接或目录联接将外部文件夹挂载到当前 vault，移动端不支持。',
-
+    SETTINGS_EXTERNAL_MOUNT_ENABLE_NAME: '启用外部文件夹挂载',
+    SETTINGS_EXTERNAL_MOUNT_ENABLE_DESC: '允许使用符号链接或目录联接将外部文件夹挂载到 vault。如果不使用此功能，可以禁用以简化设置界面。',
     SETTINGS_EXTERNAL_MOUNT_DESKTOP_ONLY: '仅桌面端可用。',
     SETTINGS_EXTERNAL_MOUNT_EMPTY: '暂无外部文件夹配置。',
     SETTINGS_EXTERNAL_MOUNT_ADD: '添加外部文件夹',
@@ -33,6 +34,8 @@ export default {
     SETTINGS_EXTERNAL_MOUNT_INVALID: '请输入完整的外部路径和挂载路径。',
     SETTINGS_EXTERNAL_MOUNT_NOTICE_CREATED: '外部文件夹挂载成功。',
     SETTINGS_EXTERNAL_MOUNT_NOTICE_REMOVED: '外部文件夹已取消挂载。',
+    SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_REMOVED: '所有外部文件夹已取消挂载（配置已保留）。',
+    SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_RESTORED: '所有外部文件夹已恢复挂载。',
     SETTINGS_EXTERNAL_MOUNT_NOTICE_RELINKED: '外部文件夹重新挂载成功。',
     SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED: '外部文件夹挂载失败',
     SETTINGS_EXTERNAL_MOUNT_STATUS_LINKED: '已挂载',

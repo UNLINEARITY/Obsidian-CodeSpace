@@ -147,6 +147,8 @@ export interface CodeSpaceSettings {
 	newFileLocationMode: NewFileLocationMode;
 	// Dashboard 状态记忆
 	dashboardState: DashboardState;
+	// 是否启用外部文件夹挂载（symlink/junction）
+	enableExternalMounts: boolean;
 	externalMounts: ExternalMount[];
 	externalMountLinkType: ExternalMountLinkType;
 }
@@ -166,6 +168,7 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 		sortBy: "date",
 		sortDesc: true
 	},
+	enableExternalMounts: true,
 	externalMounts: [],
 	externalMountLinkType: "auto"
 };
@@ -307,6 +310,52 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 			.setHeading()
 			.setName(t('SETTINGS_EXTERNAL_MOUNT_NAME'))
 			.setDesc(t('SETTINGS_EXTERNAL_MOUNT_DESC'));
+
+		// 外部挂载功能总开关
+		new Setting(containerEl)
+			.setName(t('SETTINGS_EXTERNAL_MOUNT_ENABLE_NAME'))
+			.setDesc(t('SETTINGS_EXTERNAL_MOUNT_ENABLE_DESC'))
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableExternalMounts ?? true)
+					.onChange(async (value) => {
+						const previousState = this.plugin.settings.enableExternalMounts ?? true;
+						this.plugin.settings.enableExternalMounts = value;
+
+						// 关闭时自动取消所有挂载，但保留配置
+						if (previousState && !value && Platform.isDesktopApp) {
+							const mounts = this.plugin.settings.externalMounts ?? [];
+							for (const mount of mounts) {
+								try {
+									await mountManager.removeMount(mount);
+								} catch {
+									// 忽略错误，继续处理其他挂载
+								}
+							}
+							new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_REMOVED"));
+						}
+						// 重新打开时可以重新挂载（可选）
+						else if (!previousState && value && Platform.isDesktopApp) {
+							const mounts = this.plugin.settings.externalMounts ?? [];
+							for (const mount of mounts) {
+								try {
+									await mountManager.createMount(mount, this.plugin.settings.externalMountLinkType);
+								} catch {
+									// 忽略错误，继续处理其他挂载
+								}
+							}
+							new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_RESTORED"));
+						}
+
+						await this.plugin.saveSettings();
+						this.display();
+					})
+			);
+
+		// 如果外部挂载功能被禁用，不显示后续设置
+		if (!this.plugin.settings.enableExternalMounts) {
+			return;
+		}
 
 		if (!Platform.isDesktopApp) {
 			containerEl.createDiv({
