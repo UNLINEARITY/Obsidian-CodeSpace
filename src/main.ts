@@ -197,7 +197,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 		// Automatically create the outline view in the right sidebar when layout is ready
 		this.app.workspace.onLayoutReady(() => {
-			// void this.activateOutlineInSidebar(); // Disabled to respect user's previous state
+			void this.activateOutlineInSidebar();
 		});
 	}
 
