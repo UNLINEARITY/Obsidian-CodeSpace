@@ -65,6 +65,7 @@ Elegantly embed and preview code in Markdown.
 
 - **File references**: Link code files with `[[filename]]`.
 - **Code embedding**: Embed previews in Markdown with `![[filename]]`.
+- **Line ranges**: Specify start lines or line ranges to embed code snippets precisely.
 - **Quick preview**: Hover links to preview code content.
 - **Bidirectional sync**: Automatically detect and notify on external modifications.
 
