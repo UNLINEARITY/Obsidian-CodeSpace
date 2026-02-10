@@ -82,7 +82,7 @@ const readOnlyTheme = EditorView.theme({
 		textAlign: "left",
 	},
 	".cm-content": {
-		padding: "8px 0",
+		padding: "4px 0",
 		textAlign: "left",
 	},
 	".cm-focused": {
@@ -97,7 +97,7 @@ const readOnlyTheme = EditorView.theme({
 		textAlign: "left",
 	},
 	".cm-line": {
-		padding: "0 8px",
+		padding: "0 6px",
 		textAlign: "left",
 		lineHeight: "var(--code-space-embed-line-height, 20px) !important",
 	},
@@ -573,6 +573,19 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 		tFile = byPath instanceof TFile ? byPath : null;
 	}
 
+	// Final fallback: search entire vault for a file with matching name.
+	// This handles cases where drag-and-drop produces a bare filename but the file
+	// lives in a nested folder and the source note is not in the same directory.
+	if (!tFile && !normalizedFilePath.includes("/")) {
+		const allFiles = plugin.app.vault.getFiles();
+		const fileNameLower = normalizedFilePath.toLowerCase();
+		// Prefer exact match, otherwise case-insensitive match
+		tFile =
+			allFiles.find((f) => f.name === normalizedFilePath) ??
+			allFiles.find((f) => f.name.toLowerCase() === fileNameLower) ??
+			null;
+	}
+
 	if (!tFile) return;
 
 	if (lastRenderedFor && lastRenderedFor === tFile.path) {
@@ -637,14 +650,21 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		cls: "code-embed-container",
 	});
 
-	// Prevent default single-click navigation (stop propagation to Obsidian's file-embed handler)
-	embedContainer.addEventListener("click", (e) => {
-		e.stopPropagation();
-	});
-
 	const header = embedContainer.createEl("div", {
 		cls: "code-embed-header",
 		attr: { title: t("EMBED_TOOLTIP_OPEN") },
+	});
+
+	// Strictly prevent any click on the code area from opening the file.
+	// Only the header should trigger navigation.
+	embedContainer.addEventListener("click", (e) => {
+		// If click is on or inside the header, let the header handler handle it.
+		if (header.contains(e.target as Node)) {
+			return;
+		}
+		// Otherwise, prevent any navigation - only allow text selection.
+		e.stopPropagation();
+		e.preventDefault();
 	});
 
 	// Allow single-click on the header to open the file
@@ -703,6 +723,19 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	const editorContainer = embedContainer.createEl("div", {
 		cls: "code-embed-editor",
 	});
+
+	// Strictly block all clicks on the editor container from navigating to the file.
+	// Only the header should allow navigation.
+	editorContainer.addEventListener("mousedown", (e) => {
+		// Prevent default only if not selecting text (allow text selection)
+		// This blocks middle-click, drag, etc. from triggering navigation
+		e.stopPropagation();
+	}, true);
+	editorContainer.addEventListener("click", (e) => {
+		// Allow text selection but prevent navigation
+		e.stopPropagation();
+		e.preventDefault();
+	}, true);
 
 	// 根据行数和设置动态设置高度
 	if (maxLines > 0 && lineCount > maxLines) {

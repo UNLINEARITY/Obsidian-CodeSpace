@@ -773,10 +773,22 @@ body .code-space-container .cm-activeLine::selection {
 /* =================================================================
    Code Embed Styles
    ================================================================= */
+
+/* Override Obsidian's default file-embed styles to reduce padding */
+.file-embed[data-code-space-rendered-for] {
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+.file-embed[data-code-space-rendered-for] .file-embed-title {
+	display: none;
+}
+
 .code-embed-container {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 6px;
-	margin: 12px 0;
+	margin: 4px 0;
 	overflow: hidden;
 	background-color: var(--background-primary);
 }
@@ -785,9 +797,10 @@ body .code-space-container .cm-activeLine::selection {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: 6px 12px;
+	padding: 4px 10px;
 	background-color: var(--background-secondary);
 	cursor: pointer;
+	user-select: none;
 }
 
 .code-embed-header:hover {
@@ -812,6 +825,7 @@ body .code-space-container .cm-activeLine::selection {
     font-feature-settings: "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     cursor: text; /* 强制显示文本光标 */
+    pointer-events: auto; /* 允许文本选择，但阻止打开文件 */
 }
 
 .code-embed-editor.code-embed-scrollable {
