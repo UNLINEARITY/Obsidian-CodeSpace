@@ -407,8 +407,21 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	createCodeFile() {
-		// Get base path from settings
-		const basePath = this.settings.newFileFolderPath || "";
+		// Determine base path based on settings
+		let basePath = "";
+		if (this.settings.newFileLocationMode === 'current') {
+			// Use the folder of the currently active file
+			const activeFile = this.app.workspace.getActiveFile();
+			if (activeFile) {
+				const parent = activeFile.parent;
+				if (parent) {
+					basePath = parent.path;
+				}
+			}
+		} else {
+			// Use custom folder path from settings
+			basePath = this.settings.newFileFolderPath || "";
+		}
 
 		// 打开创建文件模态框
 		new CreateCodeFileModal(this.app, basePath, (fullPath: string) => {

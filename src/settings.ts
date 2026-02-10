@@ -128,6 +128,8 @@ export interface DashboardState {
 	sortDesc: boolean;
 }
 
+export type NewFileLocationMode = 'custom' | 'current';
+
 export interface CodeSpaceSettings {
 	// 用户自定义的扩展名列表
 	extensions: string;
@@ -141,6 +143,8 @@ export interface CodeSpaceSettings {
 	maxEmbedLines: number;
 	// 指定的文件夹路径
 	newFileFolderPath: string;
+	// 新文件存放位置模式：'custom' 使用指定路径，'current' 使用当前文件所在文件夹
+	newFileLocationMode: NewFileLocationMode;
 	// Dashboard 状态记忆
 	dashboardState: DashboardState;
 	externalMounts: ExternalMount[];
@@ -154,6 +158,7 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	embedFontSize: 15,
 	maxEmbedLines: 20, // 默认最大显示 30 行
 	newFileFolderPath: '',
+	newFileLocationMode: 'custom',
 	dashboardState: {
 		searchQuery: "",
 		filterExt: [],
@@ -259,27 +264,42 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(t('SETTINGS_NEW_FILE_LOCATION_NAME'))
 			.setDesc(t('SETTINGS_NEW_FILE_LOCATION_DESC'))
-			.addText((text) => {
-				text
-					.setPlaceholder(t('SETTINGS_NEW_FILE_FOLDER_PLACEHOLDER'))
-					.setValue(this.plugin.settings.newFileFolderPath)
-					.onChange(async (value) => {
-						this.plugin.settings.newFileFolderPath = value;
-						await this.plugin.saveSettings();
-					});
-			})
-			.addButton((button) => {
-				button
-					.setButtonText(t('SETTINGS_NEW_FILE_LOCATION_BUTTON'))
-					.onClick(() => {
-						new FolderSuggestModal(this.app, (folder) => {
-							this.plugin.settings.newFileFolderPath = folder.path;
-							void this.plugin.saveSettings();
-							// Refresh display to show the new value
-							this.display();
-						}).open();
-					});
+			.addDropdown((dropdown) => {
+				dropdown.addOption('custom', t('SETTINGS_NEW_FILE_LOCATION_MODE_CUSTOM'));
+				dropdown.addOption('current', t('SETTINGS_NEW_FILE_LOCATION_MODE_CURRENT'));
+				dropdown.setValue(this.plugin.settings.newFileLocationMode);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.newFileLocationMode = value as NewFileLocationMode;
+					await this.plugin.saveSettings();
+					this.display();
+				});
 			});
+
+		if (this.plugin.settings.newFileLocationMode === 'custom') {
+			new Setting(containerEl)
+				.setName(t('SETTINGS_NEW_FILE_CUSTOM_PATH_NAME'))
+				.setDesc(t('SETTINGS_NEW_FILE_CUSTOM_PATH_DESC'))
+				.addText((text) => {
+					text
+						.setPlaceholder(t('SETTINGS_NEW_FILE_FOLDER_PLACEHOLDER'))
+						.setValue(this.plugin.settings.newFileFolderPath)
+						.onChange(async (value) => {
+							this.plugin.settings.newFileFolderPath = value;
+							await this.plugin.saveSettings();
+						});
+				})
+				.addButton((button) => {
+					button
+						.setButtonText(t('SETTINGS_NEW_FILE_LOCATION_BUTTON'))
+						.onClick(() => {
+							new FolderSuggestModal(this.app, (folder) => {
+								this.plugin.settings.newFileFolderPath = folder.path;
+								void this.plugin.saveSettings();
+								this.display();
+							}).open();
+						});
+				});
+		}
 
 		const mountManager = new ExternalMountManager(this.app);
 
