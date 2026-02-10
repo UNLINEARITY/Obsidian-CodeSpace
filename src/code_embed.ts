@@ -142,8 +142,6 @@ class CodeEmbedChild extends MarkdownRenderChild {
 		const isDark = this.ownerDoc.body.classList.contains("theme-dark");
 		const langExt = LANGUAGE_PACKAGES[this.extension] || [];
 
-		console.debug("Code Embed: CodeEmbedChild.onload - extension:", this.extension, "startLine:", this.startLine);
-
 		const state = EditorState.create({
 			doc: this.content,
 			extensions: [
@@ -335,8 +333,6 @@ function scheduleProcessCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin,
 }
 
 export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
-	console.debug("Code Embed: Registering code embed processor...");
-
 	// Install observer for the main window document to catch any embeds that the post processor misses.
 	// This is necessary because registerMarkdownPostProcessor may be called before the embed element
 	// is attached to the workspace leaf, causing resolveSourcePathForEmbed to fail.
@@ -348,13 +344,9 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	// Use Obsidian's official markdown post processor so we always get a correct ctx.sourcePath.
 	// This avoids races where MutationObserver runs before embed link attributes are stable.
 	plugin.registerMarkdownPostProcessor((el, ctx) => {
-		console.debug("Code Embed: Post processor called!", "element:", el.className, "ctx.sourcePath:", ctx.sourcePath);
-
 		// Obsidian renders embedded code files as div.file-embed (edit mode) or span.file-embed (reading mode)
 		// with div.file-embed-title
 		const embeds = el.querySelectorAll('.file-embed');
-
-		console.debug("Code Embed: Processing element", el.className, "found", embeds.length, "file-embed elements");
 
 		for (let i = 0; i < embeds.length; i++) {
 			const embedEl = embeds[i] as HTMLElement;
@@ -372,17 +364,13 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	// Reading mode uses a different rendering engine and may not trigger post processors reliably.
 	plugin.registerEvent(
 		plugin.app.workspace.on("layout-change", () => {
-			console.debug("Code Embed: layout-change triggered");
-			
 			// Scan all markdown leaves for unprocessed embeds
 			const leaves = plugin.app.workspace.getLeavesOfType("markdown");
-			console.debug("Code Embed: Found", leaves.length, "markdown leaves");
-			
+
 			for (const leaf of leaves) {
 				const view = leaf.view as unknown as { containerEl?: HTMLElement; file?: TFile; contentEl?: HTMLElement } | null;
 				const sourcePath = view?.file?.path ?? "";
-				console.debug("Code Embed: Processing leaf, sourcePath:", sourcePath);
-				
+
 				// Try multiple container selectors for both edit and reading modes
 				const possibleContainers = [
 					view?.contentEl,                                    // Reading mode
@@ -390,23 +378,20 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 					view?.containerEl?.querySelector(".markdown-source-view"),   // Edit mode source
 					view?.containerEl,                                  // Fallback
 				];
-				
+
 				for (const container of possibleContainers) {
 					if (!container) continue;
-					
+
 					// Look for both div.file-embed (edit mode) and span.file-embed (reading mode)
 					const embeds = (container as HTMLElement).querySelectorAll(".file-embed");
-					console.debug("Code Embed: Found", embeds.length, "embeds in container", (container as HTMLElement).className || "(no class)");
-					
+
 					for (const embed of Array.from(embeds)) {
 						const embedEl = embed as HTMLElement;
 						// Check if already processed
 						if (embedEl.querySelector(".code-embed-container")) {
-							console.debug("Code Embed: Skipping already processed embed");
 							continue;
 						}
-						
-						console.debug("Code Embed: Scheduling process for embed, classes:", embedEl.className);
+
 						if (sourcePath) {
 							scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
 						}
@@ -468,7 +453,7 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	const extractPathFromCandidate = (value: string | null | undefined): string => {
 		if (!value) return "";
 		let trimmed = value.trim();
-		if (!trimmed || trimmed.startsWith("#")) return "";
+		if (!trimmed) return "";
 
 		// Handle Obsidian/app URLs and extract the path portion when possible.
 		if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
@@ -476,10 +461,17 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 				const url = new URL(trimmed);
 				if (url.protocol === "obsidian:" || url.protocol === "app:") {
 					const pathParam = url.searchParams.get("path") ?? url.searchParams.get("file");
-					if (pathParam) return stripVaultPrefix(decodeURIComponent(pathParam));
+					if (pathParam) {
+						// Preserve hash fragment (line numbers) if present
+						const hashPart = url.hash || "";
+						return stripVaultPrefix(decodeURIComponent(pathParam)) + hashPart;
+					}
 
 					const pathFromApp = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
-					if (pathFromApp && pathFromApp !== "open") return stripVaultPrefix(pathFromApp);
+					if (pathFromApp && pathFromApp !== "open") {
+						const hashPart = url.hash || "";
+						return stripVaultPrefix(pathFromApp) + hashPart;
+					}
 				}
 
 				// Ignore other URL schemes.
@@ -553,8 +545,6 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 			: "";
 	const isSourceRoot = sourceDir === "";
 
-	console.debug("Code Embed: Processing file-embed", linkText, "title:", titleEl?.textContent, "sourcePath:", effectiveSourcePath);
-
 	if (!normalizedFilePath) return;
 
 	// Try to find the file using multiple methods
@@ -592,11 +582,8 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 
 	// Check if it's a TFile (not a folder)
 	if (!tFile.extension) {
-		console.debug("Code Embed: Not a file", tFile.path);
 		return;
 	}
-
-	console.debug("Code Embed: File found", tFile.path, "extension:", tFile.extension);
 
 	const ext = tFile.extension.toLowerCase();
 	const extensions = plugin.settings.extensions
@@ -604,14 +591,9 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 		.map((s: string) => s.trim().toLowerCase())
 		.filter((s: string) => s);
 
-	console.debug("Code Embed: Checking extension", ext, "against", extensions);
-
 	if (!extensions.includes(ext)) {
-		console.debug("Code Embed: Extension not supported", ext);
 		return;
 	}
-
-	console.debug("Code Embed: Reading file content...");
 
 	// Read file content and render
 	await renderCodeEmbed(embedEl, tFile, plugin, renderToken, startLine, endLine);
@@ -621,8 +603,6 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 }
 
 async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeSpacePlugin, renderToken: number, startLine: number = 0, endLine: number = 0) {
-	console.debug("Code Embed: Reading file content...");
-
 	// Read file content
 	const fullContent = await plugin.app.vault.read(tFile);
 	if (embedRenderTokens.get(embedEl) !== renderToken) return;
@@ -648,8 +628,6 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	const lineCount = content.split('\n').length;
 	// 范围模式下忽略 maxEmbedLines 设置；否则使用设置值
 	const maxLines = useRangeMode ? 0 : (plugin.settings.maxEmbedLines || 0);
-
-	console.debug("Code Embed: Content loaded, length:", content.length, "lines:", lineCount, "maxLines:", maxLines);
 
 	// Replace the embed content with our custom code embed.
 	embedEl.empty();
@@ -734,8 +712,6 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		// +6px buffer for top/bottom padding.
 		editorContainer.style.maxHeight = `calc(var(--code-space-embed-line-height, 20px) * ${maxLines} + 6px)`;
 		editorContainer.classList.add("code-embed-scrollable");
-		
-		console.debug("Code Embed: Setting dynamic max height for", maxLines, "lines");
 	}
 
 	// Always render both CodeMirror (for interactive viewing) and static fallback (for PDF/print)
