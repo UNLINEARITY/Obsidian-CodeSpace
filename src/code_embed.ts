@@ -129,7 +129,8 @@ class CodeEmbedChild extends MarkdownRenderChild {
 		containerEl: HTMLElement,
 		private content: string,
 		private extension: string,
-		private plugin: CodeSpacePlugin
+		private plugin: CodeSpacePlugin,
+		private startLine: number = 1
 	) {
 		super(containerEl);
 		this.languageCompartment = new Compartment();
@@ -141,7 +142,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 		const isDark = this.ownerDoc.body.classList.contains("theme-dark");
 		const langExt = LANGUAGE_PACKAGES[this.extension] || [];
 
-		console.debug("Code Embed: CodeEmbedChild.onload - extension:", this.extension);
+		console.debug("Code Embed: CodeEmbedChild.onload - extension:", this.extension, "startLine:", this.startLine);
 
 		const state = EditorState.create({
 			doc: this.content,
@@ -149,7 +150,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 				this.languageCompartment.of(langExt),
 				this.themeCompartment.of(syntaxHighlighting(isDark ? darkHighlightStyle : lightHighlightStyle)),
 				readOnlyTheme,
-				lineNumbers(),
+				lineNumbers({ formatNumber: (n) => String(n + this.startLine - 1) }),
 				EditorView.editable.of(false),
 			],
 		});
@@ -520,7 +521,29 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 
 	const hashIndex = linkText.indexOf("#");
 	const filePath = hashIndex !== -1 ? linkText.substring(0, hashIndex) : linkText;
+	const hashPart = hashIndex !== -1 ? linkText.substring(hashIndex + 1) : "";
 	const hadLeadingSlash = /^[\\/]/.test(filePath.trim());
+
+	// Parse line number from hash (e.g., "#20", "#L20", "#20-40", "#L20-L40")
+	let startLine = 0;
+	let endLine = 0;
+	if (hashPart) {
+		// Try range pattern first: "20-40" or "L20-L40" or "L20-40"
+		const rangeMatch = hashPart.match(/^L?(\d+)-L?(\d+)$/i);
+		if (rangeMatch && rangeMatch[1] && rangeMatch[2]) {
+			startLine = parseInt(rangeMatch[1], 10);
+			endLine = parseInt(rangeMatch[2], 10);
+			if (startLine < 1) startLine = 1;
+			if (endLine < startLine) endLine = startLine;
+		} else {
+			// Single line pattern: "20" or "L20"
+			const lineMatch = hashPart.match(/^L?(\d+)$/i);
+			if (lineMatch && lineMatch[1]) {
+				startLine = parseInt(lineMatch[1], 10);
+				if (startLine < 1) startLine = 1;
+			}
+		}
+	}
 
 	// Normalize to vault-style paths.
 	const normalizedFilePath = normalizePath(filePath.replace(/\\/g, "/")).trim();
@@ -591,23 +614,40 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 	console.debug("Code Embed: Reading file content...");
 
 	// Read file content and render
-	await renderCodeEmbed(embedEl, tFile, plugin, renderToken);
+	await renderCodeEmbed(embedEl, tFile, plugin, renderToken, startLine, endLine);
 	if (embedRenderTokens.get(embedEl) !== renderToken) return;
-	embedEl.setAttribute("data-code-space-rendered-for", tFile.path);
+	const rangeAttr = startLine > 0 ? (endLine > 0 ? `#L${startLine}-L${endLine}` : `#L${startLine}`) : "";
+	embedEl.setAttribute("data-code-space-rendered-for", tFile.path + rangeAttr);
 }
 
-async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeSpacePlugin, renderToken: number) {
+async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeSpacePlugin, renderToken: number, startLine: number = 0, endLine: number = 0) {
 	console.debug("Code Embed: Reading file content...");
 
 	// Read file content
-	const content = await plugin.app.vault.read(tFile);
+	const fullContent = await plugin.app.vault.read(tFile);
 	if (embedRenderTokens.get(embedEl) !== renderToken) return;
 
 	const ext = tFile.extension.toLowerCase();
 
+	// 处理起始行号：截取从起始行开始的内容
+	let content = fullContent;
+	const fullLineCount = fullContent.split('\n').length;
+	const effectiveStartLine = startLine > 0 ? Math.min(startLine, fullLineCount) : 1;
+	// 如果指定了 endLine，则生效；否则为 0 表示不限制
+	const effectiveEndLine = endLine > 0 ? Math.min(endLine, fullLineCount) : 0;
+	// 是否使用范围模式（忽略 maxEmbedLines 限制）
+	const useRangeMode = effectiveEndLine > 0 && effectiveEndLine >= effectiveStartLine;
+
+	if (effectiveStartLine > 1 || useRangeMode) {
+		const lines = fullContent.split('\n');
+		const endIndex = useRangeMode ? effectiveEndLine : fullLineCount;
+		content = lines.slice(effectiveStartLine - 1, endIndex).join('\n');
+	}
+
 	// 计算文件的行数
 	const lineCount = content.split('\n').length;
-	const maxLines = plugin.settings.maxEmbedLines || 0;
+	// 范围模式下忽略 maxEmbedLines 设置；否则使用设置值
+	const maxLines = useRangeMode ? 0 : (plugin.settings.maxEmbedLines || 0);
 
 	console.debug("Code Embed: Content loaded, length:", content.length, "lines:", lineCount, "maxLines:", maxLines);
 
@@ -639,7 +679,36 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	header.createEl("span", { cls: "code-embed-filename", text: tFile.name });
 
 	// Show line count badge
-	if (maxLines > 0 && lineCount > maxLines) {
+	if (useRangeMode) {
+		// 范围模式：显示精确的行范围（如 "Lines 20-40 of 100"）
+		header.createEl("span", {
+			cls: "code-embed-linerange",
+			text: t("EMBED_LINES_RANGE")
+				.replace("{0}", String(effectiveStartLine))
+				.replace("{1}", String(effectiveStartLine + lineCount - 1))
+				.replace("{2}", String(fullLineCount)),
+		});
+	} else if (effectiveStartLine > 1) {
+		// 起始行模式（显示到末尾）
+		if (maxLines > 0 && lineCount > maxLines) {
+			header.createEl("span", {
+				cls: "code-embed-linerange",
+				text: t("EMBED_LINES_RANGE_SHOWING")
+					.replace("{0}", String(effectiveStartLine))
+					.replace("{1}", String(effectiveStartLine + lineCount - 1))
+					.replace("{2}", String(fullLineCount))
+					.replace("{3}", String(maxLines)),
+			});
+		} else {
+			header.createEl("span", {
+				cls: "code-embed-linerange",
+				text: t("EMBED_LINES_RANGE")
+					.replace("{0}", String(effectiveStartLine))
+					.replace("{1}", String(effectiveStartLine + lineCount - 1))
+					.replace("{2}", String(fullLineCount)),
+			});
+		}
+	} else if (maxLines > 0 && lineCount > maxLines) {
 		header.createEl("span", {
 			cls: "code-embed-linerange",
 			text: t("EMBED_LINES_SHOWING")
@@ -679,7 +748,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	code.textContent = content;
 
 	// Create the code editor (interactive version)
-	const child = new CodeEmbedChild(editorContainer, content, ext, plugin);
+	const child = new CodeEmbedChild(editorContainer, content, ext, plugin, effectiveStartLine);
 
 	// Manually call onload since addChild is not available here
 	child.onload();

@@ -115,6 +115,8 @@ export default {
     EMBED_TOOLTIP_OPEN: '点击打开文件',
     EMBED_LINES_SHOWING: '显示 {0} / {1} 行',
     EMBED_LINES_TOTAL: '共 {0} 行',
+    EMBED_LINES_RANGE: '第 {0}-{1} 行 / 共 {2} 行',
+    EMBED_LINES_RANGE_SHOWING: '第 {0}-{1} 行 / 共 {2} 行（显示 {3} 行）',
 
     // Outline
     OUTLINE_TITLE: '代码大纲',

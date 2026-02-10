@@ -114,6 +114,8 @@ export default {
     EMBED_TOOLTIP_OPEN: 'Click to open file',
     EMBED_LINES_SHOWING: 'Showing {0} of {1} lines',
     EMBED_LINES_TOTAL: '{0} lines',
+    EMBED_LINES_RANGE: 'Lines {0}-{1} of {2}',
+    EMBED_LINES_RANGE_SHOWING: 'Lines {0}-{1} of {2} (showing {3})',
 
     // Outline
     OUTLINE_TITLE: 'Code outline',
