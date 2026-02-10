@@ -1,7 +1,7 @@
 {
 	"id": "code-space",
 	"name": "Code Space",
-	"version": "1.7.0",
+	"version": "1.8.0",
 	"minAppVersion": "0.15.0",
 	"description": "Professional code file management with visual dashboard, syntax highlighting editor, and Markdown embedding.",
 	"author": "unlinearity",
