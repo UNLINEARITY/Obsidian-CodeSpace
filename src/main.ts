@@ -261,8 +261,16 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	onunload() {
-		// 卸载时清理大纲视图，防止重载插件时重复创建
+		// 插件卸载时保存所有打开的 Code Space 编辑器（不阻塞卸载流程）
 		const { workspace } = this.app;
+		const codeLeaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_SPACE);
+		for (const leaf of codeLeaves) {
+			if (leaf.view instanceof CodeSpaceView) {
+				void leaf.view.save();
+			}
+		}
+
+		// 卸载时清理大纲视图，防止重载插件时重复创建
 		const outlineLeaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_OUTLINE);
 		outlineLeaves.forEach(leaf => leaf.detach());
 	}

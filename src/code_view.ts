@@ -1116,6 +1116,14 @@ export class CodeSpaceView extends TextFileView {
 		// Mobile-only: mitigate keyboard/viewport resize glitches.
 		this.setupMobileViewportFix(root);
 
+		// 监听窗口关闭事件，自动保存未保存的内容
+		this.registerDomEvent(window, "beforeunload", () => {
+			if (this.isDirty && this.file) {
+				console.debug("Code Space: Auto-saving before window unload...");
+				void this.save();
+			}
+		});
+
 		// 添加标题栏搜索按钮
 		this.addAction("search", t('HEADER_ACTION_SEARCH'), () => {
 			this.toggleSearchPanel();
@@ -1233,7 +1241,12 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	async onClose(): Promise<void> {
-		await Promise.resolve(); // Required for async function
+		// 视图关闭前自动保存（如果内容已修改）
+		if (this.isDirty && this.file) {
+			console.debug("Code Space: Auto-saving on close...");
+			await this.save();
+		}
+
 		this.cleanupMobileViewportFix?.();
 		this.cleanupMobileViewportFix = undefined;
 		this.rootEl = undefined;
