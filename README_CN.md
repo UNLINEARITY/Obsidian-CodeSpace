@@ -21,11 +21,12 @@
 
 Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space 插件为解决这一问题而生。
 
-**"Space" 的三层含义：**
+**"Space" 的四层含义：**
 
 1. **管理空间**：为代码文件提供统一索引和管理空间，通过可视化面板浏览所有代码文件
 2. **编辑空间**：进入代码文件内部，提供专业的代码查看和编辑环境
 3. **嵌入空间**：与 Obsidian 原生功能深度融合，支持代码文件的引用和嵌入式预览
+4. **挂载空间**：通过系统符号链接/目录联接将外部文件夹挂载到 Vault 内，实现跨项目代码管理
 
 
 <p align="center">
@@ -61,7 +62,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 ### 3. Obsidian 原生嵌入空间
 
-在 Markdown 中优雅地嵌入和预览代码
+在 Markdown 中优雅地嵌入和预览代码，允许你在markdown中嵌入指定代码文件的特定片段：
 
 - **文件引用**：使用 `[[文件名]]` 语法链接代码文件
 - **代码嵌入**：使用 `![[文件名]]` 在 Markdown 中嵌入预览
@@ -88,7 +89,28 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - 若结束行小于起始行，自动调整为单行显示
 - 行号显示与原始文件保持一致
 
+### 4. 外部挂载空间（仅桌面端）
 
+突破 Vault 边界，管理外部项目代码。
+
+- **符号链接/目录联接**：通过创建符号链接（macOS/Linux）或目录联接（Windows）将外部文件夹挂载到 Vault 内
+- **无缝集成**：挂载的文件夹中的代码文件会出现在仪表盘，支持完整的 Code Space 功能（编辑、嵌入、大纲等）
+- **双向同步**：外部文件的修改会自动同步到 Obsidian，Obsidian 内的编辑也会写回原始位置
+- **跨项目协作**：无需将项目代码复制到 Vault，直接管理分布在各处的代码仓库
+
+<p align='center'><img src='img\pre7.png' width=95%></p> 
+
+**使用方式**：
+1. 在 Vault 内创建指向外部文件夹的符号链接/目录联接
+2. 在 **设置 > Code Space > 外部文件夹** 中配置管理规则
+3. Code Space 会自动识别并索引挂载文件夹中的代码文件
+
+**重要提示！**
+- **仅桌面端支持**：由于移动端的沙盒限制，外部挂载在 iOS/Android 上不可用
+- **安全风险**：外部挂载使插件能够访问 Vault 外的文件系统，请**仅挂载可信目录**
+- **性能问题**：请不要滥用此功能，你可以管理轻量的仓库，或进行多仓库联动，但是请不要随意挂载太多的文件或比较大型的文件
+- **路径稳定性**：外部文件夹的移动或重命名会导致挂载失效，需重新配置
+- **同步问题**：如果外部文件夹位于云同步目录（如 Dropbox、OneDrive），请确保 Obsidian 和外部文件夹的同步状态一致，避免冲突
 
 ---
 ## 配置选项
@@ -104,21 +126,58 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 ## 支持的语言（可以任意扩展）
 
+### 默认支持的扩展名
+
 | 语言 | 扩展名 |
 |------|--------|
 | Python | `.py` |
-| C/C++ | `.c`, `.cpp`, `.h`, `.hpp` |
-| JavaScript/TypeScript | `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs` |
-| Web 技术 | `.html`, `.htm`, `.css`, `.scss`, `.sass`, `.less` |
-| 系统编程 | `.rs`, `.go` |
-| 数据 | `.sql`, `.json`, `.yaml`, `.yml`, `.xml` |
-| 脚本 | `.php`, `.rb`, `.sh` |
+| C/C++ | `.c`, `.cpp`, `.h`, `.hpp`, `.cc`, `.cxx` |
+| JavaScript/TypeScript | `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs`, `.json` |
+| Web 技术 | `.html`, `.htm`, `.xhtml`, `.css`, `.scss`, `.sass`, `.less` |
+| 系统编程 | `.rs`, `.go`, `.java`, `.cs` |
+| 数据/配置 | `.sql`, `.yaml`, `.yml`, `.xml` |
+| 脚本 | `.php`, `.r` |
 
 **更多语言可通过插件设置添加，插件支持任意后缀的文件管理！**
-- 如果是代码文件，会通过Code Space的代码界面打开
-- 如果是二进制文件（例如图片或 pdf ,会调用 Obsidian 原生的查看器进行打开，你甚至可以用来管理 pdf 等附件）
+- 如果是代码文件，会通过 Code Space 的代码界面打开
+- 如果是二进制文件（例如图片或 PDF），会调用 Obsidian 原生的查看器进行打开，你甚至可以用来管理 PDF 等附件 
 
 <p align='center'><img src='img\pre4.png' width=95%></p> 
+
+### 可通过设置手动添加的扩展名（同样支持语法高亮）
+
+在 **设置 > Code Space > 管理的扩展名** 中添加以下扩展名即可启用：
+
+| 语言 | 扩展名 | 复用的高亮器 |
+|------|--------|-------------|
+| **XML 家族** | `.svg`, `.xsd`, `.xsl`, `.xslt`, `.wsdl`, `.plist`, `.csproj`, `.vcxproj`, `.props`, `.targets`, `.config` | XML |
+| | `.urdf`, `.xacro` | XML |
+| **C/C++ 家族** | `.ino`, `.pde`, `.nut` | C/C++ |
+| | `.cu`, `.cuh`, `.glsl`, `.vert`, `.frag`, `.hlsl`, `.mm`, `.swift` | C/C++ |
+| **Java 家族** | `.kt`, `.kts`, `.scala`, `.groovy`, `.gradle` | Java |
+| **前端框架** | `.vue`, `.svelte`, `.astro` | JavaScript |
+| **JSON 变体** | `.json5`, `.jsonc` | JavaScript |
+| **Python 家族** | `.pyx`, `.pxd`, `.pxi`, `.ipy` | Python |
+| **配置文件** | `.toml`, `.ini`, `.cfg`, `.conf` | YAML |
+| **Shell 脚本** | `.sh`, `.bash`, `.zsh` | Shell |
+| **PowerShell** | `.ps1`, `.psm1`, `.psd1` | PowerShell |
+| **其他语言** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.rb`, `.erb` | 专用 |
+
+### 二进制文件支持（Obsidian 原生打开）
+
+以下文件同样可以在 Code Space 的仪表盘进行管理（重命名、移动、删除等操作），不会被 Code Space 编辑器打开，使用系统查看器或 Obsidian 原生的查看器。
+
+| 类型 | 扩展名 |
+|------|--------|
+| 图片 | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.bmp`, `.ico`, `.tiff`, `.psd` |
+| 文档 | `.pdf` |
+| 音频 | `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac`, `.m4a`, `.wma` |
+| 视频 | `.mp4`, `.avi`, `.mkv`, `.mov`, `.wmv`, `.flv`, `.webm`, `.m4v` |
+| 压缩文件 | `.zip`, `.rar`, `.7z`, `.tar`, `.gz`, `.bz2`, `.xz` |
+| Office | `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` |
+| 其他 | `.exe`, `.dll`, `.so`, `.dylib`, `.bin`, `.dat` |
+
+
 
 
 
