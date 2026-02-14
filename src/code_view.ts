@@ -17,6 +17,7 @@ import { java } from "@codemirror/lang-java";
 import { go } from "@codemirror/lang-go";
 import { yaml } from "@codemirror/lang-yaml";
 import { xml } from "@codemirror/lang-xml";
+import { r } from "codemirror-lang-r";
 import { tags } from "@lezer/highlight";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
@@ -482,6 +483,8 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'yml': yaml(),
 	// XML
 	'xml': xml(),
+	// R
+	'r': r(),
 };
 
 // 1. 定义亮色模式高亮 (VS Code Light 风格)
@@ -705,7 +708,7 @@ export class CodeSpaceView extends TextFileView {
 		}
 
 		// 默认支持常见的代码文件扩展名
-		return ['py', 'c', 'cpp', 'h', 'hpp', 'js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'sql', 'php'].includes(ext);
+		return ['py', 'c', 'cpp', 'h', 'hpp', 'js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'sql', 'php', 'r'].includes(ext);
 	}
 
 	constructor(leaf: WorkspaceLeaf) {
