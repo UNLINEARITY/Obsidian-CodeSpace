@@ -1,7 +1,15 @@
 import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment, Extension, Prec, Transaction } from "@codemirror/state";
-import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
+import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit, StreamLanguage } from "@codemirror/language";
+import { shell } from "@codemirror/legacy-modes/mode/shell";
+import { powerShell } from "@codemirror/legacy-modes/mode/powershell";
+import { cmake } from "@codemirror/legacy-modes/mode/cmake";
+import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
+import { diff } from "@codemirror/legacy-modes/mode/diff";
+import { lua } from "@codemirror/legacy-modes/mode/lua";
+import { perl } from "@codemirror/legacy-modes/mode/perl";
+import { ruby } from "@codemirror/legacy-modes/mode/ruby";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
 import { SearchQuery, highlightSelectionMatches } from "@codemirror/search";
@@ -485,6 +493,75 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'xml': xml(),
 	// R
 	'r': r(),
+	// XML-based formats (reuse xml highlighter, not in default extensions)
+	'urdf': xml(),   // ROS URDF robot description
+	'xacro': xml(),  // ROS Xacro macro
+	'svg': xml(),    // Scalable Vector Graphics
+	'xsd': xml(),    // XML Schema Definition
+	'xsl': xml(),    // XML Stylesheet
+	'xslt': xml(),   // XSL Transformations
+	'wsdl': xml(),   // Web Services Description
+	'plist': xml(),  // Property List (macOS/iOS)
+	'csproj': xml(), // C# Project file
+	'vcxproj': xml(),// Visual C++ Project
+	'props': xml(),  // MSBuild properties
+	'targets': xml(),// MSBuild targets
+	'config': xml(), // Generic config
+	// C/C++ family (reuse cpp highlighter)
+	'ino': cpp(),    // Arduino sketches
+	'pde': cpp(),    // Processing sketches
+	'nut': cpp(),    // Squirrel scripting
+	'cu': cpp(),     // CUDA source
+	'cuh': cpp(),    // CUDA header
+	'glsl': cpp(),   // OpenGL Shading Language
+	'vert': cpp(),   // Vertex shader
+	'frag': cpp(),   // Fragment shader
+	'hlsl': cpp(),   // High Level Shading Language
+	'mm': cpp(),     // Objective-C++
+	'swift': cpp(),  // Swift (C-like syntax)
+	// Java family (reuse java highlighter)
+	'kt': java(),    // Kotlin
+	'kts': java(),   // Kotlin script
+	'scala': java(), // Scala
+	'groovy': java(),// Groovy
+	'gradle': java(),// Gradle build script
+	// JavaScript/TypeScript family (reuse javascript highlighter)
+	'json5': javascript(),  // JSON5
+	'jsonc': javascript(),  // JSON with comments
+	'vue': javascript(),    // Vue single file component
+	'svelte': javascript(), // Svelte component
+	'astro': javascript(),  // Astro framework
+	// Python family (reuse python highlighter)
+	'pyx': python(),  // Cython
+	'pxd': python(),  // Cython declaration
+	'pxi': python(),  // Cython include
+	'ipy': python(),  // IPython script
+	// Config/Data formats (reuse yaml highlighter)
+	'toml': yaml(),   // TOML config
+	'ini': yaml(),    // INI config
+	'cfg': yaml(),    // Generic config
+	'conf': yaml(),   // Generic config
+	// Shell scripts (using legacy-modes StreamLanguage)
+	'sh': StreamLanguage.define(shell),
+	'bash': StreamLanguage.define(shell),
+	'zsh': StreamLanguage.define(shell),
+	'ps1': StreamLanguage.define(powerShell),
+	'psm1': StreamLanguage.define(powerShell),
+	'psd1': StreamLanguage.define(powerShell),
+	// Build systems (using legacy-modes)
+	'cmake': StreamLanguage.define(cmake),
+	'dockerfile': StreamLanguage.define(dockerFile),
+	// Other languages (using legacy-modes)
+	'diff': StreamLanguage.define(diff),
+	'patch': StreamLanguage.define(diff),
+	'lua': StreamLanguage.define(lua),
+	'pl': StreamLanguage.define(perl),
+	'pm': StreamLanguage.define(perl),
+	'rb': StreamLanguage.define(ruby),
+	'erb': StreamLanguage.define(ruby),
+	// Plain text (no highlighting)
+	'md': [],
+	'txt': [],
 };
 
 // 1. 定义亮色模式高亮 (VS Code Light 风格)
