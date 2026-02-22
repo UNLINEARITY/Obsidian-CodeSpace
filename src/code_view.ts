@@ -1054,23 +1054,38 @@ export class CodeSpaceView extends TextFileView {
 	async onOpen(): Promise<void> {
 		await Promise.resolve(); // Required for async function
 
-		// 从设置中初始化字体大小
-		const plugin = this.getPlugin();
-		if (plugin && plugin.settings) {
-			this.fontSize = plugin.settings.editorFontSize || 16;
-		}
+		// Use requestAnimationFrame to ensure DOM is ready, especially after "Move to New Window"
+		// which may recreate the view before the container structure is fully ready.
+		const initEditor = () => {
+			// 从设置中初始化字体大小
+			const plugin = this.getPlugin();
+			if (plugin && plugin.settings) {
+				this.fontSize = plugin.settings.editorFontSize || 16;
+			}
 
-		const container = this.containerEl.children[1];
-		if (!container) return;
-		container.empty();
+			const container = this.containerEl.children[1];
+			if (!container) {
+				console.warn("Code Space: Container not ready, retrying...");
+				// Retry after a short delay if container is not ready yet
+				requestAnimationFrame(initEditor);
+				return;
+			}
+			container.empty();
 
-		const root = container.createDiv({ cls: "code-space-container" });
-		this.rootEl = root;
+			const root = container.createDiv({ cls: "code-space-container" });
+			this.rootEl = root;
 
-		// Debug: Log file extension and language extension
-		const ext = this.file?.extension.toLowerCase();
-		console.debug("Code Space: Opening file", this.file?.name, "with extension:", ext);
+			// Debug: Log file extension and language extension
+			const ext = this.file?.extension.toLowerCase();
+			console.debug("Code Space: Opening file", this.file?.name, "with extension:", ext);
 
+			this.initCodeMirror(root);
+		};
+
+		requestAnimationFrame(initEditor);
+	}
+
+	private initCodeMirror(root: HTMLElement): void {
 		const baseExtensions = [
 			baseTheme,
 			this.fontSizeCompartment.of(this.getFontSizeExtension()), // 字体大小管理
@@ -1170,8 +1185,12 @@ export class CodeSpaceView extends TextFileView {
 
 		// 创建自定义搜索面板
 		this.searchPanel = new CustomSearchPanel(this.editorView, root);
+
+		// Get the window reference for the view's document (handles "Move to New Window" correctly)
+		const viewWindow = root.ownerDocument.defaultView ?? window;
+
 		// 兜底拦截 Ctrl/Cmd+F/H，避免被全局搜索抢占（仅限 Code Space 编辑器）
-		this.registerDomEvent(window, "keydown", (event: KeyboardEvent) => {
+		this.registerDomEvent(viewWindow, "keydown", (event: KeyboardEvent) => {
 			if (event.isComposing) return;
 			if (!(event.ctrlKey || event.metaKey)) return;
 
@@ -1197,7 +1216,7 @@ export class CodeSpaceView extends TextFileView {
 		this.setupMobileViewportFix(root);
 
 		// 监听窗口关闭事件，自动保存未保存的内容
-		this.registerDomEvent(window, "beforeunload", () => {
+		this.registerDomEvent(viewWindow, "beforeunload", () => {
 			if (this.isDirty && this.file) {
 				console.debug("Code Space: Auto-saving before window unload...");
 				void this.save();
