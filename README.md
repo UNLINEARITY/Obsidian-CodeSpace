@@ -1,7 +1,7 @@
 # Code Space
 
 <h1 align="center">
-    Professional code file management for Obsidian
+    Professional code file support for Obsidian
     <p align='center'><img src='img\Code.webp' width=80%></p> 
     <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
     <img alt="GitHub stars" src="https://img.shields.io/github/stars/unlinearity/Obsidian-Codespace?style=for-the-badge">
@@ -30,7 +30,7 @@ Obsidian does not support **viewing, managing, and editing code files** out of t
 
 
 <p align="center">
-  <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left" alt="Star History Chart">
+  <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=date&legend=top-left" alt="Star History Chart">
 </p>
 
 ---
@@ -98,7 +98,7 @@ Break through Vault boundaries to manage external project code.
 - **Bidirectional sync**: External file modifications automatically sync to Obsidian, and edits in Obsidian are written back to the original location
 - **Cross-project collaboration**: Manage distributed code repositories directly without copying project code into the Vault
 
-<p align='center'><img src='img\pre7.png' width=95%></p> 
+<p align='center'><img src='img\pre7.png' width=98%></p> 
 
 **Usage:**
 1. Create symlinks/junctions in your Vault pointing to external folders
@@ -126,7 +126,7 @@ Note: External mounts allow access to files outside the Vault. Only mount folder
 
 ## Supported languages (extensible)
 
-### Default supported extensions
+### 1. Default supported extensions
 
 | Language | Extensions |
 |------|--------|
@@ -144,7 +144,7 @@ Note: External mounts allow access to files outside the Vault. Only mount folder
 
 <p align='center'><img src='img\pre4.png' width=95%></p> 
 
-### Manually addable extensions (also support syntax highlighting)
+### 2. Manually addable extensions (also support syntax highlighting)
 
 Add the following extensions in **Settings > Code Space > Managed Extensions** to enable:
 
@@ -163,7 +163,7 @@ Add the following extensions in **Settings > Code Space > Managed Extensions** t
 | **PowerShell** | `.ps1`, `.psm1`, `.psd1` | PowerShell |
 | **Other Languages** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.rb`, `.erb` | Dedicated |
 
-### Binary file support (opened with Obsidian native viewer)
+### 3. Binary file support (opened with Obsidian native viewer)
 
 The following files can also be managed in the Code Space dashboard (rename, move, delete, etc.), but will not be opened by the Code Space editor. They use the system viewer or Obsidian's native viewer.
 
@@ -177,14 +177,13 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 | Office | `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` |
 | Other | `.exe`, `.dll`, `.so`, `.dylib`, `.bin`, `.dat` |
 
-
-
+---
 
 ## Supported keyboard shortcuts
 
-### Plugin commands
+### 1. Plugin commands
 
-<p align='center'><img src='img\pre5.png' width=95%></p> 
+<p align='center'><img src='img\pre5.png' width=98%></p> 
 
 | Command path | Function |
 |---------|------|
@@ -192,16 +191,17 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 | `Ctrl+P` → "Create code file" | Create a new code file |
 | `Ctrl+P` → "Reload code space plugin" | Reload the plugin |
 | `Ctrl+P` → "Toggle code outline" | Toggle the code outline view (Default: On) |
-| `Ctrl+P` → "Search and replace" | Search and replace in the code interface |
 
 ---
 
-### Basic operations
+### 2. Basic operations
 
 | Shortcut | Function |
 |--------|------|
 | `Ctrl+S` | Manually save the file |
 | `Ctrl+Mouse Wheel` | Adjust font size |
+| `Ctrl+F` | Search |
+| `Ctrl+H` | Replace |
 | `Ctrl+C` | Copy selection |
 | `Ctrl+X` | Cut selection |
 | `Ctrl+V` | Paste content |
@@ -249,7 +249,7 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 
 Install the BRAT plugin first. When adding a beta plugin in settings, enter this repository address: `https://github.com/UNLINEARITY/Obsidian-CodeSpace` and select the latest version.
 
-<p align='center'><img src='img\pre6.png' width=85%></p> 
+<p align='center'><img src='img\pre6.png' width=90%></p> 
 
 ---
 
@@ -315,6 +315,7 @@ Known limitations:
 - Code file contents are currently not indexed by Obsidian's global search engine.
 
 ---
+
 ## Acknowledgments
 
 This project is built upon the following excellent projects:

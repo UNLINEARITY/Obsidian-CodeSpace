@@ -1,7 +1,7 @@
 # Code Space
 
 <h1 align="center">
-    为 Obsidian 提供专业的代码文件管理
+    为 Obsidian 提供专业的代码文件支持
     <p align='center'><img src='img\Code.webp' width=80%></p> 
     <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
     <img alt="GitHub stars" src="https://img.shields.io/github/stars/unlinearity/Obsidian-Codespace?style=for-the-badge">
@@ -9,7 +9,7 @@
 </h1>
 
 <p align="center">
-    <span>一款功能全面的插件，在 Obsidian 中查看、管理和编辑代码文件</span>
+    <span>一款功能全面的插件，在 Obsidian 中查看、管理、编辑和嵌入代码文件</span>
     <br/>
     <a href="/README.md">English</a>
     ·
@@ -30,7 +30,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 
 <p align="center">
-  <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=timeline&legend=top-left" alt="Star History Chart">
+  <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=date&legend=top-left" alt="Star History Chart">
 </p>
 
 ---
@@ -126,7 +126,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 ## 支持的语言（可以任意扩展）
 
-### 默认支持的扩展名
+### 1. 默认支持的扩展名
 
 | 语言 | 扩展名 |
 |------|--------|
@@ -142,9 +142,9 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - 如果是代码文件，会通过 Code Space 的代码界面打开
 - 如果是二进制文件（例如图片或 PDF），会调用 Obsidian 原生的查看器进行打开，你甚至可以用来管理 PDF 等附件 
 
-<p align='center'><img src='img\pre4.png' width=95%></p> 
+<p align='center'><img src='img\pre4.png' width=98%></p> 
 
-### 可通过设置手动添加的扩展名（同样支持语法高亮）
+### 2. 可通过设置手动添加的扩展名（同样支持语法高亮）
 
 在 **设置 > Code Space > 管理的扩展名** 中添加以下扩展名即可启用：
 
@@ -163,7 +163,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 | **PowerShell** | `.ps1`, `.psm1`, `.psd1` | PowerShell |
 | **其他语言** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.rb`, `.erb` | 专用 |
 
-### 二进制文件支持（Obsidian 原生打开）
+### 3. 二进制文件支持（Obsidian 原生打开）
 
 以下文件同样可以在 Code Space 的仪表盘进行管理（重命名、移动、删除等操作），不会被 Code Space 编辑器打开，使用系统查看器或 Obsidian 原生的查看器。
 
@@ -177,15 +177,13 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 | Office | `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` |
 | 其他 | `.exe`, `.dll`, `.so`, `.dylib`, `.bin`, `.dat` |
 
-
-
-
+--- 
 
 ## 支持的快捷键
 
 ### 插件命令
 
-<p align='center'><img src='img\pre5.png' width=95%></p> 
+<p align='center'><img src='img\pre5.png' width=98%></p> 
 
 | 命令路径 | 功能 |
 |---------|------|
@@ -193,7 +191,6 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 | `Ctrl+P` → "Create code file" | 创建新代码文件 |
 | `Ctrl+P` → "Reload code space plugin" | 重新加载插件 |
 | `Ctrl+P` → "Toggle code outline" | 开关代码大纲视图（默认打开） |
-| `Ctrl+P` → "Search and replace" | 在代码界面搜索和替换 |
 
 ---
 
@@ -203,6 +200,8 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 |--------|------|
 | `Ctrl+S` | 手动保存文件 |
 | `Ctrl+鼠标滚轮` | 调整字体大小 |
+| `Ctrl+F` | 搜索 |
+| `Ctrl+H` | 替换 |
 | `Ctrl+C` | 复制选中内容 |
 | `Ctrl+X` | 剪切选中内容 |
 | `Ctrl+V` | 粘贴内容 |
