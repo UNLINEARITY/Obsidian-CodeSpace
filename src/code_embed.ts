@@ -965,6 +965,18 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	header.addEventListener("click", (e) => {
 		e.stopPropagation();
 		e.preventDefault();
+		if (e.ctrlKey && e.shiftKey && !e.altKey) {
+			void plugin.app.workspace.getLeaf("window").openFile(tFile);
+			return;
+		}
+		if (e.ctrlKey && !e.shiftKey && e.altKey) {
+			void plugin.app.workspace.getLeaf("split").openFile(tFile);
+			return;
+		}
+		if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+			void plugin.app.workspace.getLeaf("tab").openFile(tFile);
+			return;
+		}
 		void plugin.app.workspace.getLeaf(false).openFile(tFile);
 	});
 
