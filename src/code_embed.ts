@@ -965,15 +965,21 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	header.addEventListener("click", (e) => {
 		e.stopPropagation();
 		e.preventDefault();
-		if (e.ctrlKey && e.shiftKey && !e.altKey) {
+		const isMac = process.platform === 'darwin';
+		const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+		if (modKey && e.shiftKey && !e.altKey) {
+			// 新窗口
 			void plugin.app.workspace.getLeaf("window").openFile(tFile);
 			return;
 		}
-		if (e.ctrlKey && !e.shiftKey && e.altKey) {
+		if (modKey && !e.shiftKey && e.altKey) {
+			// 分栏
 			void plugin.app.workspace.getLeaf("split").openFile(tFile);
 			return;
 		}
-		if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+		if (modKey && !e.shiftKey && !e.altKey) {
+			// 新标签
 			void plugin.app.workspace.getLeaf("tab").openFile(tFile);
 			return;
 		}
