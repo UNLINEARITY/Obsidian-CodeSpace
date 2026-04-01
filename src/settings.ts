@@ -135,6 +135,8 @@ export interface CodeSpaceSettings {
 	extensions: string;
 	// 是否显示行号
 	showLineNumbers: boolean;
+	// 是否刷新嵌入文件
+	refreshEmbeddedFiles: boolean;
 	// 编辑器字体大小
 	editorFontSize: number;
 	// 引用块字体大小
@@ -156,6 +158,7 @@ export interface CodeSpaceSettings {
 export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	extensions: "py, c, cpp, h, hpp, js, ts, jsx, tsx, json, mjs, cjs, css, scss, sass, less, html, htm, rs, go, java, sql, php, rb, sh, yaml, xml, cs, yml",
 	showLineNumbers: true,
+	refreshEmbeddedFiles: false,
 	editorFontSize: 18,
 	embedFontSize: 15,
 	maxEmbedLines: 20, // 默认最大显示 30 行
@@ -212,6 +215,18 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.showLineNumbers)
 					.onChange(async (value) => {
 						this.plugin.settings.showLineNumbers = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_REFRESH_EMBEDDED_FILES_NAME'))
+			.setDesc(t('SETTINGS_REFRESH_EMBEDDED_FILES_DESC'))
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.refreshEmbeddedFiles)
+					.onChange(async (value) => {
+						this.plugin.settings.refreshEmbeddedFiles = value;
 						await this.plugin.saveSettings();
 					})
 			);

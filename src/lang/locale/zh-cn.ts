@@ -6,6 +6,8 @@ export default {
     SETTINGS_EXTENSIONS_PLACEHOLDER: '例如: py, js, c, cpp',
     SETTINGS_LINE_NUMBERS_NAME: '显示行号',
     SETTINGS_LINE_NUMBERS_DESC: '在代码编辑器中显示行号。',
+    SETTINGS_REFRESH_EMBEDDED_FILES_NAME: '刷新嵌入文件',
+    SETTINGS_REFRESH_EMBEDDED_FILES_DESC: '保存代码刷新所有嵌入式代码块的文件窗口。',
     SETTINGS_EDITOR_FONT_SIZE_NAME: '编辑器字体大小',
     SETTINGS_EDITOR_FONT_SIZE_DESC: '代码编辑界面的字体大小 (9-36px)。',
     SETTINGS_EMBED_FONT_SIZE_NAME: '引用块字体大小',

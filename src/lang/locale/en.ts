@@ -6,6 +6,8 @@ export default {
     SETTINGS_EXTENSIONS_PLACEHOLDER: 'For example: py, js, c, cpp',
     SETTINGS_LINE_NUMBERS_NAME: 'Show line numbers',
     SETTINGS_LINE_NUMBERS_DESC: 'Toggle line numbers in the code editor.',
+	SETTINGS_REFRESH_EMBEDDED_FILES_NAME: 'Refresh embedded files',
+	SETTINGS_REFRESH_EMBEDDED_FILES_DESC: 'Refresh all embedded files when saving the current file.',
     SETTINGS_EDITOR_FONT_SIZE_NAME: 'Editor font size',
     SETTINGS_EDITOR_FONT_SIZE_DESC: 'Font size for the code editor (9-36px).',
     SETTINGS_EMBED_FONT_SIZE_NAME: 'Embed font size',

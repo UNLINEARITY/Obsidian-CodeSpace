@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform } from "obsidian";
+import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform, MarkdownView } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment, Extension, Prec, Transaction } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit, StreamLanguage } from "@codemirror/language";
@@ -971,13 +971,47 @@ export class CodeSpaceView extends TextFileView {
 			const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
 			if (plugin && this.file) {
 				void plugin.updateOutline(this.file, this.editorView.state.doc.toString());
+
+				// 刷新所有关联的文件窗口
+				if (plugin.settings && plugin.settings.refreshEmbeddedFiles) {
+					await this.refreshEmbeddedFiles(this.file);
+				}
 			}
+
 		} catch (error) {
 			// 保存失败，恢复 dirty 状态
 			this.isDirty = true;
 			this.updateTitle();
 			console.error("Code Space: Failed to save file:", error);
 			new Notice(t('NOTICE_SAVE_FAIL'));
+		}
+	}
+
+	// 刷新所有关联的文件窗口
+	async refreshEmbeddedFiles(targetFile: TFile | null | undefined) {
+		if (!(targetFile instanceof TFile)) return
+
+		type WorkspaceLeafMarkdown = WorkspaceLeaf & { view: MarkdownView, rebuildView: () => Promise<void> };
+
+		const leaves = this.app.workspace.getLeavesOfType("markdown") as WorkspaceLeafMarkdown[]
+
+		for (const leaf of leaves) {
+			const view = leaf.view
+			const file = view.file
+			if (!file) continue
+
+			// 检查该文件是否嵌入了目标文件
+			const embeds = this.app.metadataCache.getFileCache(file)?.embeds
+			if (!embeds) continue
+
+			const hasEmbed = embeds.some((embed) => {
+				const dest = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path)
+				return dest?.path === targetFile.path
+			})
+
+			if (hasEmbed) {
+				await leaf.rebuildView()
+			}
 		}
 	}
 
@@ -1304,7 +1338,7 @@ export class CodeSpaceView extends TextFileView {
 		try {
 			// 读取文件内容
 			const content = await this.app.vault.read(this.file);
-			
+
 			// 检查内容是否发生变化
 			const currentContent = this.editorView.state.doc.toString();
 			if (content === currentContent) {
