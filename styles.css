@@ -1,3 +1,9 @@
+:root * {
+  --code-space-font-family:
+    var(--font-monospace), "JetBrains Mono", "Fira Code", "Cascadia Code", "Source Code Pro",
+    Consolas, "Courier New", monospace;
+}
+
 /* =================================================================
    Code Space 容器样式
    ================================================================= */
@@ -41,9 +47,13 @@ body .code-space-container .cm-activeLine::selection {
     flex: 1 1 auto;
     min-height: 0;
     height: auto !important;
-    font-family: var(--font-monospace), 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Consolas, 'Courier New', monospace;
+    font-family: var(--code-space-font-family);
     font-feature-settings: "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
+}
+
+.code-space-container .cm-editor .cm-scroller {
+  font-family: var(--code-space-font-family);
 }
 
 /* 优化编辑器行号 */
@@ -964,15 +974,15 @@ body .code-space-container .cm-activeLine::selection {
 		break-inside: avoid;
 		border: 1px solid var(--background-modifier-border);
 	}
-	
+
 	.code-embed-editor {
 		display: none !important;
 	}
-	
+
 	.code-embed-static-fallback {
 		display: block !important;
 	}
-	
+
 	.code-embed-static-fallback pre {
 		max-height: none;
 		overflow: visible;
