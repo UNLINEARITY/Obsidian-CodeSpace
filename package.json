@@ -10,7 +10,7 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
-		"dev:copy": "npm run build && robocopy . \"C:\\Nonlinear\\ob\\.obsidian\\plugins\\code-space\" main.js manifest.json styles.css /IS /IT /NJH /NJS /nc /ns /np || exit 0"
+		"dev:copy": "npm run build && robocopy . \"D:\\share\\quartz\\content\\.obsidian\\plugins\\code-space\" main.js manifest.json styles.css /IS /IT /NJH /NJS /nc /ns /np || exit 0"
 	},
 	"keywords": [
 		"code",
@@ -72,5 +72,8 @@
 		"@codemirror/language": "$@codemirror/language",
 		"@lezer/common": "$@lezer/common",
 		"@lezer/highlight": "$@lezer/highlight"
+	},
+	"volta": {
+		"node": "22.22.2"
 	}
 }
