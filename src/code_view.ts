@@ -1173,31 +1173,38 @@ export class CodeSpaceView extends TextFileView {
 					}
 				}
 			])),
-			EditorView.updateListener.of((update) => {
-				if (update.docChanged) {
-					// 如果正在设置数据，不标记为 dirty
-					if (this.isSettingData) {
-						return;
-					}
-
-					// 比较新旧内容，只有真的改变了才标记为 dirty
-					const oldContent = update.startState.doc.toString();
-					const newContent = update.state.doc.toString();
-
-					if (oldContent !== newContent) {
-						// 只有内容真的改变了才标记为 dirty
-						if (!this.isDirty) {
-							this.isDirty = true;
+			EditorView.updateListener.of(async (update) => {
+				try {
+					if (update.docChanged) {
+						// 如果正在设置数据，不标记为 dirty
+						if (this.isSettingData) {
+							return;
 						}
-					} else {
-						// 内容没变，确保不是 dirty
-						if (this.isDirty) {
-							this.isDirty = false;
-						}
-					}
 
-					// 只在状态改变时更新标题
+						// 比较新旧内容，只有真的改变了才标记为 dirty
+						const sourceContent = await this.app.vault.read(this.file!);
+						const newContent = update.state.doc.toString();
+
+						if (sourceContent !== newContent) {
+							// 只有内容真的改变了才标记为 dirty
+							if (!this.isDirty) {
+								this.isDirty = true;
+							}
+						} else {
+							// 内容没变，确保不是 dirty
+							if (this.isDirty) {
+								this.isDirty = false;
+							}
+						}
+
+						// 只在状态改变时更新标题
+						this.updateTitle();
+					}
+				} catch (error) {
+					// 更新失败，恢复 dirty 状态
+					this.isDirty = true;
 					this.updateTitle();
+					console.error("Code Space: Error in updateListener:", error);
 				}
 			})
 		];
