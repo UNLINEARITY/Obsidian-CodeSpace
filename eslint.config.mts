@@ -43,5 +43,7 @@ export default defineConfig(
 		"version-bump.mjs",
 		"versions.json",
 		"main.js",
+		// vendored upstream patch (kept in sync with src/terminal/conout_patch.ts by test)
+		"patches/**",
 	]),
 );

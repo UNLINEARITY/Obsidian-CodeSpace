@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, TFile, TFolder, normalizePath } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, TFile, TFolder, normalizePath, Platform } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
@@ -6,6 +6,8 @@ import { IgnoreManagerModal } from "./ignore_manager_modal";
 import { CodeSpaceSettings, CodeSpaceSettingTab, FolderSuggestModal, normalizeCodeSpaceSettings } from "./settings";
 import { refreshAllCodeEmbeds, registerCodeEmbedProcessor } from "./code_embed";
 import { registerNativePdfExportPatch } from "./native_pdf_export_patch";
+import { TerminalManager } from "./terminal/session_manager";
+import { CodeTerminalView, VIEW_TYPE_CODE_TERMINAL } from "./terminal/terminal_view";
 import { t } from "./lang/helpers";
 
 // 文件创建模态框
@@ -109,6 +111,7 @@ class CreateCodeFileModal extends Modal {
 
 export default class CodeSpacePlugin extends Plugin {
 	settings: CodeSpaceSettings;
+	terminalManager: TerminalManager | null = null;
 	private registeredExtensions: string[] = [];
 
 	async onload() {
@@ -134,6 +137,19 @@ export default class CodeSpacePlugin extends Plugin {
 			VIEW_TYPE_CODE_OUTLINE,
 			(leaf) => new CodeOutlineView(leaf)
 		);
+
+		// 终端会话管理器与独立终端视图（仅桌面端创建）
+		if (Platform.isDesktopApp) {
+			this.terminalManager = new TerminalManager({
+				settings: this.settings,
+				app: this.app,
+				manifestDir: this.manifest.dir ?? this.manifest.id,
+			});
+			this.registerView(
+				VIEW_TYPE_CODE_TERMINAL,
+				(leaf) => new CodeTerminalView(leaf)
+			);
+		}
 
 		this.registerCodeExtensions();
 
@@ -210,6 +226,56 @@ export default class CodeSpacePlugin extends Plugin {
 					return true;
 				}
 				return false;
+			}
+		});
+
+		// 打开独立终端视图（桌面端）
+		this.addCommand({
+			id: 'open-terminal',
+			name: t('CMD_OPEN_TERMINAL'),
+			callback: () => {
+				if (!Platform.isDesktopApp) {
+					new Notice(t('TERMINAL_NOTICE_DESKTOP_ONLY'));
+					return;
+				}
+				void this.activateTerminalView();
+			}
+		});
+
+		// 切换当前代码编辑器中的内嵌终端面板
+		this.addCommand({
+			id: 'toggle-terminal-panel',
+			name: t('CMD_TOGGLE_TERMINAL_PANEL'),
+			checkCallback: (checking: boolean) => {
+				if (!Platform.isDesktopApp || !this.settings.terminalEnabled) {
+					return false;
+				}
+				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
+				if (!activeView) {
+					return false;
+				}
+				if (!checking) {
+					void activeView.toggleTerminalPanel();
+				}
+				return true;
+			}
+		});
+
+		// 关闭所有终端会话
+		this.addCommand({
+			id: 'kill-all-terminals',
+			name: t('CMD_KILL_TERMININALS'),
+			callback: () => {
+				if (!Platform.isDesktopApp) {
+					new Notice(t('TERMINAL_NOTICE_DESKTOP_ONLY'));
+					return;
+				}
+				const manager = this.terminalManager;
+				if (!manager || manager.sessions.length === 0) {
+					return;
+				}
+				manager.killAll();
+				new Notice(t('TERMINAL_NOTICE_ALL_CLOSED'));
 			}
 		});
 
@@ -296,6 +362,10 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	onunload() {
+		// 终止全部终端会话（杀掉 PTY 进程）
+		this.terminalManager?.dispose();
+		this.terminalManager = null;
+
 		// 插件卸载时保存所有打开的 Code Space 编辑器（不阻塞卸载流程）
 		const { workspace } = this.app;
 		const codeLeaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_SPACE);
@@ -315,7 +385,7 @@ export default class CodeSpacePlugin extends Plugin {
 		this.settings.ignoredFiles = this.normalizeIgnoredFiles(this.settings.ignoredFiles);
 	}
 
-	async saveSettings(scope: "all" | "extensions" | "editor" | "embed" | "dashboard" | "none" = "all") {
+	async saveSettings(scope: "all" | "extensions" | "editor" | "embed" | "dashboard" | "terminal" | "none" = "all") {
 		await this.saveData(this.settings);
 
 		if (scope === "all" || scope === "embed") {
@@ -335,6 +405,9 @@ export default class CodeSpacePlugin extends Plugin {
 					leaf.view.refreshSettings();
 				}
 			});
+		}
+		if (scope === "all" || scope === "terminal") {
+			this.terminalManager?.applySettings(this.settings);
 		}
 	}
 
@@ -556,6 +629,23 @@ export default class CodeSpacePlugin extends Plugin {
 		} else {
 			leaf = workspace.getLeaf(true);
 			await leaf.setViewState({ type: VIEW_TYPE_CODE_DASHBOARD, active: true });
+		}
+
+		if (leaf) {
+			void workspace.revealLeaf(leaf);
+		}
+	}
+
+	async activateTerminalView() {
+		const { workspace } = this.app;
+		let leaf: WorkspaceLeaf | null = null;
+		const leaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_TERMINAL);
+
+		if (leaves.length > 0) {
+			leaf = leaves[0]!;
+		} else {
+			leaf = workspace.getLeaf(true);
+			await leaf.setViewState({ type: VIEW_TYPE_CODE_TERMINAL, active: true });
 		}
 
 		if (leaf) {

@@ -1,0 +1,158 @@
+name: Build node-pty prebuilds
+
+# 构建各平台的 node-pty 预编译包并附加到固定 release tag。
+# 插件运行时（src/terminal/binary_manager.ts）从该 tag 直链下载 zip。
+# 仅在升级 node-pty 版本时手动触发；与插件版本号 release 完全解耦。
+
+on:
+  workflow_dispatch:
+    inputs:
+      node_pty_version:
+        description: "node-pty version to package"
+        required: true
+        default: "1.1.0"
+      release_tag:
+        description: "Release tag to attach zips to"
+        required: true
+        default: "pty-prebuilds-v1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-node-pty
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: node-pty ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # npm 包自带 win32-x64 / win32-arm64 / darwin-x64 / darwin-arm64 的
+          # N-API prebuilds；linux-x64 无预编译产物，由 node-gyp 源码编译。
+          - runs-on: windows-latest
+            platform: win32
+            arch: x64
+          - runs-on: windows-latest
+            platform: win32
+            arch: arm64
+          - runs-on: macos-latest
+            platform: darwin
+            arch: arm64
+          - runs-on: macos-13
+            platform: darwin
+            arch: x64
+          - runs-on: ubuntu-latest
+            platform: linux
+            arch: x64
+    env:
+      PTY_VERSION: ${{ inputs.node_pty_version }}
+      PLATFORM: ${{ matrix.platform }}
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install node-pty
+        shell: bash
+        run: |
+          mkdir .pty-stage
+          cd .pty-stage
+          npm init -y >/dev/null 2>&1
+          npm install "node-pty@${PTY_VERSION}"
+
+      - name: Normalize linux build layout
+        shell: bash
+        run: |
+          if [ "${PLATFORM}" = "linux" ]; then
+            PTY_DIR=".pty-stage/node_modules/node-pty"
+            mkdir -p "${PTY_DIR}/prebuilds/linux-x64"
+            cp "${PTY_DIR}/build/Release/pty.node" "${PTY_DIR}/prebuilds/linux-x64/"
+            if [ -f "${PTY_DIR}/build/Release/spawn-helper" ]; then
+              cp "${PTY_DIR}/build/Release/spawn-helper" "${PTY_DIR}/prebuilds/linux-x64/"
+            fi
+          fi
+
+      - name: Apply Obsidian renderer patch (Windows)
+        shell: bash
+        run: |
+          if [ "${PLATFORM}" = "win32" ]; then
+            cp patches/windowsConoutConnection.js .pty-stage/node_modules/node-pty/lib/windowsConoutConnection.js
+          fi
+
+      - name: Package zip
+        shell: bash
+        run: |
+          PTY_DIR=".pty-stage/node_modules/node-pty"
+          STAGE="stage/node-pty"
+          ASSET="node-pty-${PLATFORM}-${ARCH}.zip"
+          mkdir -p "${STAGE}"
+          cp "${PTY_DIR}/package.json" "${STAGE}/package.json"
+          cp -r "${PTY_DIR}/lib" "${STAGE}/lib"
+          cp -r "${PTY_DIR}/prebuilds/${PLATFORM}-${ARCH}" "${STAGE}/prebuilds/${PLATFORM}-${ARCH}"
+          # pdb 调试符号无需分发
+          find "${STAGE}" -name "*.pdb" -delete
+          if command -v zip >/dev/null 2>&1; then
+            (cd stage && zip -r "../${ASSET}" node-pty)
+          else
+            powershell.exe -NoProfile -NonInteractive -Command "Compress-Archive -Path 'stage/node-pty' -DestinationPath '${ASSET}' -Force"
+          fi
+          ls -lh "${ASSET}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-pty-${{ matrix.platform }}-${{ matrix.arch }}
+          path: node-pty-${{ matrix.platform }}-${{ matrix.arch }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Attach zips to release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums.json
+        shell: bash
+        run: |
+          cd dist
+          node -e '
+            const fs = require("fs");
+            const crypto = require("crypto");
+            const checksums = {};
+            for (const file of fs.readdirSync(".").sort()) {
+              if (!file.endsWith(".zip")) continue;
+              checksums[file] = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+            }
+            fs.writeFileSync("checksums.json", JSON.stringify(checksums, null, "\t") + "\n");
+            console.log(fs.readFileSync("checksums.json", "utf8"));
+          '
+
+      - name: Upload to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if ! gh release view "${RELEASE_TAG}" -R "${GITHUB_REPOSITORY}"; then
+            gh release create "${RELEASE_TAG}" -R "${GITHUB_REPOSITORY}" \
+              --title "${RELEASE_TAG}" \
+              --notes "node-pty prebuilt binaries consumed by the Code Space plugin. Not a plugin release."
+          fi
+          gh release upload "${RELEASE_TAG}" dist/* -R "${GITHUB_REPOSITORY}" --clobber

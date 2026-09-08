@@ -16,6 +16,7 @@ import {
 } from "./search_utils";
 import { LANGUAGE_PACKAGES } from "./language_registry";
 import { setupScrollbarVisibility } from "./scrollbar_visibility";
+import { TerminalPanel } from "./terminal/terminal_panel";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
 
@@ -580,6 +581,7 @@ export class CodeSpaceView extends TextFileView {
 	private isDirty: boolean = false; // 新增：跟踪是否有未保存的修改
 	private isSettingData: boolean = false; // 新增：标记是否正在设置数据
 	private searchPanel?: CustomSearchPanel; // 自定义搜索面板
+	private terminalPanel: TerminalPanel | null = null; // 内嵌终端面板（桌面端）
 	private rootEl?: HTMLElement;
 	private cleanupMobileViewportFix?: () => void;
 	private savedDoc: Text | null = null;
@@ -702,6 +704,37 @@ export class CodeSpaceView extends TextFileView {
 	toggleSearchPanel() {
 		if (this.searchPanel) {
 			this.searchPanel.toggle();
+		}
+	}
+
+	// 切换内嵌终端面板（桌面端，供标题栏按钮与命令调用）
+	async toggleTerminalPanel(): Promise<void> {
+		const plugin = this.getPlugin();
+		if (!plugin || !Platform.isDesktopApp) {
+			return;
+		}
+		if (!plugin.settings.terminalEnabled) {
+			new Notice(t('TERMINAL_NOTICE_DISABLED'));
+			return;
+		}
+		if (!this.terminalPanel) {
+			this.terminalPanel = new TerminalPanel(plugin, "embedded");
+			this.rootEl?.appendChild(this.terminalPanel.el);
+		}
+		const panel = this.terminalPanel;
+		if (panel.isVisible) {
+			panel.setVisible(false);
+			return;
+		}
+		const manager = plugin.terminalManager;
+		if (!manager) {
+			new Notice(t('TERMINAL_NOTICE_DESKTOP_ONLY'));
+			return;
+		}
+		try {
+			await panel.show(await manager.resolveCwdForActiveFile());
+		} catch (error) {
+			console.error("Code Space: Failed to open terminal panel:", error);
 		}
 	}
 
@@ -1113,6 +1146,13 @@ export class CodeSpaceView extends TextFileView {
 			}
 		});
 
+		// 添加标题栏终端按钮（桌面端）
+		if (Platform.isDesktopApp) {
+			this.addAction("square-terminal", t('HEADER_ACTION_TERMINAL'), () => {
+				void this.toggleTerminalPanel();
+			});
+		}
+
 		// 设置缩放功能
 		this.setupZoomHandler(root);
 	}
@@ -1147,6 +1187,7 @@ export class CodeSpaceView extends TextFileView {
 			this.editorView.dispatch({
 				effects: this.themeCompartment.reconfigure(this.getThemeExtension())
 			});
+			this.terminalPanel?.refreshTheme();
 		}));
 
 		// 监听文件修改事件（外部编辑）
@@ -1256,6 +1297,11 @@ export class CodeSpaceView extends TextFileView {
 		this.cleanupScrollbarVisibility?.();
 		this.cleanupScrollbarVisibility = undefined;
 		this.rootEl = undefined;
+		// 销毁内嵌终端面板（仅解除挂载，会话继续存活）
+		if (this.terminalPanel) {
+			this.terminalPanel.destroy();
+			this.terminalPanel = null;
+		}
 		// 销毁自定义搜索面板
 		if (this.searchPanel) {
 			this.searchPanel.destroy();

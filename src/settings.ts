@@ -152,6 +152,17 @@ export interface CodeSpaceSettings {
 	enableExternalMounts: boolean;
 	externalMounts: ExternalMount[];
 	externalMountLinkType: ExternalMountLinkType;
+	// ===== 终端设置（桌面端） =====
+	// 是否启用集成终端
+	terminalEnabled: boolean;
+	// 自定义 shell 可执行文件路径（空 = 自动检测）
+	terminalShell: string;
+	// 终端字体大小
+	terminalFontSize: number;
+	// 每个终端保留的回溯行数
+	terminalScrollback: number;
+	// 最大并发终端会话数
+	terminalMaxSessions: number;
 	ignoredFiles: string[];
 }
 
@@ -173,6 +184,11 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	enableExternalMounts: true,
 	externalMounts: [],
 	externalMountLinkType: "auto",
+	terminalEnabled: true,
+	terminalShell: "",
+	terminalFontSize: 14,
+	terminalScrollback: 2000,
+	terminalMaxSessions: 8,
 	ignoredFiles: []
 };
 
@@ -219,6 +235,11 @@ export function normalizeCodeSpaceSettings(value: unknown): CodeSpaceSettings {
 		externalMountLinkType: raw.externalMountLinkType === "symlink" || raw.externalMountLinkType === "junction"
 			? raw.externalMountLinkType
 			: "auto",
+		terminalEnabled: typeof raw.terminalEnabled === "boolean" ? raw.terminalEnabled : DEFAULT_SETTINGS.terminalEnabled,
+		terminalShell: typeof raw.terminalShell === "string" ? raw.terminalShell.trim() : "",
+		terminalFontSize: numberInRange(raw.terminalFontSize, DEFAULT_SETTINGS.terminalFontSize, 9, 36),
+		terminalScrollback: numberInRange(raw.terminalScrollback, DEFAULT_SETTINGS.terminalScrollback, 100, 100000),
+		terminalMaxSessions: numberInRange(raw.terminalMaxSessions, DEFAULT_SETTINGS.terminalMaxSessions, 1, 32),
 		ignoredFiles: Array.isArray(raw.ignoredFiles) ? raw.ignoredFiles.filter((item): item is string => typeof item === "string") : [],
 	};
 }
@@ -373,6 +394,21 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 							}).open();
 						});
 				});
+		}
+
+		// ===== 终端设置（桌面端） =====
+		new Setting(containerEl)
+			.setHeading()
+			.setName(t('SETTINGS_TERMINAL_NAME'))
+			.setDesc(t('SETTINGS_TERMINAL_DESC'));
+
+		if (!Platform.isDesktopApp) {
+			containerEl.createDiv({
+				cls: "setting-item-description",
+				text: t("SETTINGS_TERMINAL_DESKTOP_ONLY")
+			});
+		} else {
+			this.renderTerminalSettings(containerEl);
 		}
 
 		const mountManager = new ExternalMountManager(this.app);
@@ -572,6 +608,129 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 						}).open();
 					});
 			});
+	}
+
+	// 终端设置控件（仅在桌面端调用）
+	private renderTerminalSettings(containerEl: HTMLElement): void {
+		const clampInt = (value: string, fallback: number, minimum: number, maximum: number): number => {
+			const parsed = Number.parseInt(value, 10);
+			if (!Number.isFinite(parsed)) {
+				return fallback;
+			}
+			return Math.min(maximum, Math.max(minimum, parsed));
+		};
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_TERMINAL_ENABLE_NAME'))
+			.setDesc(t('SETTINGS_TERMINAL_ENABLE_DESC'))
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.terminalEnabled)
+					.onChange(async (value) => {
+						this.plugin.settings.terminalEnabled = value;
+						await this.plugin.saveSettings("none");
+					});
+			});
+
+		const saveTerminalText = this.createDebouncedSave(() => this.plugin.saveSettings("terminal"));
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_TERMINAL_SHELL_NAME'))
+			.setDesc(t('SETTINGS_TERMINAL_SHELL_DESC'))
+			.addText((text) => {
+				text
+					.setPlaceholder(t('SETTINGS_TERMINAL_SHELL_PLACEHOLDER'))
+					.setValue(this.plugin.settings.terminalShell)
+					.onChange((value) => {
+						this.plugin.settings.terminalShell = value;
+						saveTerminalText();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_TERMINAL_FONT_SIZE_NAME'))
+			.setDesc(t('SETTINGS_TERMINAL_FONT_SIZE_DESC'))
+			.addText((text) => {
+				text
+					.setPlaceholder("14")
+					.setValue(String(this.plugin.settings.terminalFontSize))
+					.onChange((value) => {
+						this.plugin.settings.terminalFontSize = clampInt(value, this.plugin.settings.terminalFontSize, 9, 36);
+						saveTerminalText();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_TERMINAL_SCROLLBACK_NAME'))
+			.setDesc(t('SETTINGS_TERMINAL_SCROLLBACK_DESC'))
+			.addText((text) => {
+				text
+					.setPlaceholder("2000")
+					.setValue(String(this.plugin.settings.terminalScrollback))
+					.onChange((value) => {
+						this.plugin.settings.terminalScrollback = clampInt(value, this.plugin.settings.terminalScrollback, 100, 100000);
+						saveTerminalText();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_TERMINAL_MAX_SESSIONS_NAME'))
+			.setDesc(t('SETTINGS_TERMINAL_MAX_SESSIONS_DESC'))
+			.addText((text) => {
+				text
+					.setPlaceholder("8")
+					.setValue(String(this.plugin.settings.terminalMaxSessions))
+					.onChange((value) => {
+						this.plugin.settings.terminalMaxSessions = clampInt(value, this.plugin.settings.terminalMaxSessions, 1, 32);
+						saveTerminalText();
+					});
+			});
+
+		// 终端支持文件状态与维护按钮
+		const terminalManager = this.plugin.terminalManager;
+		if (!terminalManager) {
+			return;
+		}
+		const binaryManager = terminalManager.binaryManager;
+		const statusLabels: Record<string, string> = {
+			"not-installed": t("SETTINGS_TERMINAL_STATUS_NOT_INSTALLED"),
+			"checking": t("SETTINGS_TERMINAL_STATUS_CHECKING"),
+			"downloading": t("SETTINGS_TERMINAL_STATUS_DOWNLOADING"),
+			"ready": t("SETTINGS_TERMINAL_STATUS_READY"),
+			"error": t("SETTINGS_TERMINAL_STATUS_ERROR"),
+			"unsupported": t("SETTINGS_TERMINAL_STATUS_UNSUPPORTED")
+		};
+		const binarySetting = new Setting(containerEl)
+			.setName(t('SETTINGS_TERMINAL_BINARY_STATUS'))
+			.setDesc(statusLabels[binaryManager.refreshStatus()] ?? binaryManager.status);
+		binarySetting.addButton((button) => {
+			button
+				.setButtonText(t('SETTINGS_TERMINAL_BINARY_REDOWNLOAD'))
+				.onClick(() => {
+					void (async () => {
+						binarySetting.setDesc(t('SETTINGS_TERMINAL_STATUS_DOWNLOADING'));
+						try {
+							await binaryManager.clearInstalled();
+							await binaryManager.ensureInstalled();
+							new Notice(t('TERMINAL_NOTICE_DOWNLOAD_SUCCESS'));
+						} catch (error) {
+							new Notice(`${t("TERMINAL_NOTICE_DOWNLOAD_FAIL")}: ${String(error)}`, 6000);
+						}
+						binarySetting.setDesc(statusLabels[binaryManager.refreshStatus()] ?? binaryManager.status);
+					})();
+				});
+		});
+		binarySetting.addButton((button) => {
+			button
+				.setButtonText(t('SETTINGS_TERMINAL_BINARY_CLEAR'))
+				.onClick(() => {
+					void (async () => {
+						await binaryManager.clearInstalled();
+						new Notice(t('TERMINAL_NOTICE_BINARIES_CLEARED'));
+						binarySetting.setDesc(statusLabels[binaryManager.refreshStatus()] ?? binaryManager.status);
+					})();
+				});
+		});
 	}
 
 	hide(): void {

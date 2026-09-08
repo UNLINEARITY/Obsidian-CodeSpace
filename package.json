@@ -59,6 +59,8 @@
 		"@codemirror/view": "^6.0.0",
 		"@lezer/common": "^1.0.0",
 		"@lezer/highlight": "^1.0.0",
+		"@xterm/addon-fit": "^0.10.0",
+		"@xterm/xterm": "^5.5.0",
 		"codemirror-lang-r": "^0.1.1"
 	},
 	"overrides": {
