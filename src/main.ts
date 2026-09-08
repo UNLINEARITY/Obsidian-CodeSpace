@@ -636,21 +636,12 @@ export default class CodeSpacePlugin extends Plugin {
 		}
 	}
 
+	// 新开一个终端标签页（一个终端 = 一个标签页；多终端由 Obsidian 原生标签栏管理）
 	async activateTerminalView() {
 		const { workspace } = this.app;
-		let leaf: WorkspaceLeaf | null = null;
-		const leaves = workspace.getLeavesOfType(VIEW_TYPE_CODE_TERMINAL);
-
-		if (leaves.length > 0) {
-			leaf = leaves[0]!;
-		} else {
-			leaf = workspace.getLeaf(true);
-			await leaf.setViewState({ type: VIEW_TYPE_CODE_TERMINAL, active: true });
-		}
-
-		if (leaf) {
-			void workspace.revealLeaf(leaf);
-		}
+		const leaf = workspace.getLeaf(true);
+		await leaf.setViewState({ type: VIEW_TYPE_CODE_TERMINAL, active: true });
+		void workspace.revealLeaf(leaf);
 	}
 
 	async toggleOutline() {

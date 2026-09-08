@@ -718,7 +718,12 @@ export class CodeSpaceView extends TextFileView {
 			return;
 		}
 		if (!this.terminalPanel) {
-			this.terminalPanel = new TerminalPanel(plugin, "embedded");
+			this.terminalPanel = new TerminalPanel({
+				settings: plugin.settings,
+				app: plugin.app,
+				terminalManager: plugin.terminalManager,
+				openTerminalView: () => plugin.activateTerminalView(),
+			});
 			this.rootEl?.appendChild(this.terminalPanel.el);
 		}
 		const panel = this.terminalPanel;

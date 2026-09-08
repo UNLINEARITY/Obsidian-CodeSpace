@@ -4,8 +4,9 @@
 
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
 import type { TerminalId } from "./types";
-import { readMonospaceFont, readThemeVars, themeFromVars } from "./terminal_theme";
+import { buildTerminalFontFamily, readMonospaceFont, readThemeVars, themeFromVars } from "./terminal_theme";
 
 export interface TerminalComponentOptions {
 	fontSize: number;
@@ -19,6 +20,7 @@ export class TerminalComponent {
 
 	private term: Terminal;
 	private fitAddon: FitAddon;
+	private webglAddon: WebglAddon | null = null;
 	private container: HTMLElement | null = null;
 	private resizeObserver: ResizeObserver | null = null;
 	private fitTimer: number | null = null;
@@ -31,7 +33,9 @@ export class TerminalComponent {
 		this.term = new Terminal({
 			fontSize: options.fontSize,
 			scrollback: options.scrollback,
-			fontFamily: undefined,
+			// VSCode 同款排版参数，显式声明避免默认值漂移
+			letterSpacing: 0,
+			lineHeight: 1,
 			convertEol: false,
 			cursorBlink: true,
 			allowProposedApi: true,
@@ -88,21 +92,25 @@ export class TerminalComponent {
 		}
 		if (!this.container) {
 			this.container = parent.createDiv({ cls: "code-space-terminal-xterm" });
-			this.term.open(this.container);
+			// 字体与主题必须在 open 之前设置，保证首次字符宽度测量即用正确字体
 			this.applyFont();
 			this.refreshTheme();
+			this.term.open(this.container);
+			this.loadWebglAddon();
 			this.fit();
 		} else if (this.container.parentElement !== parent) {
-			// 跨文档移动（弹出窗口）时，旧文档的观察器/定时器必须重建，
+			// 跨文档移动（弹出窗口）时，旧文档的观察器/定时器/WebGL 上下文必须重建，
 			// 并按新文档的主题变量刷新配色与字体
 			const crossesDocument = this.container.ownerDocument !== parent.ownerDocument;
 			if (crossesDocument) {
 				this.stopResizeObserver();
+				this.unloadWebglAddon();
 			}
 			parent.appendChild(this.container);
 			if (crossesDocument) {
 				this.applyFont();
 				this.refreshTheme();
+				this.loadWebglAddon();
 				this.fit();
 			}
 		}
@@ -150,6 +158,7 @@ export class TerminalComponent {
 		}
 		this.disposed = true;
 		this.stopResizeObserver();
+		this.unloadWebglAddon();
 		this.term.dispose();
 		this.container?.remove();
 		this.container = null;
@@ -159,10 +168,41 @@ export class TerminalComponent {
 		if (!this.container) {
 			return;
 		}
-		const font = readMonospaceFont(this.container);
-		if (font) {
-			this.term.options.fontFamily = font;
+		this.term.options.fontFamily = buildTerminalFontFamily(readMonospaceFont(this.container));
+	}
+
+	/**
+	 * 加载 WebGL 渲染器（VSCode 级渲染质感）。
+	 * WebGL 不可用或上下文丢失时静默降级为默认 DOM 渲染器。
+	 */
+	private loadWebglAddon(): void {
+		if (this.disposed || this.webglAddon || !this.container) {
+			return;
 		}
+		try {
+			const addon = new WebglAddon();
+			addon.onContextLoss(() => {
+				this.unloadWebglAddon();
+			});
+			this.term.loadAddon(addon);
+			this.webglAddon = addon;
+		} catch (error) {
+			// WebGL 不可用（驱动限制/无 GPU）：保持 DOM 渲染器
+			console.debug("Code Space: terminal webgl renderer unavailable, using DOM renderer:", error);
+			this.webglAddon = null;
+		}
+	}
+
+	private unloadWebglAddon(): void {
+		if (!this.webglAddon) {
+			return;
+		}
+		try {
+			this.webglAddon.dispose();
+		} catch {
+			// 上下文已丢失时 dispose 可能抛错，忽略
+		}
+		this.webglAddon = null;
 	}
 
 	private startResizeObserver(): void {

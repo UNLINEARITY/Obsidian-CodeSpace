@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizeCssColor, themeFromVars } from "../src/terminal/terminal_theme";
+import {
+	buildTerminalFontFamily,
+	FALLBACK_MONOSPACE_STACK,
+	normalizeCssColor,
+	themeFromVars,
+} from "../src/terminal/terminal_theme";
 
 describe("normalizeCssColor", () => {
 	it("wraps Obsidian rgb triplets", () => {
@@ -17,6 +22,24 @@ describe("normalizeCssColor", () => {
 		expect(normalizeCssColor(undefined)).toBeUndefined();
 		expect(normalizeCssColor("")).toBeUndefined();
 		expect(normalizeCssColor("   ")).toBeUndefined();
+	});
+});
+
+describe("buildTerminalFontFamily", () => {
+	it("falls back to the built-in stack when the theme value is empty", () => {
+		expect(buildTerminalFontFamily(undefined)).toBe(FALLBACK_MONOSPACE_STACK);
+		expect(buildTerminalFontFamily("")).toBe(FALLBACK_MONOSPACE_STACK);
+		expect(buildTerminalFontFamily("   ")).toBe(FALLBACK_MONOSPACE_STACK);
+	});
+
+	it("appends a monospace guard to theme font stacks", () => {
+		expect(buildTerminalFontFamily('"JetBrains Mono"')).toBe('"JetBrains Mono", monospace');
+		expect(buildTerminalFontFamily("Cascadia Code, Consolas")).toBe("Cascadia Code, Consolas, monospace");
+	});
+
+	it("keeps stacks that already end with the monospace guard", () => {
+		expect(buildTerminalFontFamily("Consolas, monospace")).toBe("Consolas, monospace");
+		expect(buildTerminalFontFamily("monospace")).toBe("monospace");
 	});
 });
 

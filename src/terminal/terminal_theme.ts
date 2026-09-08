@@ -84,3 +84,22 @@ export function readMonospaceFont(sourceEl: HTMLElement): string | undefined {
 	const font = view.getComputedStyle(doc.documentElement).getPropertyValue("--font-monospace");
 	return font.trim() || undefined;
 }
+
+/** 主题变量为空时使用的跨平台等宽兜底栈（Windows 优先） */
+export const FALLBACK_MONOSPACE_STACK = '"Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace';
+
+/**
+ * 构建终端字体栈：主题值必须以 monospace 通用关键字兜底。
+ * 缺少兜底时浏览器可能回退到非等宽字体，导致 xterm 的字符宽度
+ * 测量与实际渲染不一致（表现为字母之间出现空隙）。
+ */
+export function buildTerminalFontFamily(raw: string | undefined): string {
+	const trimmed = (raw ?? "").trim();
+	if (!trimmed) {
+		return FALLBACK_MONOSPACE_STACK;
+	}
+	if (/(^|,)\s*monospace\s*(,|$)/.test(trimmed)) {
+		return trimmed;
+	}
+	return `${trimmed}, monospace`;
+}

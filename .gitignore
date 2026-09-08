@@ -25,3 +25,6 @@ data.json
 log/
 log.md
 git-log.md
+
+# esbuild external legal comments (build artifact)
+main.js.LEGAL.txt

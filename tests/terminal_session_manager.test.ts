@@ -39,6 +39,7 @@ describe("TerminalManager.createSession", () => {
 		expect(session.info.title).toBe("zsh 1");
 		expect(session.info.cwd).toBe("/work/dir");
 		expect(session.info.exited).toBe(false);
+		expect(session.viewOwned).toBe(false);
 		expect(manager.sessions.length).toBe(1);
 
 		// pty 输出转发到组件
@@ -87,6 +88,8 @@ describe("TerminalManager lifecycle", () => {
 		expect(session.info.exited).toBe(true);
 		expect(session.info.exitCode).toBe(0);
 		expect(changed).toHaveBeenCalled();
+		// 退出提示写入组件（避免光标停住无响应的困惑）
+		expect(base.fakeComponents[0]!.written.some((data) => data.includes("Process exited"))).toBe(true);
 	});
 
 	it("closeSession terminates pty and disposes component", async () => {
@@ -116,6 +119,42 @@ describe("TerminalManager lifecycle", () => {
 		manager.dispose();
 		expect(manager.sessions.length).toBe(0);
 		await expect(manager.createSession()).rejects.toThrow("disposed");
+	});
+});
+
+describe("TerminalManager session ownership", () => {
+	it("marks view-owned sessions and skips them in latestPanelSession", async () => {
+		const { manager } = makeManager();
+		const panelSession = await manager.createSession();
+		const viewSession = await manager.createSession(undefined, { viewOwned: true });
+
+		expect(viewSession.viewOwned).toBe(true);
+		expect(manager.latestPanelSession()?.info.id).toBe(panelSession.info.id);
+
+		// 视图关闭会话后，面板可接管的无主会话为空
+		manager.closeSession(panelSession.info.id);
+		expect(manager.latestPanelSession()).toBeNull();
+	});
+
+	it("hands over a pending-claimed session exactly once", async () => {
+		const { manager } = makeManager();
+		const session = await manager.createSession();
+
+		manager.markPendingClaim(session.info.id);
+		const claimed = manager.claimPendingSession();
+		expect(claimed?.info.id).toBe(session.info.id);
+		expect(claimed?.viewOwned).toBe(true);
+
+		// 二次认领返回 null（认领后清空）
+		expect(manager.claimPendingSession()).toBeNull();
+	});
+
+	it("ignores pending claims for closed sessions", async () => {
+		const { manager } = makeManager();
+		const session = await manager.createSession();
+		manager.closeSession(session.info.id);
+		manager.markPendingClaim(session.info.id);
+		expect(manager.claimPendingSession()).toBeNull();
 	});
 });
 

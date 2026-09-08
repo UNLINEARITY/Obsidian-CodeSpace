@@ -31,6 +31,8 @@ export interface TerminalSession {
 	component: TerminalComponent;
 	pty: PtyProcess;
 	lastAttachedAt: number;
+	/** 是否由独立终端视图持有（关闭视图即关闭会话） */
+	viewOwned: boolean;
 }
 
 /** 可注入依赖（测试时替换为假实现） */
@@ -58,6 +60,7 @@ export class TerminalManager {
 	private disposed = false;
 	private deps: TerminalManagerDeps;
 	private createQueue: Promise<unknown> = Promise.resolve();
+	private pendingClaimId: TerminalId | null = null;
 
 	constructor(plugin: TerminalPluginFacade, deps?: Partial<TerminalManagerDeps>) {
 		this.plugin = plugin;
@@ -113,16 +116,16 @@ export class TerminalManager {
 	 * 没有可淘汰会话则提示并拒绝（绝不静默终止运行中的 shell）。
 	 * 并发调用按顺序串行执行，避免越过会话数上限。
 	 */
-	async createSession(cwd?: string): Promise<TerminalSession> {
+	async createSession(cwd?: string, options?: { viewOwned?: boolean }): Promise<TerminalSession> {
 		const attempt = this.createQueue.then(
-			() => this.createSessionInner(cwd),
-			() => this.createSessionInner(cwd)
+			() => this.createSessionInner(cwd, options),
+			() => this.createSessionInner(cwd, options)
 		);
 		this.createQueue = attempt.catch(() => undefined);
 		return attempt;
 	}
 
-	private async createSessionInner(cwd?: string): Promise<TerminalSession> {
+	private async createSessionInner(cwd?: string, options?: { viewOwned?: boolean }): Promise<TerminalSession> {
 		if (this.disposed) {
 			throw new Error("Terminal manager disposed");
 		}
@@ -185,6 +188,7 @@ export class TerminalManager {
 			component,
 			pty,
 			lastAttachedAt: Date.now(),
+			viewOwned: options?.viewOwned ?? false,
 		};
 
 		pty.onData((data) => component.write(data));
@@ -193,6 +197,8 @@ export class TerminalManager {
 		pty.onExit((exitCode) => {
 			session.info.exited = true;
 			session.info.exitCode = exitCode;
+			// 写入退出提示，避免光标停住无响应的困惑
+			component.write(`\r\n\x1b[90m${t("TERMINAL_PROCESS_EXITED")} (${exitCode})\x1b[0m\r\n`);
 			this.notifyChanged();
 		});
 
@@ -239,6 +245,40 @@ export class TerminalManager {
 		if (session) {
 			session.lastAttachedAt = Date.now();
 		}
+	}
+
+	/** 登记待接管会话（面板弹出：移交给下一个打开的终端视图） */
+	markPendingClaim(id: TerminalId): void {
+		if (this.getSession(id)) {
+			this.pendingClaimId = id;
+		}
+	}
+
+	/** 认领待接管会话（新终端视图 onOpen 时调用；认领后清空） */
+	claimPendingSession(): TerminalSession | null {
+		if (this.pendingClaimId) {
+			const session = this.getSession(this.pendingClaimId);
+			this.pendingClaimId = null;
+			if (session) {
+				session.viewOwned = true;
+				return session;
+			}
+		}
+		return null;
+	}
+
+	/** 最近使用且未被终端视图持有的会话（内嵌面板接管用） */
+	latestPanelSession(): TerminalSession | null {
+		let latest: TerminalSession | null = null;
+		for (const session of this.sessionsValue) {
+			if (session.viewOwned) {
+				continue;
+			}
+			if (!latest || session.lastAttachedAt > latest.lastAttachedAt) {
+				latest = session;
+			}
+		}
+		return latest;
 	}
 
 	/** 设置变化下发给全部组件 */

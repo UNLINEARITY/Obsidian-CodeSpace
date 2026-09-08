@@ -1623,81 +1623,24 @@ body.pdf-export .code-embed-static-fallback pre {
     background-color: var(--text-muted);
 }
 
-/* 标签栏 */
+/* 头部按钮组 */
 .code-space-terminal-header {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--size-4-2);
-    padding: var(--size-4-1) var(--size-4-2) 0 var(--size-4-2);
+    justify-content: flex-end;
+    padding: var(--size-4-1) var(--size-4-2);
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.code-space-terminal-tabs {
+.code-space-terminal-actions {
     display: flex;
     align-items: center;
     gap: var(--size-4-1);
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex: 0 0 auto;
 }
 
-.code-space-terminal-tabs::-webkit-scrollbar {
-    display: none;
-}
-
-.code-space-terminal-tab {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--size-4-1);
-    padding: var(--size-4-1) var(--size-4-2);
-    font-size: var(--font-ui-smaller);
-    color: var(--text-muted);
-    border: 1px solid transparent;
-    border-radius: var(--radius-s);
-    cursor: pointer;
-    white-space: nowrap;
-    user-select: none;
-}
-
-.code-space-terminal-tab:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
-}
-
-.code-space-terminal-tab.is-active {
-    color: var(--text-normal);
-    border-color: var(--background-modifier-border);
-    background-color: var(--background-secondary);
-}
-
-.code-space-terminal-tab.is-exited .code-space-terminal-tab-title {
-    text-decoration: line-through;
-    color: var(--text-faint);
-}
-
-.code-space-terminal-tab-badge {
-    font-size: var(--font-ui-smallest);
-    color: var(--text-faint);
-}
-
-.code-space-terminal-tab-close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    border-radius: var(--radius-s);
-    color: var(--text-faint);
-    --icon-size: 12px;
-}
-
-.code-space-terminal-tab-close:hover {
-    color: var(--text-on-accent);
-    background-color: var(--text-error);
-}
-
-.code-space-terminal-new {
+.code-space-terminal-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1710,7 +1653,7 @@ body.pdf-export .code-embed-static-fallback pre {
     --icon-size: 14px;
 }
 
-.code-space-terminal-new:hover {
+.code-space-terminal-action:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
 }
@@ -1720,7 +1663,7 @@ body.pdf-export .code-embed-static-fallback pre {
     flex: 1 1 auto;
     min-height: 0;
     position: relative;
-    padding: var(--size-4-1) 0 var(--size-4-2) var(--size-4-2);
+    padding: var(--size-4-1) var(--size-4-2) var(--size-4-1) var(--size-4-2);
 }
 
 .code-space-terminal-empty {
