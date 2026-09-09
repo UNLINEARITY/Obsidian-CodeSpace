@@ -6,7 +6,8 @@ on:
     paths:
       - ".github/workflows/star-history.yml"
   schedule:
-    - cron: "17 3 * * *"
+    # 每周一 03:17 更新一次（避免每日提交过于频繁）
+    - cron: "17 3 * * 1"
   workflow_dispatch:
 
 permissions:
