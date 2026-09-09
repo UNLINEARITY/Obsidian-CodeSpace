@@ -78,7 +78,10 @@ jobs:
         shell: bash
         run: |
           cd .pty-build/package
-          npx --yes node-gyp@10 rebuild
+          # binding.gyp 需要 node-addon-api 头文件（node-pty 的运行依赖，tarball 不含 node_modules）；
+          # 只装 dependencies 且不执行任何安装脚本
+          npm install --omit=dev --ignore-scripts
+          npx --yes node-gyp@11 rebuild
 
       - name: Normalize linux build layout
         shell: bash
