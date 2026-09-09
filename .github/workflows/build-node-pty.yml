@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           cd .pty-build/package
-          npx --yes node-gyp rebuild
+          npx --yes node-gyp@10 rebuild
 
       - name: Normalize linux build layout
         shell: bash
@@ -109,7 +109,8 @@ jobs:
             echo "prebuilds/${PLATFORM}-${ARCH} not found" >&2
             exit 1
           fi
-          mkdir -p "${STAGE}"
+          # cp -r 不会自动创建深层目标目录，必须先建 prebuilds/
+          mkdir -p "${STAGE}/prebuilds"
           cp "${PTY_DIR}/package.json" "${STAGE}/package.json"
           cp -r "${PTY_DIR}/lib" "${STAGE}/lib"
           cp -r "${PTY_DIR}/prebuilds/${PLATFORM}-${ARCH}" "${STAGE}/prebuilds/${PLATFORM}-${ARCH}"
