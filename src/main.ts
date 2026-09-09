@@ -145,6 +145,8 @@ export default class CodeSpacePlugin extends Plugin {
 				app: this.app,
 				manifestDir: this.manifest.dir ?? this.manifest.id,
 			});
+			// 完成上次会话遗留的待清理移除（此时 native 模块尚未加载，删除不会被锁定）
+			this.terminalManager.binaryManager.cleanupPendingRemoval();
 			this.registerView(
 				VIEW_TYPE_CODE_TERMINAL,
 				(leaf) => new CodeTerminalView(leaf)
@@ -229,16 +231,21 @@ export default class CodeSpacePlugin extends Plugin {
 			}
 		});
 
-		// 打开独立终端视图（桌面端）
+		// 打开独立终端视图（桌面端、已启用且支持文件就绪时才显示）
 		this.addCommand({
 			id: 'open-terminal',
 			name: t('CMD_OPEN_TERMINAL'),
-			callback: () => {
-				if (!Platform.isDesktopApp) {
-					new Notice(t('TERMINAL_NOTICE_DESKTOP_ONLY'));
-					return;
+			checkCallback: (checking: boolean) => {
+				if (!Platform.isDesktopApp || !this.settings.terminalEnabled) {
+					return false;
 				}
-				void this.activateTerminalView();
+				if (!this.terminalManager?.binaryManager.checkInstalledSync()) {
+					return false;
+				}
+				if (!checking) {
+					void this.activateTerminalView();
+				}
+				return true;
 			}
 		});
 
@@ -248,6 +255,9 @@ export default class CodeSpacePlugin extends Plugin {
 			name: t('CMD_TOGGLE_TERMINAL_PANEL'),
 			checkCallback: (checking: boolean) => {
 				if (!Platform.isDesktopApp || !this.settings.terminalEnabled) {
+					return false;
+				}
+				if (!this.terminalManager?.binaryManager.checkInstalledSync()) {
 					return false;
 				}
 				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
@@ -261,21 +271,23 @@ export default class CodeSpacePlugin extends Plugin {
 			}
 		});
 
-		// 关闭所有终端会话
+		// 关闭所有终端会话（启用且存在会话时才显示）
 		this.addCommand({
 			id: 'kill-all-terminals',
 			name: t('CMD_KILL_TERMININALS'),
-			callback: () => {
-				if (!Platform.isDesktopApp) {
-					new Notice(t('TERMINAL_NOTICE_DESKTOP_ONLY'));
-					return;
+			checkCallback: (checking: boolean) => {
+				if (!Platform.isDesktopApp || !this.settings.terminalEnabled) {
+					return false;
 				}
 				const manager = this.terminalManager;
 				if (!manager || manager.sessions.length === 0) {
-					return;
+					return false;
 				}
-				manager.killAll();
-				new Notice(t('TERMINAL_NOTICE_ALL_CLOSED'));
+				if (!checking) {
+					manager.killAll();
+					new Notice(t('TERMINAL_NOTICE_ALL_CLOSED'));
+				}
+				return true;
 			}
 		});
 

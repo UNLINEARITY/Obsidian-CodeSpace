@@ -3,7 +3,7 @@
 import { App, Notice, Platform } from "obsidian";
 import { t } from "../lang/helpers";
 import type { CodeSpaceSettings } from "../settings";
-import { TerminalBinaryManager, type BinaryProgressStage } from "./binary_manager";
+import { TerminalBinaryManager } from "./binary_manager";
 import {
 	getFs,
 	getFsPromises,
@@ -343,28 +343,26 @@ export class TerminalManager {
 		}
 	}
 
+	/**
+	 * 使用前检查支持文件：下载只发生在设置页的显式「下载」按钮，
+	 * 终端按钮/命令不自动触发网络请求。
+	 */
 	private async defaultEnsureBinaries(): Promise<void> {
 		const manager = this.binaryManager;
 		if (!manager.isPlatformSupported()) {
 			this.deps.notify(t("TERMINAL_NOTICE_PLATFORM_UNSUPPORTED"));
 			throw new Error("Terminal platform is not supported");
 		}
-		const wasReady = manager.checkInstalledSync();
-		try {
-			await manager.ensureInstalled((stage: BinaryProgressStage) => {
-				if (stage === "downloading") {
-					this.deps.notify(t("TERMINAL_NOTICE_DOWNLOADING"));
-				}
-			});
-		} catch (error) {
-			// 下载/校验/解压失败必须给用户可见反馈
-			console.error("Code Space: terminal binary installation failed:", error);
-			this.deps.notify(`${t("TERMINAL_NOTICE_DOWNLOAD_FAIL")}: ${String(error instanceof Error ? error.message : error)}`);
-			throw error;
+		const status = manager.refreshStatus();
+		if (status === "ready") {
+			return;
 		}
-		if (!wasReady) {
-			this.deps.notify(t("TERMINAL_NOTICE_DOWNLOAD_SUCCESS"));
+		if (status === "remove-pending") {
+			this.deps.notify(t("TERMINAL_NOTICE_REMOVE_PENDING"));
+			throw new Error("Terminal removal is pending a restart");
 		}
+		this.deps.notify(t("TERMINAL_NOTICE_NOT_INSTALLED"));
+		throw new Error("Terminal support files are not installed");
 	}
 
 	private async defaultResolveShell(): Promise<ResolvedShell> {

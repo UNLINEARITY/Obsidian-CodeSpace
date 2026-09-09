@@ -12,7 +12,8 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint . --max-warnings=0",
 		"dev:copy": "node scripts/copy-to-vault.mjs",
-		"dev:deploy": "npm run build && npm run dev:copy"
+		"dev:deploy": "npm run build && npm run dev:copy",
+		"pty:assets": "node scripts/build-pty-assets.mjs"
 	},
 	"keywords": [
 		"code",

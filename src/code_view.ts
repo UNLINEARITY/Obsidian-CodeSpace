@@ -582,6 +582,7 @@ export class CodeSpaceView extends TextFileView {
 	private isSettingData: boolean = false; // 新增：标记是否正在设置数据
 	private searchPanel?: CustomSearchPanel; // 自定义搜索面板
 	private terminalPanel: TerminalPanel | null = null; // 内嵌终端面板（桌面端）
+	private terminalActionEl: HTMLElement | null = null; // 标题栏终端按钮（随设置开关显隐）
 	private rootEl?: HTMLElement;
 	private cleanupMobileViewportFix?: () => void;
 	private savedDoc: Text | null = null;
@@ -698,6 +699,29 @@ export class CodeSpaceView extends TextFileView {
 				this.fontSizeCompartment.reconfigure(this.getFontSizeExtension())
 			]
 		});
+		this.syncTerminalAction();
+	}
+
+	// 终端是否可用：桌面端 + 设置启用 + 支持文件已就绪（未安装时入口不出现）
+	private isTerminalAvailable(): boolean {
+		if (!Platform.isDesktopApp) {
+			return false;
+		}
+		const plugin = this.getPlugin();
+		return Boolean(plugin?.settings.terminalEnabled && plugin.terminalManager?.binaryManager.checkInstalledSync());
+	}
+
+	// 按终端开关与支持文件状态同步标题栏按钮显隐（设置变化时即时生效，无需重载视图）
+	private syncTerminalAction(): void {
+		const available = this.isTerminalAvailable();
+		if (available && !this.terminalActionEl) {
+			this.terminalActionEl = this.addAction("square-terminal", t('HEADER_ACTION_TERMINAL'), () => {
+				void this.toggleTerminalPanel();
+			});
+		} else if (!available && this.terminalActionEl) {
+			this.terminalActionEl.remove();
+			this.terminalActionEl = null;
+		}
 	}
 
 	// 切换搜索面板（供命令调用）
@@ -1151,9 +1175,9 @@ export class CodeSpaceView extends TextFileView {
 			}
 		});
 
-		// 添加标题栏终端按钮（桌面端）
-		if (Platform.isDesktopApp) {
-			this.addAction("square-terminal", t('HEADER_ACTION_TERMINAL'), () => {
+		// 添加标题栏终端按钮（桌面端、已启用且支持文件就绪；状态变化时由 refreshSettings 同步显隐）
+		if (Platform.isDesktopApp && this.isTerminalAvailable()) {
+			this.terminalActionEl = this.addAction("square-terminal", t('HEADER_ACTION_TERMINAL'), () => {
 				void this.toggleTerminalPanel();
 			});
 		}

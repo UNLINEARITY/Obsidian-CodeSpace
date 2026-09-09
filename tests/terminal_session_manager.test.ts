@@ -5,8 +5,9 @@ import { TerminalManager, type TerminalPluginFacade } from "../src/terminal/sess
 import { createFakeDepsBase } from "./helpers/fake_pty";
 
 function makePlugin(overrides: Record<string, unknown> = {}): TerminalPluginFacade {
+	// terminalEnabled 默认值为 false（opt-in），会话测试默认显式启用
 	return {
-		settings: normalizeCodeSpaceSettings({ ...DEFAULT_SETTINGS, ...overrides }),
+		settings: normalizeCodeSpaceSettings({ ...DEFAULT_SETTINGS, terminalEnabled: true, ...overrides }),
 		app: {} as App,
 		manifestDir: "code-space",
 	};

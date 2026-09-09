@@ -28,3 +28,7 @@ git-log.md
 
 # esbuild external legal comments (build artifact)
 main.js.LEGAL.txt
+
+# local terminal download assets (dev only)
+dev-assets/
+.pty-build/

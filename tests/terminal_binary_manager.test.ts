@@ -12,6 +12,8 @@ import { WINDOWSCONOUT_PATCH } from "../src/terminal/conout_patch";
 class FakeIo implements BinaryIo {
 	files = new Map<string, Uint8Array | string>();
 	downloads = new Map<string, Uint8Array | string>();
+	/** 模拟被进程锁定的文件（删除时抛 EPERM） */
+	lockedFiles = new Set<string>();
 	extractCalls: Array<{ zipPath: string; destDir: string }> = [];
 	private extractImpl: ((zipPath: string, destDir: string) => void) | null = null;
 
@@ -46,6 +48,15 @@ class FakeIo implements BinaryIo {
 
 	rm(path: string): void {
 		const normalized = path.replace(/\\/g, "/");
+		// 模拟 Windows 锁定：目标自身或其包含的锁定文件导致删除失败
+		if (this.lockedFiles.has(normalized)) {
+			throw new Error("EPERM: operation not permitted, unlink");
+		}
+		for (const locked of this.lockedFiles) {
+			if (locked.startsWith(`${normalized}/`)) {
+				throw new Error("EPERM: operation not permitted, unlink");
+			}
+		}
 		for (const key of [...this.files.keys()]) {
 			if (key === normalized || key.startsWith(`${normalized}/`)) {
 				this.files.delete(key);
@@ -53,8 +64,39 @@ class FakeIo implements BinaryIo {
 		}
 	}
 
+	readdir(path: string): string[] {
+		const normalized = path.replace(/\\/g, "/");
+		const prefix = `${normalized}/`;
+		const entries = new Set<string>();
+		for (const key of this.files.keys()) {
+			if (key.startsWith(prefix)) {
+				const rest = key.slice(prefix.length);
+				if (rest) {
+					entries.add(rest.split("/")[0]!);
+				}
+			}
+		}
+		return [...entries];
+	}
+
 	writeBytes(path: string, data: Uint8Array): void {
 		this.files.set(path.replace(/\\/g, "/"), data);
+	}
+
+	readBytes(path: string): Uint8Array {
+		const value = this.files.get(path.replace(/\\/g, "/"));
+		if (!(value instanceof Uint8Array)) {
+			throw new Error(`ENOENT: ${path}`);
+		}
+		return value;
+	}
+
+	readTextFile(path: string): string {
+		const value = this.files.get(path.replace(/\\/g, "/"));
+		if (typeof value !== "string") {
+			throw new Error(`ENOENT: ${path}`);
+		}
+		return value;
 	}
 
 	writeText(path: string, text: string): void {
@@ -185,6 +227,23 @@ describe("TerminalBinaryManager.ensureInstalled", () => {
 		expect(io.files.get(`${PLUGIN_DIR}/node_modules/node-pty/lib/windowsConoutConnection.js`)).toBeUndefined();
 	});
 
+	it("installs from the local dev source without network", async () => {
+		const io = new FakeIo("win32", "x64");
+		const zipBytes = new TextEncoder().encode("local-zip-content");
+		io.files.set(`${PLUGIN_DIR}/dev-source/node-pty-win32-x64.zip`, zipBytes);
+		io.files.set(
+			`${PLUGIN_DIR}/dev-source/checksums.json`,
+			JSON.stringify({ "node-pty-win32-x64.zip": createHash("sha256").update(zipBytes).digest("hex") })
+		);
+		const manager = managerWith(io, "win32", "x64");
+
+		await manager.ensureInstalled();
+		expect(manager.status).toBe("ready");
+		// 全程未注入任何网络下载内容
+		expect(io.downloads.size).toBe(0);
+		expect(io.extractCalls.length).toBe(1);
+	});
+
 	it("rejects a checksum mismatch", async () => {
 		const io = new FakeIo("linux", "x64");
 		const zipBytes = new Uint8Array([1, 1, 2, 3]);
@@ -260,9 +319,58 @@ describe("TerminalBinaryManager.clearInstalled", () => {
 		io.writeLayout("win32", "x64");
 		const manager = managerWith(io, "win32", "x64");
 		expect(manager.refreshStatus()).toBe("ready");
-		await manager.clearInstalled();
+		const result = await manager.clearInstalled();
+		expect(result.pendingRestart).toBe(false);
 		expect(manager.status).toBe("not-installed");
 		expect(manager.checkInstalledSync()).toBe(false);
+	});
+
+	it("defers locked native files to the next launch", async () => {
+		const io = new FakeIo("win32", "x64");
+		io.writeLayout("win32", "x64");
+		// 模拟 conpty.node 已被当前进程加载锁定
+		io.lockedFiles.add(`${PLUGIN_DIR}/node_modules/node-pty/prebuilds/win32-x64/conpty.node`);
+		const manager = managerWith(io, "win32", "x64");
+
+		const result = await manager.clearInstalled();
+		expect(result.pendingRestart).toBe(true);
+		// 状态与标记反映「待重启移除」
+		expect(manager.refreshStatus()).toBe("remove-pending");
+		expect(manager.hasPendingRemoval()).toBe(true);
+		// 未锁定的内容已清理
+		expect(io.exists(`${PLUGIN_DIR}/node_modules/node-pty/lib/index.js`)).toBe(false);
+		// 待清理标记已登记
+		expect(io.exists(`${PLUGIN_DIR}/node_modules/.code-space-pty-remove-pending`)).toBe(true);
+
+		// 模拟下次启动（锁定解除）自动完成清理
+		io.lockedFiles.clear();
+		manager.cleanupPendingRemoval();
+		expect(io.exists(`${PLUGIN_DIR}/node_modules/node-pty`)).toBe(false);
+		expect(io.exists(`${PLUGIN_DIR}/node_modules/.code-space-pty-remove-pending`)).toBe(false);
+		expect(manager.refreshStatus()).toBe("not-installed");
+	});
+
+	it("invalidates the pending-removal marker when a fresh install succeeds", async () => {
+		const io = new FakeIo("win32", "x64");
+		// 场景：用户请求移除（标记写入）→ 重启前又重新下载安装成功
+		io.files.set(`${PLUGIN_DIR}/node_modules/.code-space-pty-remove-pending`, "123");
+		serveHappyPath(io, "win32", "x64");
+		const manager = managerWith(io, "win32", "x64");
+
+		await manager.ensureInstalled();
+		expect(manager.status).toBe("ready");
+		// 安装成功作废标记，避免下次启动误删新装好的文件
+		expect(manager.hasPendingRemoval()).toBe(false);
+	});
+});
+
+describe("TerminalBinaryManager.cleanupPendingRemoval", () => {
+	it("is a no-op when no marker exists", () => {
+		const io = new FakeIo("win32", "x64");
+		io.writeLayout("win32", "x64");
+		const manager = managerWith(io, "win32", "x64");
+		manager.cleanupPendingRemoval();
+		expect(manager.checkInstalledSync()).toBe(true);
 	});
 });
 

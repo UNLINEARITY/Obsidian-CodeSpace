@@ -33,6 +33,8 @@ export default defineConfig(
 				// Test fixtures intentionally use structural TFile mocks.
 				"obsidianmd/no-tfile-tfolder-cast": "off",
 				"no-undef": "off",
+				// CLI 脚本的正常输出
+				"no-console": "off",
 			},
 		},
 	globalIgnores([
@@ -45,5 +47,8 @@ export default defineConfig(
 		"main.js",
 		// vendored upstream patch (kept in sync with src/terminal/conout_patch.ts by test)
 		"patches/**",
+		// CLI 构建脚本（与 esbuild.config.mjs/version-bump.mjs 同待遇）
+		"scripts/build-pty-assets.mjs",
+		"scripts/copy-to-vault.mjs",
 	]),
 );

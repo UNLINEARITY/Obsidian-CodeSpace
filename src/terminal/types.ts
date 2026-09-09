@@ -47,4 +47,5 @@ export type TerminalBinaryStatus =
 	| "downloading"
 	| "ready"
 	| "error"
-	| "unsupported";
+	| "unsupported"
+	| "remove-pending";

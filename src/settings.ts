@@ -184,7 +184,7 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	enableExternalMounts: true,
 	externalMounts: [],
 	externalMountLinkType: "auto",
-	terminalEnabled: true,
+	terminalEnabled: false,
 	terminalShell: "",
 	terminalFontSize: 14,
 	terminalScrollback: 2000,
@@ -611,15 +611,8 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 	}
 
 	// 终端设置控件（仅在桌面端调用）
+	// 顺序：启用开关 → 支持文件（显式下载/移除）→ 就绪后才显示其余细项
 	private renderTerminalSettings(containerEl: HTMLElement): void {
-		const clampInt = (value: string, fallback: number, minimum: number, maximum: number): number => {
-			const parsed = Number.parseInt(value, 10);
-			if (!Number.isFinite(parsed)) {
-				return fallback;
-			}
-			return Math.min(maximum, Math.max(minimum, parsed));
-		};
-
 		new Setting(containerEl)
 			.setName(t('SETTINGS_TERMINAL_ENABLE_NAME'))
 			.setDesc(t('SETTINGS_TERMINAL_ENABLE_DESC'))
@@ -628,10 +621,101 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.terminalEnabled)
 					.onChange(async (value) => {
 						this.plugin.settings.terminalEnabled = value;
-						await this.plugin.saveSettings("none");
+						// scope "editor" 触发所有编辑器视图 refreshSettings，同步头部按钮显隐
+						await this.plugin.saveSettings("editor");
+						// 重渲染设置页：关闭时折叠细项、开启时展开
+						this.refreshSettingsView();
 					});
 			});
 
+		// 关闭时折叠全部细项，避免占用设置页空间
+		if (!this.plugin.settings.terminalEnabled) {
+			return;
+		}
+
+		const terminalManager = this.plugin.terminalManager;
+		if (!terminalManager) {
+			return;
+		}
+		const binaryManager = terminalManager.binaryManager;
+		const statusLabels: Record<string, string> = {
+			"not-installed": t("SETTINGS_TERMINAL_STATUS_NOT_INSTALLED"),
+			"checking": t("SETTINGS_TERMINAL_STATUS_CHECKING"),
+			"downloading": t("SETTINGS_TERMINAL_STATUS_DOWNLOADING"),
+			"ready": t("SETTINGS_TERMINAL_STATUS_READY"),
+			"error": t("SETTINGS_TERMINAL_STATUS_ERROR"),
+			"unsupported": t("SETTINGS_TERMINAL_STATUS_UNSUPPORTED"),
+			"remove-pending": t("SETTINGS_TERMINAL_STATUS_REMOVE_PENDING")
+		};
+		const binaryStatus = binaryManager.refreshStatus();
+
+		const binarySetting = new Setting(containerEl)
+			.setName(t('SETTINGS_TERMINAL_BINARY_STATUS'))
+			.setDesc(statusLabels[binaryStatus] ?? binaryStatus);
+
+		if (binaryStatus === "ready") {
+			// 已就绪：提供移除
+			binarySetting.addButton((button) => {
+				button
+					.setButtonText(t('SETTINGS_TERMINAL_BINARY_CLEAR'))
+					.onClick(() => {
+						void (async () => {
+							try {
+								const result = await binaryManager.clearInstalled();
+								if (result.pendingRestart) {
+									new Notice(t('TERMINAL_NOTICE_REMOVE_PENDING'), 6000);
+								} else {
+									new Notice(t('TERMINAL_NOTICE_BINARIES_CLEARED'));
+								}
+							} catch (error) {
+								new Notice(`${t("TERMINAL_NOTICE_DOWNLOAD_FAIL")}: ${String(error instanceof Error ? error.message : error)}`, 6000);
+							}
+							// 状态变化影响细项显隐与命令入口，重渲染设置页并同步编辑器按钮
+							await this.plugin.saveSettings("editor");
+							this.refreshSettingsView();
+						})();
+					});
+			});
+		} else if (binaryStatus === "not-installed" || binaryStatus === "error") {
+			// 未下载：显式下载（终端按钮/命令不会自动触发）
+			binarySetting.addButton((button) => {
+				button
+					.setButtonText(t('SETTINGS_TERMINAL_BINARY_DOWNLOAD'))
+					.onClick(() => {
+						void (async () => {
+							binarySetting.setDesc(t('SETTINGS_TERMINAL_STATUS_DOWNLOADING'));
+							try {
+								await binaryManager.ensureInstalled((stage) => {
+									if (stage === "downloading") {
+										new Notice(t('TERMINAL_NOTICE_DOWNLOADING'));
+									}
+								});
+								new Notice(t('TERMINAL_NOTICE_DOWNLOAD_SUCCESS'));
+							} catch (error) {
+								console.error("Code Space: terminal binary installation failed:", error);
+								new Notice(`${t("TERMINAL_NOTICE_DOWNLOAD_FAIL")}: ${String(error instanceof Error ? error.message : error)}`, 6000);
+							}
+							// 就绪后细项与命令入口才出现
+							await this.plugin.saveSettings("editor");
+							this.refreshSettingsView();
+						})();
+					});
+			});
+		}
+		// remove-pending / unsupported / downloading：不提供按钮（等待重启或平台不支持）
+
+		// 支持文件就绪后才显示其余终端设置
+		if (binaryStatus !== "ready") {
+			return;
+		}
+
+		const clampInt = (value: string, fallback: number, minimum: number, maximum: number): number => {
+			const parsed = Number.parseInt(value, 10);
+			if (!Number.isFinite(parsed)) {
+				return fallback;
+			}
+			return Math.min(maximum, Math.max(minimum, parsed));
+		};
 		const saveTerminalText = this.createDebouncedSave(() => this.plugin.saveSettings("terminal"));
 
 		new Setting(containerEl)
@@ -685,52 +769,6 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 						saveTerminalText();
 					});
 			});
-
-		// 终端支持文件状态与维护按钮
-		const terminalManager = this.plugin.terminalManager;
-		if (!terminalManager) {
-			return;
-		}
-		const binaryManager = terminalManager.binaryManager;
-		const statusLabels: Record<string, string> = {
-			"not-installed": t("SETTINGS_TERMINAL_STATUS_NOT_INSTALLED"),
-			"checking": t("SETTINGS_TERMINAL_STATUS_CHECKING"),
-			"downloading": t("SETTINGS_TERMINAL_STATUS_DOWNLOADING"),
-			"ready": t("SETTINGS_TERMINAL_STATUS_READY"),
-			"error": t("SETTINGS_TERMINAL_STATUS_ERROR"),
-			"unsupported": t("SETTINGS_TERMINAL_STATUS_UNSUPPORTED")
-		};
-		const binarySetting = new Setting(containerEl)
-			.setName(t('SETTINGS_TERMINAL_BINARY_STATUS'))
-			.setDesc(statusLabels[binaryManager.refreshStatus()] ?? binaryManager.status);
-		binarySetting.addButton((button) => {
-			button
-				.setButtonText(t('SETTINGS_TERMINAL_BINARY_REDOWNLOAD'))
-				.onClick(() => {
-					void (async () => {
-						binarySetting.setDesc(t('SETTINGS_TERMINAL_STATUS_DOWNLOADING'));
-						try {
-							await binaryManager.clearInstalled();
-							await binaryManager.ensureInstalled();
-							new Notice(t('TERMINAL_NOTICE_DOWNLOAD_SUCCESS'));
-						} catch (error) {
-							new Notice(`${t("TERMINAL_NOTICE_DOWNLOAD_FAIL")}: ${String(error)}`, 6000);
-						}
-						binarySetting.setDesc(statusLabels[binaryManager.refreshStatus()] ?? binaryManager.status);
-					})();
-				});
-		});
-		binarySetting.addButton((button) => {
-			button
-				.setButtonText(t('SETTINGS_TERMINAL_BINARY_CLEAR'))
-				.onClick(() => {
-					void (async () => {
-						await binaryManager.clearInstalled();
-						new Notice(t('TERMINAL_NOTICE_BINARIES_CLEARED'));
-						binarySetting.setDesc(statusLabels[binaryManager.refreshStatus()] ?? binaryManager.status);
-					})();
-				});
-		});
 	}
 
 	hide(): void {

@@ -15,6 +15,7 @@ type FsSyncApi = {
 	mkdirSync(path: string, options: { recursive: boolean }): void;
 	rmSync(path: string, options: { recursive: boolean; force: boolean }): void;
 	readFileSync(path: string): Uint8Array;
+	readFileSync(path: string, encoding: "utf8"): string;
 	writeFileSync(path: string, data: Uint8Array | string): void;
 	chmodSync(path: string, mode: number): void;
 	readdirSync(path: string): string[];
