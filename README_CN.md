@@ -2,6 +2,8 @@
 
 <h1 align="center">为 Obsidian 提供专业的代码文件支持</h1>
 
+<p align="center"><a href="README.md">English</a> | <a href="README_CN.md">简体中文</a></p>
+
 <p align="center">
   <img src="docs/img/Code.webp" alt="Code Space Preview" width="80%">
 </p>
@@ -24,12 +26,13 @@
 
 Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中查看、管理、编辑、结构导航和嵌入导出**支持有限。Code Space 插件为解决这一问题而生。
 
-**"Space" 的四层含义：**
+**"Space" 的五层含义：**
 
 1. **管理空间**：为代码文件提供统一索引和管理空间，通过可视化面板浏览所有代码文件
 2. **编辑空间**：进入代码文件内部，提供专业的代码查看和编辑环境
 3. **嵌入空间**：与 Obsidian 原生功能深度融合，支持代码文件的引用、嵌入式预览和原生 PDF 导出
 4. **挂载空间**：通过系统符号链接/目录联接将外部文件夹挂载到 Vault 内，实现跨项目代码管理
+5. **终端空间**：在桌面端于编辑器内运行真实系统 shell（PowerShell、zsh、bash）
 
 
 <!-- star-history:start -->
@@ -128,6 +131,33 @@ Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中�
 - **路径稳定性**：外部文件夹的移动或重命名会导致挂载失效，需重新配置
 - **同步问题**：如果外部文件夹位于云同步目录（如 Dropbox、OneDrive），请确保 Obsidian 和外部文件夹的同步状态一致，避免冲突
 
+### 5. 集成终端（仅桌面端）
+
+在 Code Space 内运行真实系统 shell，由 xterm.js 与 node-pty 驱动。
+
+- **真实 PTY 终端**：交互式程序、颜色、任务控制与分页均与原生终端一致（Windows 使用 ConPTY，macOS/Linux 使用 Unix pty）
+- **多页面独立分组**：可同时打开多个终端标签页，每个页面拥有独立的一组终端；组内通过标签栏切换、新建与关闭；关闭页面即关闭该组终端，重新打开为全新一组
+- **编辑器内嵌面板**：编辑器底部提供快速终端面板（可拖拽调高），与终端页面互不干扰；支持将面板中正在使用的终端**移交**到新的终端标签页（进程与回溯原样保留）
+- **跟随上下文**：新建终端的工作目录默认取当前打开文件所在文件夹（外部挂载会解析到真实磁盘路径），无活动文件时回退到 Vault 根目录
+- **主题联动**：配色与等宽字体跟随 Obsidian 主题（含弹出窗口），WebGL 渲染，文字锐利
+- **进程退出提示**：shell 退出时显示「进程已退出」提示行，标签置灰，仍可查看回溯
+
+**使用方式：**
+1. 在 **设置 > Code Space > 终端** 中开启开关（默认关闭）
+2. 点击「支持文件」旁的 **下载**，Code Space 会下载一个较小的平台支持包（见下方说明），就绪后细项设置与相关命令才会出现
+3. 通过命令面板 **Code Space: 打开终端** 新开终端标签页，或在代码文件中点击编辑器头部的终端按钮打开内嵌面板
+4. 页面内通过 **+** 新建终端、点击标签切换、**×** 关闭单个终端；**Code Space: 关闭所有终端会话** 一键全部关闭
+
+**重要提示！**
+- **仅桌面端**：终端在 iOS/Android 上不可用
+- **显式下载**：真正的 PTY 需要原生辅助程序（`node-pty`）。Obsidian 插件商店只分发 JavaScript，因此辅助程序仅在你点击设置中的 **下载** 时获取：从本仓库 GitHub releases 下载对应平台的预编译包（约 1-3 MB），经 SHA-256 校验后存放在插件目录。终端命令与按钮自身绝不会触发下载
+- **支持平台**：Windows x64/ARM64、macOS x64/ARM64、Linux x64；其他 Linux 架构暂不支持
+- **Linux 依赖**：Linux 上安装支持包需要 `unzip` 工具（多数发行版已预装）
+- **shell 检测**：Windows 依次检测 PowerShell（`pwsh.exe` → `powershell.exe` → `cmd.exe`）；macOS 为 `$SHELL` → `zsh`；Linux 为 `$SHELL` → `bash`。可在 **设置 > 终端** 指定可执行文件
+- **键盘焦点**：终端聚焦时按键（含 Ctrl/Cmd 组合）会发送给 shell（与 VS Code 一致），点击编辑器即可交还焦点
+- **安全**：终端以你的用户权限运行，可访问 Vault 外的文件，请谨慎执行粘贴的命令
+- **移除与更新**：在设置中可随时移除已下载的支持文件；若文件被当前会话占用，未锁定部分立即删除，剩余文件将在 Obsidian 重启后自动完成移除
+
 ---
 ## 配置选项
 
@@ -140,6 +170,7 @@ Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中�
 - **最大嵌入行数**：嵌入预览显示的最大行数（默认：20，0 表示无限制）
 - **新代码文件存放位置**：创建新代码文件时，可使用指定文件夹，或使用当前正在编辑的文件所在文件夹
 - **外部文件夹（仅桌面端）**：通过系统符号链接/目录联接将外部文件夹挂载到 Vault 内，可启用/禁用、添加、移除、重新挂载并查看状态。
+- **终端（仅桌面端）**：启用集成终端（默认关闭，开启后显示终端按钮与相关命令）、下载/移除支持文件、指定 shell 可执行文件（留空自动检测）、设置字体大小、回溯行数与最大会话数。
 
 注意：外部挂载会使插件访问 Vault 外的文件，请仅挂载可信目录。
 
@@ -211,6 +242,9 @@ Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中�
 | `Ctrl+P` → "重载插件" | 重新加载插件 |
 | `Ctrl+P` → "切换大纲视图 (Outline)" | 开关代码大纲视图 |
 | `Ctrl+P` → "搜索与替换" | 在当前 Code Space 编辑器中打开搜索与替换面板 |
+| `Ctrl+P` → "打开终端" | 新开一个终端标签页（启用终端并下载支持文件后可用） |
+| `Ctrl+P` → "切换终端面板" | 开关当前编辑器中的内嵌终端面板 |
+| `Ctrl+P` → "关闭所有终端会话" | 关闭全部终端 |
 
 ---
 
@@ -318,6 +352,18 @@ obsidian-codespace/
 │   ├── ignore_manager_modal.ts # 忽略文件/文件夹管理弹窗
 │   ├── external_mount.ts      # 外部挂载：symlink/junction 管理
 │   ├── settings.ts            # 设置面板：插件配置
+│   ├── terminal/              # 集成终端（仅桌面端）
+│   │   ├── types.ts           # 终端共享类型与本地 pty 接口
+│   │   ├── node_access.ts     # 运行时 window.require 访问 Node API
+│   │   ├── binary_manager.ts  # node-pty 预编译包下载/校验/解压
+│   │   ├── conout_patch.ts    # Windows ConPTY 渲染进程补丁
+│   │   ├── pty_host.ts        # PtyProcess 封装：加载/生成/终止
+│   │   ├── shell_detector.ts  # 平台默认 shell 检测
+│   │   ├── terminal_theme.ts  # Obsidian 主题变量到 xterm 主题映射
+│   │   ├── terminal_component.ts # xterm.js 封装：挂载/自适应/WebGL
+│   │   ├── session_manager.ts # TerminalManager/TerminalGroup 会话架构
+│   │   ├── terminal_panel.ts  # 共用标签栏面板（内嵌 + 视图宿主）
+│   │   └── terminal_view.ts   # 独立终端视图
 │   └── lang/
 │       ├── helpers.ts         # 本地化工具
 │       └── locale/
@@ -347,6 +393,7 @@ obsidian-codespace/
 
 已知限制：
 - 代码文件内容目前不被 Obsidian 的全局搜索引擎索引；在 Code Space 编辑器内可以使用搜索与替换面板处理当前文件。
+- 集成终端为桌面端专属功能；Windows ARM64 的支持包由 CI 构建，如遇下载失败请提交 Issue 反馈。
 
 ---
 ## 致谢
@@ -355,6 +402,8 @@ obsidian-codespace/
 - [Obsidian API](https://github.com/obsidianmd/obsidian-api): 提供强大的插件扩展能力。
 - [CodeMirror 6](https://codemirror.net/): 灵活且现代的代码编辑器引擎。
 - [Lezer](https://lezer.codemirror.net/): 高效的增量式代码解析系统。
+- [xterm.js](https://github.com/xtermjs/xterm.js/): 集成终端的前端。
+- [node-pty](https://github.com/microsoft/node-pty): 微软出品的伪终端后端；其在 Obsidian 内的 Windows 补丁改编自 [lean-obsidian-terminal](https://github.com/sdkasper/lean-obsidian-terminal)。
 - [TypeScript](https://www.typescriptlang.org/): 提供稳健的类型安全保障。
 - [esbuild](https://esbuild.github.io/): 极速的 JavaScript 打包工具。
 

@@ -2,6 +2,8 @@
 
 <h1 align="center">Professional code file support for Obsidian</h1>
 
+<p align="center"><a href="README.md">English</a> | <a href="README_CN.md">简体中文</a></p>
+
 <p align="center">
   <img src="docs/img/Code.webp" alt="Code Space Preview" width="80%">
 </p>
@@ -26,12 +28,13 @@
 
 Obsidian's native workflow is centered on Markdown notes, so its support for centralized code file browsing, management, editing, structural navigation, and exporting embedded code is limited. Code Space was created to fill that gap.
 
-**The four layers of "Space":**
+**The five layers of "Space":**
 
 1. **Management space**: Provides a unified index and management area for code files, so you can browse code files through a visual dashboard.
 2. **Editing space**: Opens code files in a dedicated environment for viewing and editing.
 3. **Embedding space**: Works with Obsidian's native features to support references, embedded code previews, and native PDF export as real code blocks.
 4. **Mount space**: Mount external folders into the Vault via system symlinks/junctions for cross-project code management.
+5. **Terminal space**: Run a real system shell (PowerShell, zsh, bash) inside the editor, on desktop.
 
 <!-- star-history:start -->
 [![Star History](https://raw.githubusercontent.com/UNLINEARITY/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#UNLINEARITY/Obsidian-CodeSpace&Date)
@@ -129,6 +132,33 @@ Work across Vault boundaries to manage external project code.
 - **Path stability**: Moving or renaming external folders will break the mount and require reconfiguration
 - **Sync issues**: If external folders are in cloud-synced directories (e.g., Dropbox, OneDrive), ensure Obsidian and external folders are in sync to avoid conflicts
 
+### 5. Integrated terminal (desktop only)
+
+Run a real system shell inside Code Space, powered by xterm.js and node-pty.
+
+- **Real PTY terminal**: Interactive programs, colors, job control, and paging work like a native terminal (ConPTY on Windows, Unix pty on macOS/Linux)
+- **Two hosts, one set of sessions**: Toggle an embedded panel at the bottom of the code editor, or open a standalone terminal tab in the main area. Sessions keep running when panels or views close
+- **Multi-tab sessions**: Create, switch, and close terminal sessions from the tab bar; exited sessions are marked and stay readable until closed
+- **Follows your context**: New terminals start in the folder of the currently open file (external mounts resolve to their real on-disk location), falling back to the Vault root
+- **Theme aware**: Colors and the monospace font follow your Obsidian theme, including in pop-out windows
+- **Resizable panel**: Drag the grip above the embedded panel to adjust its height
+
+**Usage:**
+1. Enable the terminal under **Settings > Code Space > Terminal** (disabled by default)
+2. Select **Download** next to "Support files" — Code Space downloads a small platform package (see notes below); the header button, commands, and remaining settings appear once it is ready
+3. Open a code file and select the terminal button in the editor header, or run **Code Space: Toggle terminal panel**
+4. Or run **Code Space: Open terminal** for a standalone terminal tab (every tab is one full-screen terminal)
+5. Close a terminal tab to stop that terminal, or run **Code Space: Close all terminal sessions** to stop everything
+
+**Important notes!**
+- **Desktop only**: The terminal is unavailable on iOS/Android
+- **Explicit download**: A true PTY requires a native helper (`node-pty`). Obsidian's plugin store only distributes JavaScript, so the helper is downloaded only when you select **Download** under **Settings > Terminal**: a prebuilt package (~1-3 MB) for your platform from this repository's GitHub releases, verified by SHA-256 checksum and stored under the plugin folder. Terminal commands and buttons never download anything by themselves
+- **Supported platforms**: Windows x64/ARM64, macOS x64/ARM64, Linux x64. Other Linux architectures are not supported yet
+- **Linux requirement**: Installing the support package on Linux requires the `unzip` utility (preinstalled on most distributions)
+- **Shell detection**: PowerShell (`pwsh.exe` → `powershell.exe` → `cmd.exe`) on Windows, `$SHELL` → `zsh` on macOS, `$SHELL` → `bash` on Linux. Set an explicit executable in **Settings > Terminal**
+- **Keyboard focus**: While the terminal is focused, keys (including Ctrl/Cmd combinations) go to the shell, like VS Code. Select the editor to give keys back
+- **Security**: The terminal runs with your user permissions and can access files outside the Vault. Treat pasted commands with the same care as in any system terminal
+
 ---
 ## Configuration
 
@@ -141,6 +171,7 @@ Access configuration via **Settings > Community plugins > Code Space**:
 - **Max embed lines**: Maximum lines shown in embedded previews (default: 20, 0 for unlimited)
 - **Location for new code files**: Create new code files in a custom folder or in the folder of the currently active file
 - **External folders (desktop only)**: Mount external folders into the Vault via system symlinks/junctions. You can enable or disable the feature, add, remove, relink, and inspect mounts.
+- **Terminal (desktop only)**: Enable the integrated terminal (disabled by default; enabling shows the terminal button and commands), pick a shell executable (empty for auto-detect), set font size, scrollback, and the maximum number of concurrent sessions, and manage the downloaded terminal support files (re-download or remove).
 
 Note: External mounts allow access to files outside the Vault. Only mount folders you trust.
 
@@ -212,6 +243,9 @@ If you add the following extensions to the managed list, these files can also be
 | `Ctrl+P` → "Reload plugin" | Reload the plugin |
 | `Ctrl+P` → "Toggle code outline" | Toggle the code outline view |
 | `Ctrl+P` → "Search and replace" | Open the search and replace panel in the current Code Space editor |
+| `Ctrl+P` → "Open terminal" | Open a new terminal tab (available after enabling the terminal and downloading support files) |
+| `Ctrl+P` → "Toggle terminal panel" | Toggle the embedded terminal panel in the current editor |
+| `Ctrl+P` → "Close all terminal sessions" | Stop every terminal |
 
 ---
 
@@ -319,6 +353,18 @@ obsidian-codespace/
 │   ├── ignore_manager_modal.ts # Ignored file/folder manager modal
 │   ├── external_mount.ts      # External mounts: symlink/junction management
 │   ├── settings.ts            # Settings panel: plugin configuration
+│   ├── terminal/              # Integrated terminal (desktop only)
+│   │   ├── types.ts           # Shared terminal types and local pty interface
+│   │   ├── node_access.ts     # Runtime window.require access to Node APIs
+│   │   ├── binary_manager.ts  # node-pty prebuild download/verify/extract
+│   │   ├── conout_patch.ts    # Windows ConPTY renderer patch (node-pty)
+│   │   ├── pty_host.ts        # PtyProcess wrapper: load node-pty, spawn/kill
+│   │   ├── shell_detector.ts  # Platform default shell detection
+│   │   ├── terminal_theme.ts  # Obsidian theme vars to xterm theme mapping
+│   │   ├── terminal_component.ts # xterm.js wrapper: attach/detach/fit
+│   │   ├── session_manager.ts # TerminalManager: global session lifecycle
+│   │   ├── terminal_panel.ts  # Shared tab-bar panel (embedded + view hosts)
+│   │   └── terminal_view.ts   # Standalone terminal ItemView
 │   └── lang/
 │       ├── helpers.ts         # Localization helpers
 │       └── locale/
@@ -348,6 +394,7 @@ For issues or suggestions, please use [GitHub Issues](https://github.com/unlinea
 
 Known limitations:
 - Code file contents are currently not indexed by Obsidian's global search engine. Use the Code Space search and replace panel for the current file.
+- The integrated terminal is desktop only; if the support-file download fails on Windows ARM64, please report it in an issue.
 
 ---
 
@@ -357,6 +404,8 @@ This project is built upon the following excellent projects:
 - [Obsidian API](https://github.com/obsidianmd/obsidian-api): Provides powerful plugin extensibility.
 - [CodeMirror 6](https://codemirror.net/): Flexible and modern code editor engine.
 - [Lezer](https://lezer.codemirror.net/): Efficient incremental code parsing system.
+- [xterm.js](https://github.com/xtermjs/xterm.js/): Terminal frontend for the integrated terminal.
+- [node-pty](https://github.com/microsoft/node-pty): Pseudo-terminal backend by Microsoft; its Windows patch inside Obsidian is adapted from [lean-obsidian-terminal](https://github.com/sdkasper/lean-obsidian-terminal).
 - [TypeScript](https://www.typescriptlang.org/): Provides robust type safety.
 - [esbuild](https://esbuild.github.io/): Extremely fast JavaScript bundler.
 
