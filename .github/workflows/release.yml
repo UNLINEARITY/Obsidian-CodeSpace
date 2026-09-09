@@ -1,9 +1,15 @@
 name: Release
 
+# 手动触发：输入与 manifest.json 版本一致的 tag（如 2.5.0）。
+# tag 需已推送（--verify-tag 会校验存在性）；不再由 tag 推送自动触发。
+
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (must match manifest.json version)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -11,16 +17,20 @@ permissions:
   attestations: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -43,8 +53,8 @@ jobs:
         shell: bash
         run: |
           manifest_version="$(node -p "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')).version")"
-          if [ "$manifest_version" != "$GITHUB_REF_NAME" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match manifest version $manifest_version" >&2
+          if [ "$manifest_version" != "$RELEASE_TAG" ]; then
+            echo "Tag $RELEASE_TAG does not match manifest version $manifest_version" >&2
             exit 1
           fi
 
@@ -59,4 +69,4 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --title "Code Space $GITHUB_REF_NAME" --generate-notes --verify-tag
+        run: gh release create "$RELEASE_TAG" main.js manifest.json styles.css --title "Code Space $RELEASE_TAG" --generate-notes --verify-tag

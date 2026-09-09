@@ -3,6 +3,8 @@ name: Build node-pty prebuilds
 # 构建各平台的 node-pty 预编译包并附加到固定 release tag。
 # 插件运行时（src/terminal/binary_manager.ts）从该 tag 直链下载 zip。
 # 仅在升级 node-pty 版本时手动触发；与插件版本号 release 完全解耦。
+# 注意：不使用 npm install（其安装脚本在 runner 上不稳定），
+# 直接 npm pack 解包 tarball——win/mac 使用包内 prebuilds，linux 显式 node-gyp 编译。
 
 on:
   workflow_dispatch:
@@ -32,8 +34,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # npm 包自带 win32-x64 / win32-arm64 / darwin-x64 / darwin-arm64 的
-          # N-API prebuilds；linux-x64 无预编译产物，由 node-gyp 源码编译。
+          # npm tarball 自带 win32/darwin 全架构的 N-API prebuilds；
+          # linux 无预编译产物，由 node-gyp 源码编译。
           - runs-on: windows-latest
             platform: win32
             arch: x64
@@ -60,21 +62,29 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install node-pty
+      - name: Unpack node-pty tarball
         shell: bash
         run: |
-          mkdir .pty-stage
-          cd .pty-stage
-          npm init -y >/dev/null 2>&1
-          npm install "node-pty@${PTY_VERSION}"
+          mkdir .pty-build
+          cd .pty-build
+          npm pack "node-pty@${PTY_VERSION}" --silent
+          # 相对路径调用 tar：绝对路径的盘符冒号会被 GNU tar 解析为远程主机
+          tar -xzf "node-pty-${PTY_VERSION}.tgz"
+
+      - name: Build native module (linux only)
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          cd .pty-build/package
+          npx --yes node-gyp rebuild
 
       - name: Normalize linux build layout
         shell: bash
         run: |
           if [ "${PLATFORM}" = "linux" ]; then
-            PTY_DIR=".pty-stage/node_modules/node-pty"
+            PTY_DIR=".pty-build/package"
             mkdir -p "${PTY_DIR}/prebuilds/linux-x64"
             cp "${PTY_DIR}/build/Release/pty.node" "${PTY_DIR}/prebuilds/linux-x64/"
             if [ -f "${PTY_DIR}/build/Release/spawn-helper" ]; then
@@ -86,15 +96,19 @@ jobs:
         shell: bash
         run: |
           if [ "${PLATFORM}" = "win32" ]; then
-            cp patches/windowsConoutConnection.js .pty-stage/node_modules/node-pty/lib/windowsConoutConnection.js
+            cp patches/windowsConoutConnection.js .pty-build/package/lib/windowsConoutConnection.js
           fi
 
       - name: Package zip
         shell: bash
         run: |
-          PTY_DIR=".pty-stage/node_modules/node-pty"
+          PTY_DIR=".pty-build/package"
           STAGE="stage/node-pty"
           ASSET="node-pty-${PLATFORM}-${ARCH}.zip"
+          if [ ! -d "${PTY_DIR}/prebuilds/${PLATFORM}-${ARCH}" ]; then
+            echo "prebuilds/${PLATFORM}-${ARCH} not found" >&2
+            exit 1
+          fi
           mkdir -p "${STAGE}"
           cp "${PTY_DIR}/package.json" "${STAGE}/package.json"
           cp -r "${PTY_DIR}/lib" "${STAGE}/lib"
