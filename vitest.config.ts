@@ -9,5 +9,6 @@ export default defineConfig({
 	},
 	test: {
 		setupFiles: ["tests/setup.ts"],
+		exclude: ["**/node_modules/**", "**/dist/**", ".pty-build/**", "dev-assets/**"],
 	},
 });

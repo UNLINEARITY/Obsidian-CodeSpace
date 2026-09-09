@@ -280,7 +280,7 @@ export default class CodeSpacePlugin extends Plugin {
 					return false;
 				}
 				const manager = this.terminalManager;
-				if (!manager || manager.sessions.length === 0) {
+				if (!manager || manager.totalSessionCount === 0) {
 					return false;
 				}
 				if (!checking) {
@@ -648,7 +648,7 @@ export default class CodeSpacePlugin extends Plugin {
 		}
 	}
 
-	// 新开一个终端标签页（一个终端 = 一个标签页；多终端由 Obsidian 原生标签栏管理）
+	// 新开一个终端标签页：每个页面拥有独立的一组终端（页内 + 管理）
 	async activateTerminalView() {
 		const { workspace } = this.app;
 		const leaf = workspace.getLeaf(true);

@@ -50,5 +50,8 @@ export default defineConfig(
 		// CLI 构建脚本（与 esbuild.config.mjs/version-bump.mjs 同待遇）
 		"scripts/build-pty-assets.mjs",
 		"scripts/copy-to-vault.mjs",
+		// 本地终端资产构建（node-pty tarball 解包产物）
+		".pty-build/**",
+		"dev-assets/**",
 	]),
 );

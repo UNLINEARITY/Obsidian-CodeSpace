@@ -1623,14 +1623,81 @@ body.pdf-export .code-embed-static-fallback pre {
     background-color: var(--text-muted);
 }
 
-/* 头部按钮组 */
+/* 头部：标签栏 + 操作按钮 */
 .code-space-terminal-header {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
+    gap: var(--size-4-2);
     padding: var(--size-4-1) var(--size-4-2);
     border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.code-space-terminal-tabs {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    overflow-x: auto;
+    min-width: 0;
+    scrollbar-width: none;
+}
+
+.code-space-terminal-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.code-space-terminal-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    padding: var(--size-4-1) var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.code-space-terminal-tab:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.code-space-terminal-tab.is-active {
+    color: var(--text-normal);
+    border-color: var(--background-modifier-border);
+    background-color: var(--background-secondary);
+}
+
+.code-space-terminal-tab.is-exited .code-space-terminal-tab-title {
+    text-decoration: line-through;
+    color: var(--text-faint);
+}
+
+.code-space-terminal-tab-badge {
+    font-size: var(--font-ui-smallest);
+    color: var(--text-faint);
+}
+
+.code-space-terminal-tab-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: var(--radius-s);
+    color: var(--text-faint);
+    --icon-size: 12px;
+}
+
+.code-space-terminal-tab-close:hover {
+    color: var(--text-on-accent);
+    background-color: var(--text-error);
 }
 
 .code-space-terminal-actions {

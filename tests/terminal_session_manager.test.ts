@@ -29,19 +29,19 @@ function makeManager(pluginOverrides: Record<string, unknown> = {}) {
 		buildEnv: () => ({ TERM: "xterm-256color" }),
 		notify,
 	});
-	return { manager, base, notify, plugin };
+	const group = manager.createGroup();
+	return { manager, group, base, notify, plugin };
 }
 
-describe("TerminalManager.createSession", () => {
+describe("TerminalGroup.createSession", () => {
 	it("creates a wired session with shell title and cwd", async () => {
-		const { manager, base } = makeManager();
-		const session = await manager.createSession("/work/dir");
+		const { group, base } = makeManager();
+		const session = await group.createSession("/work/dir");
 
 		expect(session.info.title).toBe("zsh 1");
 		expect(session.info.cwd).toBe("/work/dir");
 		expect(session.info.exited).toBe(false);
-		expect(session.viewOwned).toBe(false);
-		expect(manager.sessions.length).toBe(1);
+		expect(group.sessions.length).toBe(1);
 
 		// pty 输出转发到组件
 		const component = base.fakeComponents[0]!;
@@ -50,40 +50,51 @@ describe("TerminalManager.createSession", () => {
 	});
 
 	it("numbers titles per display name", async () => {
-		const { manager } = makeManager();
-		await manager.createSession();
-		const second = await manager.createSession();
+		const { group } = makeManager();
+		await group.createSession();
+		const second = await group.createSession();
 		expect(second.info.title).toBe("zsh 2");
 	});
 
 	it("rejects when disabled", async () => {
-		const { manager, notify } = makeManager({ terminalEnabled: false });
-		await expect(manager.createSession()).rejects.toThrow("disabled");
+		const { group, notify } = makeManager({ terminalEnabled: false });
+		await expect(group.createSession()).rejects.toThrow("disabled");
 		expect(notify).toHaveBeenCalled();
 	});
 
 	it("evicts the oldest exited session at cap before refusing", async () => {
-		const { manager, base } = makeManager({ terminalMaxSessions: 2 });
-		const first = await manager.createSession();
-		await manager.createSession();
+		const { group, base } = makeManager({ terminalMaxSessions: 2 });
+		const first = await group.createSession();
+		await group.createSession();
 
 		// 未退出且满员 → 拒绝
-		await expect(manager.createSession()).rejects.toThrow("limit");
+		await expect(group.createSession()).rejects.toThrow("limit");
 
 		// 第一个退出后 → 淘汰第一个，允许新建
 		base.fakePtys[0]!.emitExit(0);
-		await manager.createSession();
-		expect(manager.sessions.length).toBe(2);
-		expect(manager.sessions.some((s) => s.info.id === first.info.id)).toBe(false);
+		await group.createSession();
+		expect(group.sessions.length).toBe(2);
+		expect(group.sessions.some((s) => s.info.id === first.info.id)).toBe(false);
+	});
+
+	it("counts sessions across groups toward the global cap", async () => {
+		const { manager, group } = makeManager({ terminalMaxSessions: 2 });
+		const other = manager.createGroup();
+		await group.createSession();
+		await other.createSession();
+
+		// 全局总数已达上限：跨组也拒绝新建
+		await expect(group.createSession()).rejects.toThrow("limit");
+		expect(manager.totalSessionCount).toBe(2);
 	});
 });
 
-describe("TerminalManager lifecycle", () => {
+describe("TerminalGroup lifecycle", () => {
 	it("marks session exited on pty exit and notifies listeners", async () => {
-		const { manager, base } = makeManager();
-		const session = await manager.createSession();
+		const { group, base } = makeManager();
+		const session = await group.createSession();
 		const changed = vi.fn();
-		manager.onSessionsChanged(changed);
+		group.onSessionsChanged(changed);
 
 		base.fakePtys[0]!.emitExit(0);
 		expect(session.info.exited).toBe(true);
@@ -94,76 +105,111 @@ describe("TerminalManager lifecycle", () => {
 	});
 
 	it("closeSession terminates pty and disposes component", async () => {
-		const { manager, base } = makeManager();
-		const session = await manager.createSession();
-		manager.closeSession(session.info.id);
+		const { group, base } = makeManager();
+		const session = await group.createSession();
+		group.closeSession(session.info.id);
 
-		expect(manager.sessions.length).toBe(0);
+		expect(group.sessions.length).toBe(0);
 		expect(base.fakePtys[0]!.killCount).toBe(1);
 		expect(base.fakeComponents[0]!.disposed).toBe(true);
 	});
 
-	it("killAll clears everything", async () => {
-		const { manager, base } = makeManager();
-		await manager.createSession();
-		await manager.createSession();
-		manager.killAll();
+	it("dispose closes all sessions of the group (no-memory model)", async () => {
+		const { manager, group, base } = makeManager();
+		await group.createSession();
+		await group.createSession();
+		manager.destroyGroup(group);
 
-		expect(manager.sessions.length).toBe(0);
+		expect(group.sessions.length).toBe(0);
 		expect(base.fakePtys.every((pty) => pty.killCount === 1)).toBe(true);
 		expect(base.fakeComponents.every((component) => component.disposed)).toBe(true);
 	});
 
-	it("dispose kills all and ignores later creates", async () => {
-		const { manager } = makeManager();
-		await manager.createSession();
-		manager.dispose();
-		expect(manager.sessions.length).toBe(0);
-		await expect(manager.createSession()).rejects.toThrow("disposed");
+	it("groups are independent: closing one does not affect another", async () => {
+		const { manager, group, base } = makeManager();
+		const other = manager.createGroup();
+		const otherSession = await other.createSession();
+
+		manager.destroyGroup(group);
+		expect(other.sessions.length).toBe(1);
+		expect(base.fakePtys[base.fakePtys.length - 1]!.killCount).toBe(0);
+		expect(otherSession.info.exited).toBe(false);
+	});
+
+	it("killAll closes every group", async () => {
+		const { manager, group } = makeManager();
+		const other = manager.createGroup();
+		await group.createSession();
+		await other.createSession();
+
+		manager.killAll();
+		expect(group.sessions.length).toBe(0);
+		expect(other.sessions.length).toBe(0);
 	});
 });
 
-describe("TerminalManager session ownership", () => {
-	it("marks view-owned sessions and skips them in latestPanelSession", async () => {
-		const { manager } = makeManager();
-		const panelSession = await manager.createSession();
-		const viewSession = await manager.createSession(undefined, { viewOwned: true });
+describe("TerminalManager.moveSessionBetween", () => {
+	it("moves a session between groups without killing it", async () => {
+		const { manager, group, base } = makeManager();
+		const session = await group.createSession();
+		const target = manager.createGroup();
 
-		expect(viewSession.viewOwned).toBe(true);
-		expect(manager.latestPanelSession()?.info.id).toBe(panelSession.info.id);
-
-		// 视图关闭会话后，面板可接管的无主会话为空
-		manager.closeSession(panelSession.info.id);
-		expect(manager.latestPanelSession()).toBeNull();
+		expect(manager.moveSessionBetween(group, target, session.info.id)).toBe(true);
+		expect(group.sessions.length).toBe(0);
+		expect(target.sessions.length).toBe(1);
+		// 进程与组件保持存活（仅转移簿记）
+		expect(base.fakePtys[0]!.killCount).toBe(0);
+		expect(base.fakeComponents[0]!.disposed).toBe(false);
+		// 转移后数据照常流动
+		base.fakePtys[0]!.emitData("still alive");
+		expect(base.fakeComponents[0]!.written).toContain("still alive");
 	});
 
-	it("hands over a pending-claimed session exactly once", async () => {
-		const { manager } = makeManager();
-		const session = await manager.createSession();
-
-		manager.markPendingClaim(session.info.id);
-		const claimed = manager.claimPendingSession();
-		expect(claimed?.info.id).toBe(session.info.id);
-		expect(claimed?.viewOwned).toBe(true);
-
-		// 二次认领返回 null（认领后清空）
-		expect(manager.claimPendingSession()).toBeNull();
+	it("returns false for unknown session ids", () => {
+		const { manager, group } = makeManager();
+		const target = manager.createGroup();
+		expect(manager.moveSessionBetween(group, target, "missing")).toBe(false);
 	});
 
-	it("ignores pending claims for closed sessions", async () => {
-		const { manager } = makeManager();
-		const session = await manager.createSession();
-		manager.closeSession(session.info.id);
-		manager.markPendingClaim(session.info.id);
-		expect(manager.claimPendingSession()).toBeNull();
+	it("hands a pending claim group to the next terminal view", async () => {
+		const { manager, group } = makeManager();
+		const session = await group.createSession();
+		const target = manager.createGroup();
+		manager.moveSessionBetween(group, target, session.info.id);
+		manager.claimGroupNextView(target);
+
+		expect(manager.consumePendingGroup()).toBe(target);
+		expect(manager.consumePendingGroup()).toBeNull();
+	});
+});
+
+describe("TerminalGroup.latestSession", () => {
+	it("returns the most recently attached session", async () => {
+		const { group } = makeManager();
+		const first = await group.createSession();
+		const second = await group.createSession();
+
+		// 直接注入时间戳，避免同毫秒创建导致 lastAttachedAt 无区分度
+		first.lastAttachedAt = 100;
+		second.lastAttachedAt = 200;
+		expect(group.latestSession()?.info.id).toBe(second.info.id);
+
+		first.lastAttachedAt = 300;
+		expect(group.latestSession()?.info.id).toBe(first.info.id);
+	});
+
+	it("returns null when the group is empty", async () => {
+		const { group } = makeManager();
+		expect(group.latestSession()).toBeNull();
 	});
 });
 
 describe("TerminalManager.applySettings", () => {
-	it("propagates font size and scrollback to all components", async () => {
-		const { manager, base, plugin } = makeManager();
-		await manager.createSession();
-		await manager.createSession();
+	it("propagates font size and scrollback to all sessions in all groups", async () => {
+		const { manager, group, base, plugin } = makeManager();
+		const other = manager.createGroup();
+		await group.createSession();
+		await other.createSession();
 
 		plugin.settings.terminalFontSize = 20;
 		plugin.settings.terminalScrollback = 5000;

@@ -1,4 +1,6 @@
-// 终端会话管理器：持有全部 PTY 会话（跨视图存活），管理容量、淘汰与设置下发
+// 终端会话管理：TerminalManager 为共享服务（二进制/shell/工厂/设置下发），
+// 每个宿主（终端页面 / 内嵌面板）通过 createGroup() 拥有独立的一组会话；
+// 组随宿主销毁而关闭（无记忆模型：重开即全新一组）
 
 import { App, Notice, Platform } from "obsidian";
 import { t } from "../lang/helpers";
@@ -31,8 +33,6 @@ export interface TerminalSession {
 	component: TerminalComponent;
 	pty: PtyProcess;
 	lastAttachedAt: number;
-	/** 是否由独立终端视图持有（关闭视图即关闭会话） */
-	viewOwned: boolean;
 }
 
 /** 可注入依赖（测试时替换为假实现） */
@@ -51,16 +51,133 @@ function createSessionId(): TerminalId {
 	return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * 一组终端会话（归属单一宿主：终端页面或内嵌面板）。
+ * 组销毁即关闭组内全部会话。
+ */
+export class TerminalGroup {
+	private sessionsValue: TerminalSession[] = [];
+	private changeListeners = new Set<() => void>();
+	private disposed = false;
+
+	constructor(private manager: TerminalManager) {}
+
+	get sessions(): ReadonlyArray<TerminalSession> {
+		return this.sessionsValue;
+	}
+
+	getSession(id: TerminalId): TerminalSession | undefined {
+		return this.sessionsValue.find((session) => session.info.id === id);
+	}
+
+	onSessionsChanged(listener: () => void): () => void {
+		this.changeListeners.add(listener);
+		return () => {
+			this.changeListeners.delete(listener);
+		};
+	}
+
+	/** 组内最近使用过的会话；无会话返回 null */
+	latestSession(): TerminalSession | null {
+		let latest: TerminalSession | null = null;
+		for (const session of this.sessionsValue) {
+			if (!latest || session.lastAttachedAt >= latest.lastAttachedAt) {
+				latest = session;
+			}
+		}
+		return latest;
+	}
+
+	/** 创建新会话（容量与淘汰由管理器统一裁决） */
+	createSession(cwd?: string): Promise<TerminalSession> {
+		return this.manager.createSessionFor(this, cwd);
+	}
+
+	/** 关闭会话标签：终止 PTY 并销毁组件 */
+	closeSession(id: TerminalId): void {
+		const index = this.sessionsValue.findIndex((session) => session.info.id === id);
+		if (index < 0) {
+			return;
+		}
+		const [session] = this.sessionsValue.splice(index, 1);
+		if (session) {
+			session.pty.dispose();
+			session.component.dispose();
+		}
+		this.notifyChanged();
+	}
+
+	/** 会话被选中展示时更新簿记 */
+	markAttached(id: TerminalId): void {
+		const session = this.getSession(id);
+		if (session) {
+			session.lastAttachedAt = Date.now();
+		}
+	}
+
+	/** 销毁组：关闭全部会话（宿主关闭时调用） */
+	dispose(): void {
+		this.disposed = true;
+		this.closeAll();
+		this.changeListeners.clear();
+	}
+
+	/** 仅移出簿记（跨组移交用；不终止进程不销毁组件） */
+	detachSession(id: TerminalId): TerminalSession | null {
+		const index = this.sessionsValue.findIndex((session) => session.info.id === id);
+		if (index < 0) {
+			return null;
+		}
+		const [session] = this.sessionsValue.splice(index, 1);
+		this.notifyChanged();
+		return session ?? null;
+	}
+
+	/** 接收来自其他组的会话（跨组移交用） */
+	adopt(session: TerminalSession): void {
+		this.sessionsValue.push(session);
+		this.notifyChanged();
+	}
+
+	/** 组内下一个会话标题（同名递增编号） */
+	nextTitle(displayName: string): string {
+		const prefix = `${displayName} `;
+		const count = this.sessionsValue.filter((session) => session.info.title.startsWith(prefix)).length;
+		return `${prefix}${count + 1}`;
+	}
+
+	/** 登记会话（由管理器创建后调用） */
+	add(session: TerminalSession): void {
+		this.sessionsValue.push(session);
+		this.notifyChanged();
+	}
+
+	/** 会话状态变化（退出/淘汰）时通知宿主重渲染 */
+	notifyChanged(): void {
+		for (const listener of [...this.changeListeners]) {
+			listener();
+		}
+	}
+
+	private closeAll(): void {
+		for (const session of this.sessionsValue) {
+			session.pty.dispose();
+			session.component.dispose();
+		}
+		this.sessionsValue = [];
+		this.notifyChanged();
+	}
+}
+
 export class TerminalManager {
 	readonly plugin: TerminalPluginFacade;
 
-	private sessionsValue: TerminalSession[] = [];
+	private groups = new Set<TerminalGroup>();
+	private pendingClaimGroup: TerminalGroup | null = null;
 	private binaryManagerValue: TerminalBinaryManager | null = null;
-	private changeListeners = new Set<() => void>();
+	private createQueue: Promise<unknown> = Promise.resolve();
 	private disposed = false;
 	private deps: TerminalManagerDeps;
-	private createQueue: Promise<unknown> = Promise.resolve();
-	private pendingClaimId: TerminalId | null = null;
 
 	constructor(plugin: TerminalPluginFacade, deps?: Partial<TerminalManagerDeps>) {
 		this.plugin = plugin;
@@ -91,41 +208,115 @@ export class TerminalManager {
 		return resolvePluginDir(this.plugin.app, this.plugin.manifestDir);
 	}
 
-	get sessions(): ReadonlyArray<TerminalSession> {
-		return this.sessionsValue;
+	/** 全部组的会话总数（容量按全局总量裁决，防止资源失控） */
+	get totalSessionCount(): number {
+		let count = 0;
+		for (const group of this.groups) {
+			count += group.sessions.length;
+		}
+		return count;
 	}
 
-	get activeCount(): number {
-		return this.sessionsValue.filter((session) => !session.info.exited).length;
+	/** 新建一组会话（每个终端页面 / 内嵌面板各持一组） */
+	createGroup(): TerminalGroup {
+		const group = new TerminalGroup(this);
+		this.groups.add(group);
+		return group;
 	}
 
-	getSession(id: TerminalId): TerminalSession | undefined {
-		return this.sessionsValue.find((session) => session.info.id === id);
+	/** 销毁组（关闭其全部会话） */
+	destroyGroup(group: TerminalGroup): void {
+		if (this.pendingClaimGroup === group) {
+			this.pendingClaimGroup = null;
+		}
+		this.groups.delete(group);
+		group.dispose();
 	}
 
-	/** 会话列表变化（创建/退出/关闭）订阅 */
-	onSessionsChanged(listener: () => void): () => void {
-		this.changeListeners.add(listener);
-		return () => {
-			this.changeListeners.delete(listener);
-		};
+	/** 把会话从一个组移交到另一个组（进程与组件保持存活，仅转移簿记） */
+	moveSessionBetween(from: TerminalGroup, to: TerminalGroup, id: TerminalId): boolean {
+		const session = from.detachSession(id);
+		if (!session) {
+			return false;
+		}
+		to.adopt(session);
+		return true;
+	}
+
+	/** 登记待接管组：下一个打开的终端视图使用该组（内嵌面板移交场景） */
+	claimGroupNextView(group: TerminalGroup): void {
+		this.pendingClaimGroup = group;
+	}
+
+	/** 取走待接管组（无则返回 null） */
+	consumePendingGroup(): TerminalGroup | null {
+		const group = this.pendingClaimGroup;
+		this.pendingClaimGroup = null;
+		return group;
+	}
+
+	/** 关闭全部组的全部会话 */
+	killAll(): void {
+		for (const group of [...this.groups]) {
+			group.dispose();
+		}
+	}
+
+	dispose(): void {
+		this.disposed = true;
+		this.killAll();
+	}
+
+	/** 设置变化下发给全部组的全部组件 */
+	applySettings(settings: CodeSpaceSettings): void {
+		for (const group of this.groups) {
+			for (const session of group.sessions) {
+				session.component.applySettings({
+					fontSize: settings.terminalFontSize,
+					scrollback: settings.terminalScrollback,
+				});
+			}
+		}
 	}
 
 	/**
-	 * 创建新终端会话。满员时先淘汰最旧的已退出会话；
+	 * 计算新终端的工作目录：当前活动代码文件所在目录，
+	 * 无活动文件时回退 vault 根目录。
+	 */
+	async resolveCwdForActiveFile(): Promise<string> {
+		const basePath = getVaultBasePath(this.plugin.app);
+		const activeFile = this.plugin.app.workspace.getActiveFile();
+		const folderPath = activeFile?.parent?.path ?? "";
+		if (!folderPath) {
+			return basePath;
+		}
+		const segments = folderPath.split("/").filter(Boolean);
+		if (segments.length === 0) {
+			return basePath;
+		}
+		const joined = getPath().join(basePath, ...segments);
+		try {
+			return await getFsPromises().realpath(joined);
+		} catch {
+			return joined;
+		}
+	}
+
+	/**
+	 * 为指定组创建新会话。全局会话总数达到上限时先淘汰该组内最旧的已退出会话；
 	 * 没有可淘汰会话则提示并拒绝（绝不静默终止运行中的 shell）。
 	 * 并发调用按顺序串行执行，避免越过会话数上限。
 	 */
-	async createSession(cwd?: string, options?: { viewOwned?: boolean }): Promise<TerminalSession> {
+	createSessionFor(group: TerminalGroup, cwd?: string): Promise<TerminalSession> {
 		const attempt = this.createQueue.then(
-			() => this.createSessionInner(cwd, options),
-			() => this.createSessionInner(cwd, options)
+			() => this.createSessionInner(group, cwd),
+			() => this.createSessionInner(group, cwd)
 		);
 		this.createQueue = attempt.catch(() => undefined);
 		return attempt;
 	}
 
-	private async createSessionInner(cwd?: string, options?: { viewOwned?: boolean }): Promise<TerminalSession> {
+	private async createSessionInner(group: TerminalGroup, cwd?: string): Promise<TerminalSession> {
 		if (this.disposed) {
 			throw new Error("Terminal manager disposed");
 		}
@@ -139,8 +330,8 @@ export class TerminalManager {
 		}
 
 		const maxSessions = this.plugin.settings.terminalMaxSessions;
-		this.evictExitedSessions(maxSessions);
-		if (this.sessionsValue.length >= maxSessions) {
+		this.evictExitedSessions(group, maxSessions);
+		if (this.totalSessionCount >= maxSessions) {
 			this.deps.notify(t("TERMINAL_NOTICE_SESSION_LIMIT"));
 			throw new Error("Terminal session limit reached");
 		}
@@ -179,7 +370,7 @@ export class TerminalManager {
 		const session: TerminalSession = {
 			info: {
 				id,
-				title: this.buildTitle(shell.displayName),
+				title: group.nextTitle(shell.displayName),
 				cwd: workingDir,
 				shell: shell.file,
 				createdAt: Date.now(),
@@ -188,7 +379,6 @@ export class TerminalManager {
 			component,
 			pty,
 			lastAttachedAt: Date.now(),
-			viewOwned: options?.viewOwned ?? false,
 		};
 
 		pty.onData((data) => component.write(data));
@@ -199,154 +389,27 @@ export class TerminalManager {
 			session.info.exitCode = exitCode;
 			// 写入退出提示，避免光标停住无响应的困惑
 			component.write(`\r\n\x1b[90m${t("TERMINAL_PROCESS_EXITED")} (${exitCode})\x1b[0m\r\n`);
-			this.notifyChanged();
+			group.notifyChanged();
 		});
 
-		this.sessionsValue.push(session);
-		this.notifyChanged();
+		group.add(session);
 		return session;
 	}
 
-	/** 关闭会话标签：终止 PTY 并销毁组件 */
-	closeSession(id: TerminalId): void {
-		const index = this.sessionsValue.findIndex((session) => session.info.id === id);
-		if (index < 0) {
-			return;
-		}
-		const [session] = this.sessionsValue.splice(index, 1);
-		if (session) {
-			session.pty.dispose();
-			session.component.dispose();
-		}
-		this.notifyChanged();
-	}
-
-	killAll(): void {
-		if (this.sessionsValue.length === 0) {
-			return;
-		}
-		for (const session of this.sessionsValue) {
-			session.pty.dispose();
-			session.component.dispose();
-		}
-		this.sessionsValue = [];
-		this.notifyChanged();
-	}
-
-	dispose(): void {
-		this.disposed = true;
-		this.killAll();
-		this.changeListeners.clear();
-	}
-
-	/** 会话被某个宿主选中展示时更新簿记（供后续 LRU 扩展） */
-	markAttached(id: TerminalId): void {
-		const session = this.getSession(id);
-		if (session) {
-			session.lastAttachedAt = Date.now();
-		}
-	}
-
-	/** 登记待接管会话（面板弹出：移交给下一个打开的终端视图） */
-	markPendingClaim(id: TerminalId): void {
-		if (this.getSession(id)) {
-			this.pendingClaimId = id;
-		}
-	}
-
-	/** 认领待接管会话（新终端视图 onOpen 时调用；认领后清空） */
-	claimPendingSession(): TerminalSession | null {
-		if (this.pendingClaimId) {
-			const session = this.getSession(this.pendingClaimId);
-			this.pendingClaimId = null;
-			if (session) {
-				session.viewOwned = true;
-				return session;
-			}
-		}
-		return null;
-	}
-
-	/** 最近使用且未被终端视图持有的会话（内嵌面板接管用） */
-	latestPanelSession(): TerminalSession | null {
-		let latest: TerminalSession | null = null;
-		for (const session of this.sessionsValue) {
-			if (session.viewOwned) {
-				continue;
-			}
-			if (!latest || session.lastAttachedAt > latest.lastAttachedAt) {
-				latest = session;
-			}
-		}
-		return latest;
-	}
-
-	/** 设置变化下发给全部组件 */
-	applySettings(settings: CodeSpaceSettings): void {
-		for (const session of this.sessionsValue) {
-			session.component.applySettings({
-				fontSize: settings.terminalFontSize,
-				scrollback: settings.terminalScrollback,
-			});
-		}
-	}
-
-	/**
-	 * 计算新终端的工作目录：当前活动代码文件所在目录（外部挂载解析到真实路径），
-	 * 无活动文件时回退 vault 根目录。
-	 */
-	async resolveCwdForActiveFile(): Promise<string> {
-		const basePath = getVaultBasePath(this.plugin.app);
-		const activeFile = this.plugin.app.workspace.getActiveFile();
-		const folderPath = activeFile?.parent?.path ?? "";
-		if (!folderPath) {
-			return basePath;
-		}
-		const joined = getPath().join(basePath, ...folderPath.split("/").filter(Boolean));
-		try {
-			return await getFsPromises().realpath(joined);
-		} catch {
-			return joined;
-		}
-	}
-
-	private evictExitedSessions(maxSessions: number): void {
-		let evicted = false;
-		while (this.sessionsValue.length >= maxSessions) {
-			const oldestExitedIndex = this.sessionsValue.findIndex((session) => session.info.exited);
+	private evictExitedSessions(group: TerminalGroup, maxSessions: number): void {
+		while (this.totalSessionCount >= maxSessions) {
+			const oldestExitedIndex = group.sessions.findIndex((session) => session.info.exited);
 			if (oldestExitedIndex < 0) {
 				break;
 			}
-			const [session] = this.sessionsValue.splice(oldestExitedIndex, 1);
+			const session = group.sessions[oldestExitedIndex];
 			if (!session) {
 				break;
 			}
-			session.pty.dispose();
-			session.component.dispose();
-			evicted = true;
-		}
-		if (evicted) {
-			// 淘汰移除了标签/终端 DOM，必须通知宿主重渲染
-			this.notifyChanged();
+			group.closeSession(session.info.id);
 		}
 	}
 
-	private buildTitle(displayName: string): string {
-		const prefix = `${displayName} `;
-		const count = this.sessionsValue.filter((session) => session.info.title.startsWith(prefix)).length;
-		return `${prefix}${count + 1}`;
-	}
-
-	private notifyChanged(): void {
-		for (const listener of [...this.changeListeners]) {
-			listener();
-		}
-	}
-
-	/**
-	 * 使用前检查支持文件：下载只发生在设置页的显式「下载」按钮，
-	 * 终端按钮/命令不自动触发网络请求。
-	 */
 	private async defaultEnsureBinaries(): Promise<void> {
 		const manager = this.binaryManager;
 		if (!manager.isPlatformSupported()) {

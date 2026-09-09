@@ -1,15 +1,15 @@
-// 独立终端视图：一个视图 = 一个全屏终端（VSCode 终端编辑器模式）
-// 打开时认领弹出的待接管会话，否则新建；关闭标签页即关闭该终端
+// 独立终端视图：全屏终端页面，与编辑器内嵌面板共享全局会话组
+// 关闭 Obsidian 终端标签页仅销毁宿主（会话后台存活，× 标签或 kill-all 才关闭会话）
 
 import { App, ItemView, WorkspaceLeaf } from "obsidian";
 import type CodeSpacePlugin from "../main";
 import { t } from "../lang/helpers";
-import type { TerminalSession } from "./session_manager";
+import { TerminalPanel } from "./terminal_panel";
 
 export const VIEW_TYPE_CODE_TERMINAL = "code-space-terminal";
 
 export class CodeTerminalView extends ItemView {
-	private session: TerminalSession | null = null;
+	private panel: TerminalPanel | null = null;
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -20,7 +20,9 @@ export class CodeTerminalView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return this.session ? this.session.info.title : t("TERMINAL_VIEW_TITLE");
+		// 统一显示「终端」：不携带 shell 名与序号，
+		// 且不直接改写 tabHeaderEl（会覆盖 Obsidian 标签头内的关闭按钮）
+		return t("TERMINAL_VIEW_TITLE");
 	}
 
 	getIcon(): string {
@@ -44,56 +46,37 @@ export class CodeTerminalView extends ItemView {
 			return;
 		}
 
-		// 优先认领面板弹出的会话；否则新建（重启/布局恢复后同样直接新建）
-		this.session = manager.claimPendingSession();
-		if (!this.session) {
-			try {
-				this.session = await manager.createSession(undefined, { viewOwned: true });
-			} catch {
-				// 失败提示由管理器负责；视图显示空状态
-				this.renderEmpty(container);
-				return;
-			}
-		}
-		const tabHeader = (this.leaf as unknown as { tabHeaderEl?: HTMLElement }).tabHeaderEl;
-		tabHeader?.setText(this.session.info.title);
-		manager.markAttached(this.session.info.id);
-		this.session.component.attachTo(container);
-		this.session.component.focus();
-
+		// 优先接管内嵌面板移交的会话组；否则本视图新建一组
+		const group = manager.consumePendingGroup() ?? manager.createGroup();
+		this.panel = new TerminalPanel(
+			{
+				settings: plugin.settings,
+				app: plugin.app,
+				terminalManager: plugin.terminalManager,
+				// 已在终端视图中，移交动作无意义
+				openTerminalView: () => { /* noop */ },
+			},
+			"view",
+			group
+		);
 		this.registerEvent(this.app.workspace.on("css-change", () => {
-			this.session?.component.refreshTheme();
+			this.panel?.refreshTheme();
 		}));
+		container.appendChild(this.panel.el);
 
-		// 会话被外部关闭（kill-all/淘汰）时显示空状态，避免空白死页面
-		this.registerEvent(manager.onSessionsChanged(() => {
-			if (this.session && !manager.getSession(this.session.info.id)) {
-				this.session = null;
-				this.renderEmpty(container);
-			}
-		}));
+		// 打开即展示；组内无会话时新建
+		await this.panel.show();
 	}
 
 	async onClose(): Promise<void> {
-		// 关闭标签页 = 关闭该终端（终止 PTY 并销毁组件）
-		if (this.session) {
-			const id = this.session.info.id;
-			this.session = null;
-			this.getPlugin()?.terminalManager?.closeSession(id);
-		}
+		// 仅销毁面板宿主，会话继续存活（可在内嵌面板或新的终端页面接管）
+		this.panel?.destroy();
+		this.panel = null;
 	}
 
 	getPlugin(): CodeSpacePlugin | null {
 		type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
 		const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
 		return plugin ?? null;
-	}
-
-	private renderEmpty(container: HTMLElement): void {
-		container.empty();
-		container.createDiv({
-			cls: "code-space-terminal-empty",
-			text: t("TERMINAL_PANEL_EMPTY"),
-		});
 	}
 }
