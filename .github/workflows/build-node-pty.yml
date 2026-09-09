@@ -35,7 +35,8 @@ jobs:
       matrix:
         include:
           # npm tarball 自带 win32/darwin 全架构的 N-API prebuilds；
-          # linux 无预编译产物，由 node-gyp 源码编译。
+          # 打包为纯文件操作，与 runner 架构无关——darwin-x64 也用 arm64 runner
+          # （Intel macos-13 runner 队列极慢且正在退役）。linux 由 node-gyp 源码编译。
           - runs-on: windows-latest
             platform: win32
             arch: x64
@@ -45,7 +46,7 @@ jobs:
           - runs-on: macos-latest
             platform: darwin
             arch: arm64
-          - runs-on: macos-13
+          - runs-on: macos-latest
             platform: darwin
             arch: x64
           - runs-on: ubuntu-latest
