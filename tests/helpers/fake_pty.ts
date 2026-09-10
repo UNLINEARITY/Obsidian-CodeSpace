@@ -50,6 +50,7 @@ export class FakeTerminalComponent {
 	sessionId: string;
 	applySettingsCalls: Array<{ fontSize: number; scrollback: number }> = [];
 	refreshThemeCalls = 0;
+	refreshAppearanceCalls = 0;
 	disposed = false;
 	written: string[] = [];
 	inputHandler: ((data: string) => void) | null = null;
@@ -85,6 +86,10 @@ export class FakeTerminalComponent {
 
 	refreshTheme(): void {
 		this.refreshThemeCalls += 1;
+	}
+
+	refreshAppearance(): void {
+		this.refreshAppearanceCalls += 1;
 	}
 
 	dispose(): void {

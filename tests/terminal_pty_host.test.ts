@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PtyProcess } from "../src/terminal/pty_host";
+import { buildPtyEnv, normalizeAppleLocale, PtyProcess, resolveLocaleEnv } from "../src/terminal/pty_host";
 import type { PtyFactory, PtyLike } from "../src/terminal/types";
 
 /** 可手动触发数据/退出事件的假 PTY 进程 */
@@ -116,5 +116,58 @@ describe("PtyProcess", () => {
 			throw new Error("already closed");
 		};
 		expect(() => process.resize(120, 40)).not.toThrow();
+	});
+});
+
+describe("buildPtyEnv", () => {
+	it("copies defined values and forces terminal variables", () => {
+		const env = buildPtyEnv({ HOME: "/home/u", UNSET: undefined, TERM: undefined });
+		expect(env).toEqual({ HOME: "/home/u", TERM: "xterm-256color", COLORTERM: "truecolor" });
+	});
+
+	it("merges injected keys without clobbering inherited ones", () => {
+		const env = buildPtyEnv(
+			{ LANG: "zh_CN.UTF-8" },
+			{ LANG: "en_US.UTF-8", LC_CTYPE: "UTF-8" }
+		);
+		expect(env.LANG).toBe("zh_CN.UTF-8");
+		expect(env.LC_CTYPE).toBe("UTF-8");
+	});
+});
+
+describe("normalizeAppleLocale", () => {
+	it("strips keyword suffixes and appends the encoding", () => {
+		expect(normalizeAppleLocale("zh_CN@rg=zzzz")).toBe("zh_CN.UTF-8");
+		expect(normalizeAppleLocale("en_US")).toBe("en_US.UTF-8");
+		expect(normalizeAppleLocale("  en_US \n")).toBe("en_US.UTF-8");
+	});
+
+	it("keeps values that already carry an encoding", () => {
+		expect(normalizeAppleLocale("zh_CN.UTF-8")).toBe("zh_CN.UTF-8");
+	});
+
+	it("falls back on empty input", () => {
+		expect(normalizeAppleLocale("")).toBe("en_US.UTF-8");
+		expect(normalizeAppleLocale(null)).toBe("en_US.UTF-8");
+		expect(normalizeAppleLocale(undefined)).toBe("en_US.UTF-8");
+		expect(normalizeAppleLocale("@rg=zzzz")).toBe("en_US.UTF-8");
+	});
+});
+
+describe("resolveLocaleEnv", () => {
+	it("returns nothing on non-darwin platforms", () => {
+		expect(resolveLocaleEnv({}, "win32", "zh_CN")).toEqual({});
+		expect(resolveLocaleEnv({}, "linux", null)).toEqual({});
+	});
+
+	it("respects existing LANG/LC_ALL", () => {
+		expect(resolveLocaleEnv({ LANG: "en_US.UTF-8" }, "darwin", "zh_CN")).toEqual({});
+		expect(resolveLocaleEnv({ LC_ALL: "C" }, "darwin", "zh_CN")).toEqual({});
+	});
+
+	it("injects LANG when missing on darwin", () => {
+		expect(resolveLocaleEnv({ PATH: "/usr/bin" }, "darwin", "zh_CN@rg=zzzz")).toEqual({
+			LANG: "zh_CN.UTF-8",
+		});
 	});
 });

@@ -39,6 +39,7 @@ type ChildProcessApi = {
 		args: string[],
 		callback: (error: Error | null, stdout: string, stderr: string) => void
 	): unknown;
+	execSync(command: string, options: { encoding: string }): string;
 };
 
 type CryptoApi = {

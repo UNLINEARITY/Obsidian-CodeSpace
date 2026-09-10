@@ -15,7 +15,7 @@ import {
 	isTerminalDesktop,
 	resolvePluginDir,
 } from "./node_access";
-import { buildPtyEnv, loadPtyFactory, PtyProcess } from "./pty_host";
+import { buildPtyEnv, getDefaultLocaleEnv, loadPtyFactory, PtyProcess } from "./pty_host";
 import { resolveShell, type ResolvedShell } from "./shell_detector";
 import { TerminalComponent } from "./terminal_component";
 import type { PtyFactory, PtySpawnOptions, TerminalId, TerminalSessionInfo } from "./types";
@@ -188,7 +188,7 @@ export class TerminalManager {
 			createComponent: (sessionId, options) => new TerminalComponent(sessionId, options),
 			resolveShell: () => this.defaultResolveShell(),
 			resolveCwd: () => this.resolveCwdForActiveFile(),
-			buildEnv: () => buildPtyEnv(getNodeProcess().env),
+			buildEnv: () => buildPtyEnv(getNodeProcess().env, getDefaultLocaleEnv(getNodeProcess().platform)),
 			notify: (message) => {
 				new Notice(message, 4000);
 			},

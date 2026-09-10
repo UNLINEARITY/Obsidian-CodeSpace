@@ -215,11 +215,11 @@ export class TerminalPanel {
 		}
 	}
 
-	refreshTheme(): void {
+	refreshAppearance(): void {
 		if (this.destroyed || !this.activeSessionIdValue) {
 			return;
 		}
-		this.group?.getSession(this.activeSessionIdValue)?.component.refreshTheme();
+		this.group?.getSession(this.activeSessionIdValue)?.component.refreshAppearance();
 	}
 
 	focus(): void {

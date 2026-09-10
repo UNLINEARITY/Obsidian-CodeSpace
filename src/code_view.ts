@@ -1219,7 +1219,7 @@ export class CodeSpaceView extends TextFileView {
 			this.editorView.dispatch({
 				effects: this.themeCompartment.reconfigure(this.getThemeExtension())
 			});
-			this.terminalPanel?.refreshTheme();
+			this.terminalPanel?.refreshAppearance();
 		}));
 
 		// 监听文件修改事件（外部编辑）

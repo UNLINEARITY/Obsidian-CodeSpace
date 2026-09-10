@@ -3,6 +3,8 @@ import {
 	buildTerminalFontFamily,
 	FALLBACK_MONOSPACE_STACK,
 	normalizeCssColor,
+	readMonospaceFont,
+	readThemeVars,
 	themeFromVars,
 } from "../src/terminal/terminal_theme";
 
@@ -82,5 +84,80 @@ describe("themeFromVars", () => {
 		const theme = themeFromVars({});
 		expect(theme.background).toBeUndefined();
 		expect(theme.foreground).toBeUndefined();
+	});
+});
+
+/** 构造带 ownerDocument/defaultView 的结构化假元素，按目标元素返回不同变量表 */
+function makeElement(options: {
+	isConnected: boolean;
+	varsFor: (target: unknown) => Record<string, string>;
+	body?: unknown;
+	documentElement?: unknown;
+}): HTMLElement {
+	const sourceEl = { tag: "source" };
+	const doc = {
+		defaultView: {
+			getComputedStyle: (target: unknown) => ({
+				getPropertyValue: (name: string) => options.varsFor(target)[name] ?? "",
+			}),
+		},
+		body: options.body ?? null,
+		documentElement: options.documentElement ?? { tag: "html" },
+	};
+	const el = Object.assign(sourceEl, {
+		ownerDocument: doc,
+		isConnected: options.isConnected,
+	});
+	return el as unknown as HTMLElement;
+}
+
+describe("readThemeVars / readMonospaceFont", () => {
+	it("reads variables from the connected source element", () => {
+		const el = makeElement({
+			isConnected: true,
+			varsFor: (target): Record<string, string> => {
+				if ((target as { tag?: string }).tag === "source") {
+					return { "--background-primary": "#1e1e1e", "--font-monospace": '"Menlo"' };
+				}
+				return {};
+			},
+		});
+		expect(readThemeVars(el)["--background-primary"]).toBe("#1e1e1e");
+		expect(readMonospaceFont(el)).toBe('"Menlo"');
+	});
+
+	it("falls back to body when the source element is detached", () => {
+		// Obsidian 把主题变量定义在 body 上；离岸元素必须回退到 body 而非 documentElement
+		const el = makeElement({
+			isConnected: false,
+			varsFor: (target): Record<string, string> => {
+				if ((target as { tag?: string }).tag === "body") {
+					return { "--background-primary": "#ffffff", "--font-monospace": "Menlo, monospace" };
+				}
+				return {};
+			},
+			body: { tag: "body" },
+		});
+		expect(readThemeVars(el)["--background-primary"]).toBe("#ffffff");
+		expect(readMonospaceFont(el)).toBe("Menlo, monospace");
+	});
+
+	it("falls back to documentElement when body is absent", () => {
+		const el = makeElement({
+			isConnected: false,
+			varsFor: (target): Record<string, string> => {
+				if ((target as { tag?: string }).tag === "html") {
+					return { "--background-primary": "#000000" };
+				}
+				return {};
+			},
+			documentElement: { tag: "html" },
+		});
+		expect(readThemeVars(el)["--background-primary"]).toBe("#000000");
+	});
+
+	it("returns undefined when the monospace font value is empty", () => {
+		const el = makeElement({ isConnected: true, varsFor: () => ({}) });
+		expect(readMonospaceFont(el)).toBeUndefined();
 	});
 });

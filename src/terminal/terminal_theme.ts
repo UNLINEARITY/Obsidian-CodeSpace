@@ -59,6 +59,16 @@ export function themeFromVars(vars: Record<string, string | undefined>): ITheme 
 	return theme;
 }
 
+/**
+ * 取样式读取目标：Obsidian 把 --background-primary/--font-monospace/--color-*
+ * 等变量定义在 body 上，而 CSS 自定义属性不向上继承到 :root，
+ * 从 documentElement 读取会得到空值，因此必须从 body 后代元素读取。
+ */
+function resolveStyleTarget(sourceEl: HTMLElement): HTMLElement {
+	const doc = sourceEl.ownerDocument;
+	return sourceEl.isConnected ? sourceEl : (doc.body ?? doc.documentElement);
+}
+
 /** 从元素所属文档读取主题变量表（弹出窗口时使用各自的 document） */
 export function readThemeVars(sourceEl: HTMLElement): Record<string, string | undefined> {
 	const doc = sourceEl.ownerDocument;
@@ -66,7 +76,7 @@ export function readThemeVars(sourceEl: HTMLElement): Record<string, string | un
 	if (!view) {
 		return {};
 	}
-	const styles = view.getComputedStyle(doc.documentElement);
+	const styles = view.getComputedStyle(resolveStyleTarget(sourceEl));
 	const vars: Record<string, string | undefined> = {};
 	for (const [, varName] of THEME_VAR_MAPPING) {
 		vars[varName] = styles.getPropertyValue(varName);
@@ -81,7 +91,7 @@ export function readMonospaceFont(sourceEl: HTMLElement): string | undefined {
 	if (!view) {
 		return undefined;
 	}
-	const font = view.getComputedStyle(doc.documentElement).getPropertyValue("--font-monospace");
+	const font = view.getComputedStyle(resolveStyleTarget(sourceEl)).getPropertyValue("--font-monospace");
 	return font.trim() || undefined;
 }
 

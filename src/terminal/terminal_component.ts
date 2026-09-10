@@ -5,6 +5,7 @@
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { TerminalId } from "./types";
 import { buildTerminalFontFamily, readMonospaceFont, readThemeVars, themeFromVars } from "./terminal_theme";
 
@@ -14,6 +15,7 @@ export interface TerminalComponentOptions {
 }
 
 const FIT_DEBOUNCE_MS = 50;
+const WEBGL_RETRY_COOLDOWN_MS = 1000;
 
 export class TerminalComponent {
 	readonly sessionId: TerminalId;
@@ -23,6 +25,8 @@ export class TerminalComponent {
 	private webglAddon: WebglAddon | null = null;
 	private container: HTMLElement | null = null;
 	private resizeObserver: ResizeObserver | null = null;
+	private webglRetryHandler: (() => void) | null = null;
+	private lastWebglRetryAt = 0;
 	private fitTimer: number | null = null;
 	private disposed = false;
 	private inputHandler: ((data: string) => void) | null = null;
@@ -42,6 +46,9 @@ export class TerminalComponent {
 		});
 		this.fitAddon = new FitAddon();
 		this.term.loadAddon(this.fitAddon);
+		// Unicode 9+ 宽度表：修正 emoji 等宽字符下的光标错位（VSCode 同款默认）
+		this.term.loadAddon(new Unicode11Addon());
+		this.term.unicode.activeVersion = "11";
 		this.term.onData((data) => {
 			this.inputHandler?.(data);
 		});
@@ -115,6 +122,7 @@ export class TerminalComponent {
 			}
 		}
 		this.startResizeObserver();
+		this.startWebglRetryWatch();
 		this.term.focus();
 	}
 
@@ -150,6 +158,16 @@ export class TerminalComponent {
 			return;
 		}
 		this.term.options.theme = themeFromVars(readThemeVars(this.container));
+	}
+
+	/** 主题或字体变化时统一刷新外观（css-change 事件）；字体变化需重新测量并 fit */
+	refreshAppearance(): void {
+		if (this.disposed || !this.container) {
+			return;
+		}
+		this.applyFont();
+		this.refreshTheme();
+		this.scheduleFit();
 	}
 
 	dispose(): void {
@@ -223,6 +241,51 @@ export class TerminalComponent {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.clearFitTimer();
+		this.stopWebglRetryWatch();
+	}
+
+	/**
+	 * 监听可见性/焦点恢复事件，在 WebGL 上下文丢失后自动重试加载
+	 * （macOS 上自动显卡切换、窗口遮挡都可能触发上下文丢失）。
+	 */
+	private startWebglRetryWatch(): void {
+		if (!this.container || this.webglRetryHandler) {
+			return;
+		}
+		const view = this.container.ownerDocument.defaultView;
+		if (!view) {
+			return;
+		}
+		const handler = (): void => {
+			if (!view.document.hidden) {
+				this.scheduleWebglRetry();
+			}
+		};
+		this.webglRetryHandler = handler;
+		view.document.addEventListener("visibilitychange", handler);
+		view.addEventListener("focus", handler);
+	}
+
+	private stopWebglRetryWatch(): void {
+		const view = this.container?.ownerDocument.defaultView;
+		if (this.webglRetryHandler && view) {
+			view.document.removeEventListener("visibilitychange", this.webglRetryHandler);
+			view.removeEventListener("focus", this.webglRetryHandler);
+		}
+		this.webglRetryHandler = null;
+	}
+
+	private scheduleWebglRetry(): void {
+		if (this.disposed || this.webglAddon || !this.container) {
+			return;
+		}
+		const now = Date.now();
+		if (now - this.lastWebglRetryAt < WEBGL_RETRY_COOLDOWN_MS) {
+			// 冷却期内不重复尝试，避免事件风暴下的重试循环
+			return;
+		}
+		this.lastWebglRetryAt = now;
+		this.loadWebglAddon();
 	}
 
 	private scheduleFit(): void {

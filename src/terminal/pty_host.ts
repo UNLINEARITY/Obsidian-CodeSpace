@@ -1,6 +1,6 @@
 // PTY 进程封装：加载 node-pty、生成会话进程并守护生命周期
 
-import { getNodeProcess, joinPath } from "./node_access";
+import { getChildProcess, getNodeProcess, joinPath } from "./node_access";
 import type { PtyFactory, PtyLike, PtySpawnOptions } from "./types";
 
 /** 从插件目录加载已安装的 node-pty（CommonJS 模块） */
@@ -17,8 +17,11 @@ export function loadPtyFactory(pluginDir: string): PtyFactory {
 	return ptyModule.spawn;
 }
 
-/** 在宿主环境变量上注入终端相关变量 */
-export function buildPtyEnv(base: Record<string, string | undefined>): Record<string, string> {
+/** 在宿主环境变量上注入终端相关变量（injected 键不覆盖继承值） */
+export function buildPtyEnv(
+	base: Record<string, string | undefined>,
+	injected: Record<string, string> = {}
+): Record<string, string> {
 	const env: Record<string, string> = {};
 	for (const [key, value] of Object.entries(base)) {
 		if (value !== undefined) {
@@ -27,7 +30,59 @@ export function buildPtyEnv(base: Record<string, string | undefined>): Record<st
 	}
 	env.TERM = "xterm-256color";
 	env.COLORTERM = "truecolor";
+	for (const [key, value] of Object.entries(injected)) {
+		if (!(key in env)) {
+			env[key] = value;
+		}
+	}
 	return env;
+}
+
+const FALLBACK_PTY_LOCALE = "en_US.UTF-8";
+
+/** 归一化 `defaults read -g AppleLocale` 输出：`zh_CN@rg=zzzz` → `zh_CN.UTF-8` */
+export function normalizeAppleLocale(raw: string | null | undefined): string {
+	const base = (raw ?? "").trim().split("@")[0]?.trim() ?? "";
+	if (!base) {
+		return FALLBACK_PTY_LOCALE;
+	}
+	return base.includes(".") ? base : `${base}.UTF-8`;
+}
+
+/** 纯函数：仅 darwin 且 env 缺失 LANG/LC_ALL 时计算需注入的 locale 变量 */
+export function resolveLocaleEnv(
+	env: Record<string, string | undefined>,
+	platform: string,
+	appleLocale: string | null | undefined
+): Record<string, string> {
+	if (platform !== "darwin" || env.LANG || env.LC_ALL) {
+		return {};
+	}
+	return { LANG: normalizeAppleLocale(appleLocale) };
+}
+
+let localeEnvCache: Record<string, string> | null = null;
+
+/**
+ * 读取 macOS 系统区域并缓存（进程内仅执行一次 `defaults read`）。
+ * GUI 启动的 Obsidian 常无 LANG/LC_ALL，shell 会跑在 C locale，
+ * 导致中文文件名乱码、git 路径转义等问题。
+ */
+export function getDefaultLocaleEnv(platform: string): Record<string, string> {
+	if (platform !== "darwin") {
+		return {};
+	}
+	if (!localeEnvCache) {
+		let raw: string | null = null;
+		try {
+			raw = getChildProcess().execSync("/usr/bin/defaults read -g AppleLocale", { encoding: "utf8" });
+		} catch (error) {
+			// 读取失败（命令缺失/被禁用）→ 走兜底 locale
+			console.debug("Code Space: failed to read AppleLocale:", error);
+		}
+		localeEnvCache = resolveLocaleEnv(getNodeProcess().env, platform, raw);
+	}
+	return localeEnvCache;
 }
 
 type Unsubscribe = () => void;
@@ -67,7 +122,7 @@ export class PtyProcess {
 
 	/** 使用当前进程环境构建默认 spawn 选项 */
 	static baseOptions(): Pick<PtySpawnOptions, "env"> {
-		return { env: buildPtyEnv(getNodeProcess().env) };
+		return { env: buildPtyEnv(getNodeProcess().env, getDefaultLocaleEnv(getNodeProcess().platform)) };
 	}
 
 	get pid(): number {

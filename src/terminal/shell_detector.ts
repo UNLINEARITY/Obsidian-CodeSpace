@@ -29,10 +29,21 @@ const WINDOWS_CANDIDATES = [
 const MACOS_FALLBACK = "/bin/zsh";
 const LINUX_FALLBACKS = ["/bin/bash", "/bin/sh"];
 
+/** 支持 -l（登录模式）的 POSIX shell：登录 shell 读取 path_helper / profile，补全 GUI 极简 PATH */
+const POSIX_LOGIN_SHELLS = new Set(["zsh", "bash", "sh", "fish", "ksh", "dash", "csh", "tcsh"]);
+
 function basename(path: string): string {
 	const normalized = path.replace(/\\/g, "/");
 	const index = normalized.lastIndexOf("/");
 	return index >= 0 ? normalized.slice(index + 1) : normalized;
+}
+
+/** 非 Windows 的已知 POSIX shell 以登录模式启动；未知二进制保持无参数 */
+function loginShellArgs(file: string, isWin: boolean): string[] {
+	if (isWin) {
+		return [];
+	}
+	return POSIX_LOGIN_SHELLS.has(basename(file)) ? ["-l"] : [];
 }
 
 async function resolveOverride(ctx: ShellDetectContext): Promise<ResolvedShell | null> {
@@ -43,7 +54,7 @@ async function resolveOverride(ctx: ShellDetectContext): Promise<ResolvedShell |
 	if (await ctx.fileExists(override)) {
 		return {
 			file: override,
-			args: [],
+			args: loginShellArgs(override, ctx.platform.isWin),
 			displayName: basename(override),
 		};
 	}
@@ -97,19 +108,19 @@ export async function resolveShell(ctx: ShellDetectContext): Promise<ResolvedShe
 
 	const envShell = (ctx.env.SHELL ?? "").trim();
 	if (envShell && (await ctx.fileExists(envShell))) {
-		return { file: envShell, args: [], displayName: basename(envShell) };
+		return { file: envShell, args: loginShellArgs(envShell, ctx.platform.isWin), displayName: basename(envShell) };
 	}
 
 	if (ctx.platform.isMacOS) {
 		if (await ctx.fileExists(MACOS_FALLBACK)) {
-			return { file: MACOS_FALLBACK, args: [], displayName: "zsh" };
+			return { file: MACOS_FALLBACK, args: loginShellArgs(MACOS_FALLBACK, false), displayName: "zsh" };
 		}
 	}
 
 	const linuxCandidates = envShell ? [envShell, ...LINUX_FALLBACKS] : LINUX_FALLBACKS;
 	const linuxFound = await firstExisting(linuxCandidates, (p) => ctx.fileExists(p));
 	if (linuxFound) {
-		return { file: linuxFound, args: [], displayName: basename(linuxFound) };
+		return { file: linuxFound, args: loginShellArgs(linuxFound, false), displayName: basename(linuxFound) };
 	}
 
 	throw new Error("No shell executable found");

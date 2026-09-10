@@ -60,7 +60,7 @@ export class CodeTerminalView extends ItemView {
 			group
 		);
 		this.registerEvent(this.app.workspace.on("css-change", () => {
-			this.panel?.refreshTheme();
+			this.panel?.refreshAppearance();
 		}));
 		container.appendChild(this.panel.el);
 
