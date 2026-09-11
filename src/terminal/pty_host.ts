@@ -120,11 +120,6 @@ export class PtyProcess {
 		return new PtyProcess(factory(options.file, options.args, options));
 	}
 
-	/** 使用当前进程环境构建默认 spawn 选项 */
-	static baseOptions(): Pick<PtySpawnOptions, "env"> {
-		return { env: buildPtyEnv(getNodeProcess().env, getDefaultLocaleEnv(getNodeProcess().platform)) };
-	}
-
 	get pid(): number {
 		return this.process.pid;
 	}

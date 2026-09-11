@@ -61,12 +61,14 @@ export function themeFromVars(vars: Record<string, string | undefined>): ITheme 
 
 /**
  * 取样式读取目标：Obsidian 把 --background-primary/--font-monospace/--color-*
- * 等变量定义在 body 上，而 CSS 自定义属性不向上继承到 :root，
- * 从 documentElement 读取会得到空值，因此必须从 body 后代元素读取。
+ * 等主题变量定义在 body 上，而 CSS 自定义属性不向上继承到 :root，
+ * 从 documentElement 读取会得到空值。直接读 body 还能避免读到宿主容器
+ * （如 .code-space-container 对 --text-selection 的局部覆盖），
+ * 保证内嵌面板与独立终端视图的观感一致。
  */
 function resolveStyleTarget(sourceEl: HTMLElement): HTMLElement {
 	const doc = sourceEl.ownerDocument;
-	return sourceEl.isConnected ? sourceEl : (doc.body ?? doc.documentElement);
+	return doc.body ?? doc.documentElement;
 }
 
 /** 从元素所属文档读取主题变量表（弹出窗口时使用各自的 document） */

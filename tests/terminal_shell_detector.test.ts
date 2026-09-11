@@ -81,7 +81,7 @@ describe("resolveShell", () => {
 			const ctx = makeContext(LINUX, { SHELL: "/usr/bin/zsh" }, ["/usr/bin/zsh"]);
 			await expect(resolveShell(ctx)).resolves.toMatchObject({
 				file: "/usr/bin/zsh",
-				args: ["-l"],
+				args: [],
 				displayName: "zsh",
 			});
 		});
@@ -90,7 +90,7 @@ describe("resolveShell", () => {
 			const ctx = makeContext(LINUX, { SHELL: "/nonexistent/fish" }, ["/bin/sh"]);
 			await expect(resolveShell(ctx)).resolves.toMatchObject({
 				file: "/bin/sh",
-				args: ["-l"],
+				args: [],
 				displayName: "sh",
 			});
 		});
@@ -101,7 +101,7 @@ describe("resolveShell", () => {
 			const ctx = makeContext(LINUX, { SHELL: "/bin/bash" }, ["/usr/local/bin/fish"], "/usr/local/bin/fish");
 			await expect(resolveShell(ctx)).resolves.toMatchObject({
 				file: "/usr/local/bin/fish",
-				args: ["-l"],
+				args: [],
 				displayName: "fish",
 			});
 		});
@@ -119,7 +119,7 @@ describe("resolveShell", () => {
 			const ctx = makeContext(LINUX, { SHELL: "/bin/zsh" }, ["/bin/zsh"], "/nonexistent/shell");
 			await expect(resolveShell(ctx)).resolves.toMatchObject({
 				file: "/bin/zsh",
-				args: ["-l"],
+				args: [],
 				displayName: "zsh",
 			});
 		});

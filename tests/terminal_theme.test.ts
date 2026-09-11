@@ -112,22 +112,24 @@ function makeElement(options: {
 }
 
 describe("readThemeVars / readMonospaceFont", () => {
-	it("reads variables from the connected source element", () => {
+	it("reads variables from body regardless of connection state", () => {
+		// Obsidian 把主题变量定义在 body 上；无论容器是否连接都从 body 读取，
+		// 避免读到宿主容器（如 .code-space-container）对 --text-selection 的局部覆盖
 		const el = makeElement({
 			isConnected: true,
 			varsFor: (target): Record<string, string> => {
-				if ((target as { tag?: string }).tag === "source") {
+				if ((target as { tag?: string }).tag === "body") {
 					return { "--background-primary": "#1e1e1e", "--font-monospace": '"Menlo"' };
 				}
 				return {};
 			},
+			body: { tag: "body" },
 		});
 		expect(readThemeVars(el)["--background-primary"]).toBe("#1e1e1e");
 		expect(readMonospaceFont(el)).toBe('"Menlo"');
 	});
 
-	it("falls back to body when the source element is detached", () => {
-		// Obsidian 把主题变量定义在 body 上；离岸元素必须回退到 body 而非 documentElement
+	it("reads detached elements from body as well", () => {
 		const el = makeElement({
 			isConnected: false,
 			varsFor: (target): Record<string, string> => {
@@ -157,7 +159,7 @@ describe("readThemeVars / readMonospaceFont", () => {
 	});
 
 	it("returns undefined when the monospace font value is empty", () => {
-		const el = makeElement({ isConnected: true, varsFor: () => ({}) });
+		const el = makeElement({ isConnected: true, varsFor: () => ({}), body: { tag: "body" } });
 		expect(readMonospaceFont(el)).toBeUndefined();
 	});
 });

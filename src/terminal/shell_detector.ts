@@ -29,8 +29,8 @@ const WINDOWS_CANDIDATES = [
 const MACOS_FALLBACK = "/bin/zsh";
 const LINUX_FALLBACKS = ["/bin/bash", "/bin/sh"];
 
-/** 支持 -l（登录模式）的 POSIX shell：登录 shell 读取 path_helper / profile，补全 GUI 极简 PATH */
-const POSIX_LOGIN_SHELLS = new Set(["zsh", "bash", "sh", "fish", "ksh", "dash", "csh", "tcsh"]);
+/** 支持 -l（登录模式）的 shell 集合：登录 shell 读取 path_helper / profile，补全 GUI 极简 PATH */
+const LOGIN_CAPABLE_SHELLS = new Set(["zsh", "bash", "sh", "fish", "ksh", "dash", "csh", "tcsh"]);
 
 function basename(path: string): string {
 	const normalized = path.replace(/\\/g, "/");
@@ -38,12 +38,16 @@ function basename(path: string): string {
 	return index >= 0 ? normalized.slice(index + 1) : normalized;
 }
 
-/** 非 Windows 的已知 POSIX shell 以登录模式启动；未知二进制保持无参数 */
-function loginShellArgs(file: string, isWin: boolean): string[] {
-	if (isWin) {
+/**
+ * 仅 macOS 以登录模式启动（GUI 启动的进程 PATH 极简，path_helper 在登录时补全；
+ * VSCode 同款默认）。Linux 保持非登录：登录 shell 会执行 /etc/profile 等初始化，
+ * 用户 profile 的输出会污染终端首屏且拖慢每个标签的启动。
+ */
+function loginShellArgs(file: string, isMacOS: boolean): string[] {
+	if (!isMacOS) {
 		return [];
 	}
-	return POSIX_LOGIN_SHELLS.has(basename(file)) ? ["-l"] : [];
+	return LOGIN_CAPABLE_SHELLS.has(basename(file)) ? ["-l"] : [];
 }
 
 async function resolveOverride(ctx: ShellDetectContext): Promise<ResolvedShell | null> {
@@ -54,7 +58,7 @@ async function resolveOverride(ctx: ShellDetectContext): Promise<ResolvedShell |
 	if (await ctx.fileExists(override)) {
 		return {
 			file: override,
-			args: loginShellArgs(override, ctx.platform.isWin),
+			args: loginShellArgs(override, ctx.platform.isMacOS),
 			displayName: basename(override),
 		};
 	}
@@ -108,12 +112,12 @@ export async function resolveShell(ctx: ShellDetectContext): Promise<ResolvedShe
 
 	const envShell = (ctx.env.SHELL ?? "").trim();
 	if (envShell && (await ctx.fileExists(envShell))) {
-		return { file: envShell, args: loginShellArgs(envShell, ctx.platform.isWin), displayName: basename(envShell) };
+		return { file: envShell, args: loginShellArgs(envShell, ctx.platform.isMacOS), displayName: basename(envShell) };
 	}
 
 	if (ctx.platform.isMacOS) {
 		if (await ctx.fileExists(MACOS_FALLBACK)) {
-			return { file: MACOS_FALLBACK, args: loginShellArgs(MACOS_FALLBACK, false), displayName: "zsh" };
+			return { file: MACOS_FALLBACK, args: loginShellArgs(MACOS_FALLBACK, true), displayName: "zsh" };
 		}
 	}
 

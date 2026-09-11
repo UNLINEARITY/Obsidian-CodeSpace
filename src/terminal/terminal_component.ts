@@ -123,6 +123,9 @@ export class TerminalComponent {
 		}
 		this.startResizeObserver();
 		this.startWebglRetryWatch();
+		// 挂载后若此前 WebGL 上下文已丢失（如同窗口内切换标签后切回），
+		// 立即尝试恢复；冷却机制防止重复加载
+		this.scheduleWebglRetry();
 		this.term.focus();
 	}
 
