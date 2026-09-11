@@ -254,7 +254,7 @@ If you add the following extensions to the managed list, these files can also be
 | Shortcut | Function |
 |--------|------|
 | `Ctrl/Cmd+S` | Manually save the file |
-| `Ctrl/Cmd+Mouse wheel` | Adjust font size |
+| `Ctrl/Cmd+Mouse wheel` | Adjust font size (in the terminal: the focused terminal only) |
 | `Ctrl/Cmd+F` | Search |
 | `Ctrl+H` / `Cmd+Option+F` | Replace |
 | `Ctrl/Cmd+C` | Copy selection |
