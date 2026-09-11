@@ -220,3 +220,5 @@ describe("TerminalManager.applySettings", () => {
 		}
 	});
 });
+
+

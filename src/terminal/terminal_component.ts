@@ -31,9 +31,12 @@ export class TerminalComponent {
 	private disposed = false;
 	private inputHandler: ((data: string) => void) | null = null;
 	private resizeHandler: ((cols: number, rows: number) => void) | null = null;
+	private fontSize: number;
+	private wheelListener: ((event: WheelEvent) => void) | null = null;
 
 	constructor(sessionId: TerminalId, options: TerminalComponentOptions) {
 		this.sessionId = sessionId;
+		this.fontSize = options.fontSize;
 		this.term = new Terminal({
 			fontSize: options.fontSize,
 			scrollback: options.scrollback,
@@ -102,6 +105,23 @@ export class TerminalComponent {
 			// 字体与主题必须在 open 之前设置，保证首次字符宽度测量即用正确字体
 			this.applyFont();
 			this.refreshTheme();
+			// Ctrl/Cmd+滚轮缩放本终端字号（单窗口行为，与正常终端一致，不写全局设置；
+			// 阻止冒泡避免编辑器同事件二次缩放）
+			this.wheelListener = (event: WheelEvent): void => {
+				if (!(event.ctrlKey || event.metaKey)) {
+					return;
+				}
+				event.preventDefault();
+				event.stopPropagation();
+				const next = Math.min(36, Math.max(9, this.fontSize + (event.deltaY < 0 ? 1 : -1)));
+				if (next === this.fontSize) {
+					return;
+				}
+				this.fontSize = next;
+				this.term.options.fontSize = next;
+				this.scheduleFit();
+			};
+			this.container.addEventListener("wheel", this.wheelListener, { passive: false });
 			this.term.open(this.container);
 			this.loadWebglAddon();
 			this.fit();
@@ -150,6 +170,7 @@ export class TerminalComponent {
 		if (this.disposed) {
 			return;
 		}
+		this.fontSize = options.fontSize;
 		this.term.options.fontSize = options.fontSize;
 		this.term.options.scrollback = options.scrollback;
 		this.scheduleFit();
@@ -180,6 +201,10 @@ export class TerminalComponent {
 		this.disposed = true;
 		this.stopResizeObserver();
 		this.unloadWebglAddon();
+		if (this.wheelListener && this.container) {
+			this.container.removeEventListener("wheel", this.wheelListener);
+			this.wheelListener = null;
+		}
 		this.term.dispose();
 		this.container?.remove();
 		this.container = null;
