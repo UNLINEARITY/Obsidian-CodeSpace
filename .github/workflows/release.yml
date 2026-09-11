@@ -1,15 +1,13 @@
 name: Release
 
-# 手动触发：输入与 manifest.json 版本一致的 tag（如 2.5.0）。
-# tag 需已推送（--verify-tag 会校验存在性）；不再由 tag 推送自动触发。
+# 推送纯 SemVer tag（如 2.5.1）自动发布：
+# - 标题 = 版本号；说明优先取 docs/releases/<tag>.md（缺失回退自动生成）
+# - 已存在同名 release 时跳过发布（防重推 tag / 重复运行导致重复发布）
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (must match manifest.json version)"
-        required: true
-        type: string
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
 
 permissions:
   contents: write
@@ -17,20 +15,16 @@ permissions:
   attestations: write
 
 concurrency:
-  group: release-${{ inputs.tag }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -53,12 +47,24 @@ jobs:
         shell: bash
         run: |
           manifest_version="$(node -p "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')).version")"
-          if [ "$manifest_version" != "$RELEASE_TAG" ]; then
-            echo "Tag $RELEASE_TAG does not match manifest version $manifest_version" >&2
+          if [ "$manifest_version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match manifest version $manifest_version" >&2
             exit 1
           fi
 
+      - name: Check existing release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" -R "${GITHUB_REPOSITORY}"; then
+            echo "::notice::Release $GITHUB_REF_NAME already exists, skipping publish"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Attest release artifacts
+        if: steps.check.outputs.skip != 'true'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
@@ -67,6 +73,16 @@ jobs:
             styles.css
 
       - name: Create GitHub release
+        if: steps.check.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$RELEASE_TAG" main.js manifest.json styles.css --title "Code Space $RELEASE_TAG" --generate-notes --verify-tag
+        shell: bash
+        run: |
+          NOTES="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$NOTES" ]; then
+            gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css \
+              --title "$GITHUB_REF_NAME" --notes-file "$NOTES" --verify-tag
+          else
+            gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css \
+              --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          fi
