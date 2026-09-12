@@ -182,6 +182,18 @@ export class TerminalComponent {
 			return;
 		}
 		this.term.options.theme = themeFromVars(readThemeVars(this.container));
+		// xterm 会把主题背景以内联样式写入滚动区；下一帧改回透明以避免双背景
+		const view = this.container.ownerDocument.defaultView;
+		if (!view) {
+			return;
+		}
+		view.requestAnimationFrame(() => {
+			const viewport = this.container?.querySelector<HTMLElement>(".xterm-viewport");
+			if (viewport && !this.disposed) {
+				// 移除 xterm 写入的内联背景，让 styles.css 中的透明规则接管（避免双背景）
+				viewport.style.removeProperty("background-color");
+			}
+		});
 	}
 
 	/** 主题或字体变化时统一刷新外观（css-change 事件）；字体变化需重新测量并 fit */

@@ -1883,26 +1883,29 @@ body.pdf-export .code-embed-static-fallback pre {
 }
 
 .code-space-terminal-xterm .xterm-dim {
-    /* Dim should not apply to background, so the opacity of the foreground color is applied
-     * explicitly in the generated class and reset to 1 here */
-    opacity: 1 !important;
+    /* Dim color is blended by xterm's runtime-injected classes, so resetting element opacity
+     * to 1 with scoped specificity is enough (forced declarations are banned by CSS review) */
+    opacity: 1;
 }
 
+/* Keep only the basic single-keyword text-decoration forms (plugin review requirement):
+ * the WebGL renderer draws underline styles itself, so the DOM fallback renders
+ * wavy/double/dotted/dashed as a plain underline */
 .code-space-terminal-xterm .xterm-underline-1 { text-decoration: underline; }
-.code-space-terminal-xterm .xterm-underline-2 { text-decoration: double underline; }
-.code-space-terminal-xterm .xterm-underline-3 { text-decoration: wavy underline; }
-.code-space-terminal-xterm .xterm-underline-4 { text-decoration: dotted underline; }
-.code-space-terminal-xterm .xterm-underline-5 { text-decoration: dashed underline; }
+.code-space-terminal-xterm .xterm-underline-2 { text-decoration: underline; }
+.code-space-terminal-xterm .xterm-underline-3 { text-decoration: underline; }
+.code-space-terminal-xterm .xterm-underline-4 { text-decoration: underline; }
+.code-space-terminal-xterm .xterm-underline-5 { text-decoration: underline; }
 
 .code-space-terminal-xterm .xterm-overline {
     text-decoration: overline;
 }
 
-.code-space-terminal-xterm .xterm-overline.xterm-underline-1 { text-decoration: overline underline; }
-.code-space-terminal-xterm .xterm-overline.xterm-underline-2 { text-decoration: overline double underline; }
-.code-space-terminal-xterm .xterm-overline.xterm-underline-3 { text-decoration: overline wavy underline; }
-.code-space-terminal-xterm .xterm-overline.xterm-underline-4 { text-decoration: overline dotted underline; }
-.code-space-terminal-xterm .xterm-overline.xterm-underline-5 { text-decoration: overline dashed underline; }
+.code-space-terminal-xterm .xterm-overline.xterm-underline-1 { text-decoration: underline; }
+.code-space-terminal-xterm .xterm-overline.xterm-underline-2 { text-decoration: underline; }
+.code-space-terminal-xterm .xterm-overline.xterm-underline-3 { text-decoration: underline; }
+.code-space-terminal-xterm .xterm-overline.xterm-underline-4 { text-decoration: underline; }
+.code-space-terminal-xterm .xterm-overline.xterm-underline-5 { text-decoration: underline; }
 
 .code-space-terminal-xterm .xterm-strikethrough {
     text-decoration: line-through;
@@ -1944,8 +1947,9 @@ body.pdf-export .code-embed-static-fallback pre {
 }
 
 .code-space-terminal-xterm .xterm .xterm-viewport {
-    /* 由 xterm 主题渲染背景，滚动区域保持透明以避免双背景 */
-    background-color: transparent !important;
+    /* 滚动区域保持透明以避免双背景：xterm 会把主题背景以内联样式写入，
+     * terminal_component 在主题刷新后移除该内联值，本规则随之生效并覆盖上方 vendored #000 */
+    background-color: transparent;
 }
 
 .code-space-terminal-xterm .xterm .composition-view {
