@@ -213,6 +213,7 @@ Add the following extensions in **Settings > Code Space > Managed extensions** t
 | **Config files** | `.toml`, `.ini`, `.cfg`, `.conf` | YAML |
 | **Shell scripts** | `.bash`, `.zsh` | Shell |
 | **PowerShell** | `.ps1`, `.psm1`, `.psd1` | PowerShell |
+| **Fortran** | `.f`, `.for`, `.f90`, `.f95`, `.f03`, `.f08` | Dedicated |
 | **Other languages** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.erb`, `.m` | Dedicated |
 
 ### 3. Binary file support (opened with Obsidian native viewer)

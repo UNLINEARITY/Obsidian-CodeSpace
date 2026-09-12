@@ -6,6 +6,7 @@ import { tags } from "@lezer/highlight";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { Compartment } from "@codemirror/state";
 import CodeSpacePlugin from "./main";
+import { readFileDecoded } from "./encoding";
 import { createFencedCodeBlock, sliceFileContent } from "./code_embed_markdown";
 import { t } from "./lang/helpers";
 import { EMBED_RENDERABLE_EXTENSIONS, LANGUAGE_PACKAGES } from "./language_registry";
@@ -118,6 +119,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 				readOnlyTheme,
 				lineNumbers({ formatNumber: (n) => String(n + this.startLine - 1) }),
 				EditorView.editable.of(false),
+				...(this.plugin.settings.embedWordWrap ? [EditorView.lineWrapping] : []),
 			],
 		});
 
@@ -833,8 +835,8 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 }
 
 async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeSpacePlugin, renderToken: number, startLine: number = 0, endLine: number = 0) {
-	// Read file content
-	const fullContent = await plugin.app.vault.read(tFile);
+	// 以编码感知方式读取文件内容
+	const { text: fullContent } = await readFileDecoded(plugin.app, tFile);
 	if (embedRenderTokens.get(embedEl) !== renderToken) return;
 
 	const ext = tFile.extension.toLowerCase();

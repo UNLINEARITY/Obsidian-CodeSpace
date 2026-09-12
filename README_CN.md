@@ -211,6 +211,7 @@ Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中�
 | **配置文件** | `.toml`, `.ini`, `.cfg`, `.conf` | YAML |
 | **Shell 脚本** | `.bash`, `.zsh` | Shell |
 | **PowerShell** | `.ps1`, `.psm1`, `.psd1` | PowerShell |
+| **Fortran** | `.f`, `.for`, `.f90`, `.f95`, `.f03`, `.f08` | 专用 |
 | **其他语言** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.erb`, `.m` | 专用 |
 
 ### 3. 二进制文件支持（Obsidian 原生打开）

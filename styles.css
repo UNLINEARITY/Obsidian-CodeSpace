@@ -1965,3 +1965,20 @@ body.pdf-export .code-embed-static-fallback pre {
     background-color: var(--scrollbar-thumb-bg, var(--background-modifier-border));
     border-radius: var(--radius-m);
 }
+
+/* ------------------------------------------------------------------ */
+/* 编辑器标题栏编码徽标                                                 */
+/* ------------------------------------------------------------------ */
+
+.code-space-encoding-badge {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+    padding: 0 6px;
+    min-width: auto;
+    height: auto;
+}
+
+.code-space-encoding-badge.code-space-encoding-non-utf8 {
+    color: var(--text-accent);
+    font-weight: var(--font-semibold);
+}

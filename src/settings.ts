@@ -2,6 +2,8 @@ import { App, PluginSettingTab, Setting, Plugin, FuzzySuggestModal, TFolder, Not
 import type { SettingDefinitionItem } from "obsidian";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
+import { ENCODING_LABELS, getEncodingDisplayNameKey, normalizeEncodingSetting, normalizeFileEncodings } from "./encoding";
+import type { EncodingLabel, EncodingSetting } from "./encoding";
 import { ExternalMount, ExternalMountLinkType, ExternalMountManager, pickExternalFolder, suggestMountPath } from "./external_mount";
 
 // Suggester for folder selection
@@ -136,12 +138,20 @@ export interface CodeSpaceSettings {
 	extensions: string;
 	// 是否显示行号
 	showLineNumbers: boolean;
+	// 编辑器自动换行
+	editorWordWrap: boolean;
 	// 编辑器字体大小
 	editorFontSize: number;
 	// 引用块字体大小
 	embedFontSize: number;
+	// 嵌入预览自动换行
+	embedWordWrap: boolean;
 	// 代码嵌入最大显示行数（0 表示不限制）
 	maxEmbedLines: number;
+	// 默认编码（auto = 自动检测）
+	defaultEncoding: EncodingSetting;
+	// 每文件编码记忆（vault 路径 → 编码）
+	fileEncodings: Record<string, EncodingLabel>;
 	// 指定的文件夹路径
 	newFileFolderPath: string;
 	// 新文件存放位置模式：'custom' 使用指定路径，'current' 使用当前文件所在文件夹
@@ -169,9 +179,13 @@ export interface CodeSpaceSettings {
 export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	extensions: "py, c, cpp, h, hpp, js, ts, jsx, tsx, json, mjs, cjs, css, scss, sass, less, html, htm, rs, go, java, sql, php, rb, sh, yaml, xml, cs, yml",
 	showLineNumbers: true,
+	editorWordWrap: true,
 	editorFontSize: 18,
 	embedFontSize: 15,
+	embedWordWrap: true,
 	maxEmbedLines: 20, // 默认最大显示 30 行
+	defaultEncoding: "auto",
+	fileEncodings: {},
 	newFileFolderPath: '',
 	newFileLocationMode: 'custom',
 	dashboardState: {
@@ -218,9 +232,13 @@ export function normalizeCodeSpaceSettings(value: unknown): CodeSpaceSettings {
 	return {
 		extensions: typeof raw.extensions === "string" && raw.extensions.trim() ? raw.extensions : DEFAULT_SETTINGS.extensions,
 		showLineNumbers: typeof raw.showLineNumbers === "boolean" ? raw.showLineNumbers : DEFAULT_SETTINGS.showLineNumbers,
+		editorWordWrap: typeof raw.editorWordWrap === "boolean" ? raw.editorWordWrap : DEFAULT_SETTINGS.editorWordWrap,
 		editorFontSize: numberInRange(raw.editorFontSize, DEFAULT_SETTINGS.editorFontSize, 9, 36),
 		embedFontSize: numberInRange(raw.embedFontSize, DEFAULT_SETTINGS.embedFontSize, 9, 36),
+		embedWordWrap: typeof raw.embedWordWrap === "boolean" ? raw.embedWordWrap : DEFAULT_SETTINGS.embedWordWrap,
 		maxEmbedLines: numberInRange(raw.maxEmbedLines, DEFAULT_SETTINGS.maxEmbedLines, 0),
+		defaultEncoding: normalizeEncodingSetting(raw.defaultEncoding),
+		fileEncodings: normalizeFileEncodings(raw.fileEncodings),
 		newFileFolderPath: typeof raw.newFileFolderPath === "string" ? raw.newFileFolderPath : "",
 		newFileLocationMode: raw.newFileLocationMode === "current" ? "current" : "custom",
 		dashboardState: {
@@ -304,6 +322,18 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					})
 			);
 
+		new Setting(containerEl)
+			.setName(t('SETTINGS_EDITOR_WORD_WRAP_NAME'))
+			.setDesc(t('SETTINGS_EDITOR_WORD_WRAP_DESC'))
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.editorWordWrap)
+					.onChange(async (value) => {
+						this.plugin.settings.editorWordWrap = value;
+						await this.plugin.saveSettings("editor");
+					})
+			);
+
 		const saveEditorFontSize = this.createDebouncedSave(() => this.plugin.saveSettings("editor"));
 		new Setting(containerEl)
 			.setName(t('SETTINGS_EDITOR_FONT_SIZE_NAME'))
@@ -336,6 +366,44 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 							saveEmbedFontSize();
 						}
 					})
+			);
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_EMBED_WORD_WRAP_NAME'))
+			.setDesc(t('SETTINGS_EMBED_WORD_WRAP_DESC'))
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.embedWordWrap)
+					.onChange(async (value) => {
+						this.plugin.settings.embedWordWrap = value;
+						await this.plugin.saveSettings("embed");
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_ENCODING_NAME'))
+			.setDesc(t('SETTINGS_ENCODING_DESC'))
+			.addDropdown((dropdown) => {
+				dropdown.addOption("auto", t('SETTINGS_ENCODING_OPTION_AUTO'));
+				for (const label of ENCODING_LABELS) {
+					dropdown.addOption(label, t(getEncodingDisplayNameKey(label)));
+				}
+				dropdown.setValue(this.plugin.settings.defaultEncoding);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.defaultEncoding = normalizeEncodingSetting(value);
+					await this.plugin.saveSettings("none");
+				});
+			});
+
+		new Setting(containerEl)
+			.setName(t('SETTINGS_ENCODING_CLEAR_MEMORY_NAME'))
+			.setDesc(t('SETTINGS_ENCODING_CLEAR_MEMORY_DESC'))
+			.addButton((button) =>
+				button.setButtonText(t('SETTINGS_ENCODING_CLEAR_MEMORY_BUTTON')).onClick(async () => {
+					this.plugin.settings.fileEncodings = {};
+					await this.plugin.saveSettings("none");
+					this.refreshSettingsView();
+				})
 			);
 
 		const saveMaxEmbedLines = this.createDebouncedSave(() => this.plugin.saveSettings("embed"));

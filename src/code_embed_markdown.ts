@@ -1,5 +1,6 @@
 import { TFile, normalizePath } from "obsidian";
 import type CodeSpacePlugin from "./main";
+import { readFileDecoded } from "./encoding";
 
 export type ResolvedCodeEmbed = {
 	file: TFile;
@@ -41,6 +42,12 @@ const MARKDOWN_LANGUAGE_ALIASES: Record<string, string> = {
 	ini: "yaml",
 	cfg: "yaml",
 	conf: "yaml",
+	f: "fortran",
+	for: "fortran",
+	f90: "fortran",
+	f95: "fortran",
+	f03: "fortran",
+	f08: "fortran",
 };
 
 export const KNOWN_RENDERABLE_CODE_EXTENSIONS = new Set([
@@ -99,6 +106,12 @@ export const KNOWN_RENDERABLE_CODE_EXTENSIONS = new Set([
 	"ini",
 	"cfg",
 	"conf",
+	"f",
+	"for",
+	"f90",
+	"f95",
+	"f03",
+	"f08",
 ]);
 
 function collectAllowedExtensions(plugin: CodeSpacePlugin): Set<string> {
@@ -286,7 +299,7 @@ export async function expandCodeEmbedsInMarkdown(
 			continue;
 		}
 
-		const fullContent = await plugin.app.vault.read(resolved.file);
+		const { text: fullContent } = await readFileDecoded(plugin.app, resolved.file);
 		const slicedContent = sliceFileContent(fullContent, resolved.startLine, resolved.endLine);
 		const fencedCode = createFencedCodeBlock(slicedContent, resolved.file.extension.toLowerCase());
 		output.push(indentMultiline(fencedCode, indent));

@@ -10,6 +10,7 @@ import { perl } from "@codemirror/legacy-modes/mode/perl";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
 import { kotlin } from "@codemirror/legacy-modes/mode/clike";
 import { octave } from "@codemirror/legacy-modes/mode/octave";
+import { fortran } from "@codemirror/legacy-modes/mode/fortran";
 import { python } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
 import { javascript } from "@codemirror/lang-javascript";
@@ -50,6 +51,7 @@ const diffLanguage = StreamLanguage.define(diff);
 const luaLanguage = StreamLanguage.define(lua);
 const perlLanguage = StreamLanguage.define(perl);
 const rubyLanguage = StreamLanguage.define(ruby);
+const fortranLanguage = StreamLanguage.define(fortran);
 
 export const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	py: pythonLanguage,
@@ -141,6 +143,12 @@ export const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	pm: perlLanguage,
 	rb: rubyLanguage,
 	erb: rubyLanguage,
+	f: fortranLanguage,
+	for: fortranLanguage,
+	f90: fortranLanguage,
+	f95: fortranLanguage,
+	f03: fortranLanguage,
+	f08: fortranLanguage,
 	md: [],
 	txt: [],
 };
@@ -150,5 +158,5 @@ export const EMBED_RENDERABLE_EXTENSIONS = new Set([
 	"json5", "jsonc", "vue", "svelte", "astro", "html", "htm", "xhtml", "css", "scss", "sass", "less",
 	"sql", "php", "rs", "java", "cs", "kt", "kts", "m", "go", "yaml", "yml", "xml", "urdf", "xacro",
 	"svg", "xsd", "xsl", "xslt", "wsdl", "plist", "csproj", "vcxproj", "props", "targets", "config", "toml",
-	"ini", "cfg", "conf",
+	"ini", "cfg", "conf", "f", "for", "f90", "f95", "f03", "f08",
 ]);

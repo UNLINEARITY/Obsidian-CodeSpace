@@ -6,6 +6,7 @@ import {
 	sliceFileContent,
 } from "./code_embed_markdown";
 import type CodeSpacePlugin from "./main";
+import { readFileDecoded } from "./encoding";
 
 const NATIVE_EXPORT_COMMAND_ID = "workspace:export-pdf";
 const EXPORT_MODAL_SELECTOR = ".modal-container";
@@ -323,7 +324,7 @@ async function replacePopupCodeEmbeds(
 				continue;
 			}
 
-			const fullContent = await plugin.app.vault.read(resolved.file);
+			const { text: fullContent } = await readFileDecoded(plugin.app, resolved.file);
 			const slicedContent = sliceFileContent(fullContent, resolved.startLine, resolved.endLine);
 			const replacementEl = embedEl.ownerDocument.createDiv();
 			replacementEl.className = "code-space-native-pdf-code markdown-rendered";

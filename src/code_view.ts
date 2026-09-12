@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform, Modal, ButtonComponent } from "obsidian";
+import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform, Modal, ButtonComponent, FuzzySuggestModal } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment, Extension, Prec, Transaction, Text } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
@@ -17,6 +17,8 @@ import {
 import { LANGUAGE_PACKAGES } from "./language_registry";
 import { setupScrollbarVisibility } from "./scrollbar_visibility";
 import { TerminalPanel } from "./terminal/terminal_panel";
+import { ENCODING_LABELS, getEncodingDisplayNameKey, readFileDecoded } from "./encoding";
+import type { EncodingLabel } from "./encoding";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
 
@@ -571,10 +573,76 @@ function requestExternalConflictResolution(app: App, fileName: string): Promise<
 	});
 }
 
+class EncodingConvertModal extends Modal {
+	private settled = false;
+
+	constructor(
+		app: App,
+		fileName: string,
+		encodingName: string,
+		private resolve: (confirmed: boolean) => void,
+	) {
+		super(app);
+		this.setTitle(t("MODAL_ENCODING_CONVERT_TITLE"));
+		this.contentEl.createDiv({
+			cls: "setting-item-description",
+			text: t("MODAL_ENCODING_CONVERT_DESC").replace("{0}", fileName).replace("{1}", encodingName),
+		});
+
+		const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
+		new ButtonComponent(buttons)
+			.setButtonText(t("MODAL_ENCODING_CONVERT_CONFIRM"))
+			.setCta()
+			.onClick(() => this.choose(true));
+		new ButtonComponent(buttons)
+			.setButtonText(t("MODAL_ENCODING_CONVERT_CANCEL"))
+			.onClick(() => this.choose(false));
+	}
+
+	private choose(confirmed: boolean): void {
+		this.settled = true;
+		this.resolve(confirmed);
+		this.close();
+	}
+
+	onClose(): void {
+		super.onClose();
+		if (!this.settled) {
+			this.resolve(false);
+		}
+	}
+}
+
+function requestEncodingConvertConfirm(app: App, fileName: string, encodingName: string): Promise<boolean> {
+	return new Promise((resolve) => {
+		new EncodingConvertModal(app, fileName, encodingName, resolve).open();
+	});
+}
+
+class EncodingPickerModal extends FuzzySuggestModal<EncodingLabel> {
+	constructor(app: App, private onPick: (label: EncodingLabel) => void) {
+		super(app);
+		this.setPlaceholder(t("ENCODING_PICKER_PLACEHOLDER"));
+	}
+
+	getItems(): EncodingLabel[] {
+		return [...ENCODING_LABELS];
+	}
+
+	getItemText(label: EncodingLabel): string {
+		return t(getEncodingDisplayNameKey(label));
+	}
+
+	onChooseItem(label: EncodingLabel, _evt: MouseEvent | KeyboardEvent): void {
+		this.onPick(label);
+	}
+}
+
 export class CodeSpaceView extends TextFileView {
 	editorView: EditorView;
 	themeCompartment: Compartment;
 	lineNumbersCompartment: Compartment;
+	lineWrappingCompartment: Compartment;
 	languageCompartment: Compartment;
 	fontSizeCompartment: Compartment; // 新增：管理字体大小
 	fontSize: number = 15; // 默认字体大小（px）
@@ -594,6 +662,12 @@ export class CodeSpaceView extends TextFileView {
 	private editorInitFrame: number | null = null;
 	private isClosed = false;
 	private cleanupScrollbarVisibility?: () => void;
+	// 编码感知读取状态
+	private activeEncoding: EncodingLabel = "utf-8";
+	private activeHadBOM = false;
+	private pendingDecode: Promise<void> | null = null;
+	private decodeSeq = 0; // 过期解码防护：文件切换后旧解码结果作废
+	private encodingBadgeEl: HTMLElement | null = null;
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -619,6 +693,7 @@ export class CodeSpaceView extends TextFileView {
 		super(leaf);
 		this.themeCompartment = new Compartment();
 		this.lineNumbersCompartment = new Compartment();
+		this.lineWrappingCompartment = new Compartment();
 		this.languageCompartment = new Compartment();
 		this.fontSizeCompartment = new Compartment();
 	}
@@ -666,6 +741,14 @@ export class CodeSpaceView extends TextFileView {
 		return [];
 	}
 
+	getWordWrapExtension(): Extension {
+		const plugin = this.getPlugin();
+		if (plugin?.settings.editorWordWrap) {
+			return EditorView.lineWrapping;
+		}
+		return [];
+	}
+
 	getFontSizeExtension(): Extension {
 		// 使用 EditorView.theme 统一设置所有元素的字体大小和行高
 		const lineHeight = 1.5;
@@ -696,6 +779,7 @@ export class CodeSpaceView extends TextFileView {
 		this.editorView.dispatch({
 			effects: [
 				this.lineNumbersCompartment.reconfigure(this.getLineNumbersExtension()),
+				this.lineWrappingCompartment.reconfigure(this.getWordWrapExtension()),
 				this.fontSizeCompartment.reconfigure(this.getFontSizeExtension())
 			]
 		});
@@ -722,6 +806,121 @@ export class CodeSpaceView extends TextFileView {
 			this.terminalActionEl.remove();
 			this.terminalActionEl = null;
 		}
+	}
+
+	/**
+	 * 以编码感知方式加载当前文件（编辑器内容与 this.data 统一走该管线）。
+	 * @param encodingOverride 用户显式指定的编码（"以指定编码重新打开"）
+	 */
+	private scheduleDecodedLoad(encodingOverride?: EncodingLabel): void {
+		const seq = ++this.decodeSeq;
+
+		const run = async (): Promise<void> => {
+			if (!this.file) return;
+			const decoded = await readFileDecoded(this.app, this.file, encodingOverride ? { encodingOverride } : undefined);
+			if (seq !== this.decodeSeq || this.isClosed) return;
+
+			this.activeEncoding = decoded.encoding;
+			this.activeHadBOM = decoded.hadBOM;
+
+			const plugin = this.getPlugin();
+			if (plugin) {
+				this.rememberEncoding(plugin, this.file.path, decoded.encoding, Boolean(encodingOverride));
+			}
+
+			// 编辑器尚未创建（首次打开）：落到占位文本，initCodeMirror 会以它为初值
+			if (!this.editorView) {
+				this.data = decoded.text;
+				return;
+			}
+
+			const currentContent = this.editorView.state.doc.toString();
+			if (decoded.text === currentContent) {
+				this.data = decoded.text;
+				this.savedDoc = this.editorView.state.doc;
+				this.externalConflict = false;
+				this.syncEncodingBadge();
+				return;
+			}
+
+			this.isSettingData = true;
+			try {
+				this.editorView.dispatch({
+					changes: { from: 0, to: this.editorView.state.doc.length, insert: decoded.text },
+					annotations: [Transaction.addToHistory.of(false)]
+				});
+			} finally {
+				this.isSettingData = false;
+			}
+			this.data = decoded.text;
+			this.savedDoc = this.editorView.state.doc;
+			this.isDirty = false;
+			this.externalConflict = false;
+			this.updateTitle();
+			this.syncEncodingBadge();
+		};
+
+		const promise = run()
+			.catch((error) => {
+				console.error("Code Space: Failed to decode file content:", error);
+			})
+			.finally(() => {
+				if (seq === this.decodeSeq) {
+					this.pendingDecode = null;
+				}
+			});
+		this.pendingDecode = promise;
+	}
+
+	/** 记录每文件编码：非 UTF-8 检测结果自动记忆；显式 reopen 的选择（含 utf-8）视为钉住 */
+	private rememberEncoding(plugin: CodeSpacePlugin, path: string, encoding: EncodingLabel, explicit: boolean): void {
+		if (!explicit && encoding === "utf-8") return;
+		if (plugin.settings.fileEncodings[path] === encoding) return;
+		plugin.settings.fileEncodings[path] = encoding;
+		plugin.scheduleEncodingPersist();
+	}
+
+	/** 以指定编码重新打开当前文件 */
+	async reopenWithEncoding(label: EncodingLabel): Promise<void> {
+		if (!this.file) return;
+
+		if (this.isDirty && this.editorView) {
+			const resolution = await requestExternalConflictResolution(this.app, this.file.name);
+			if (resolution === "cancel") return;
+			if (resolution === "overwrite") {
+				await this.save();
+				// 保存已把非 UTF-8 文件转为 UTF-8，按常规检测重新打开即可
+				this.scheduleDecodedLoad();
+				return;
+			}
+			await this.loadFileContent();
+		}
+
+		new Notice(t("NOTICE_REOPENED_WITH_ENCODING").replace("{0}", t(getEncodingDisplayNameKey(label))));
+		this.scheduleDecodedLoad(label);
+	}
+
+	/** 打开编码选择器（标题栏徽标与命令共用） */
+	openEncodingPicker(): void {
+		new EncodingPickerModal(this.app, (label) => {
+			void this.reopenWithEncoding(label);
+		}).open();
+	}
+
+	/** 同步标题栏编码徽标（utf-8 低对比，其余编码高亮） */
+	private syncEncodingBadge(): void {
+		const actionsEl = this.containerEl.querySelector<HTMLElement>(".view-actions");
+		if (!actionsEl) return;
+		if (!this.encodingBadgeEl || !this.encodingBadgeEl.isConnected) {
+			this.encodingBadgeEl = actionsEl.createDiv({ cls: "view-action code-space-encoding-badge clickable-icon" });
+			this.encodingBadgeEl.addEventListener("click", () => this.openEncodingPicker());
+		}
+		const label = t(getEncodingDisplayNameKey(this.activeEncoding));
+		this.encodingBadgeEl.setText(label);
+		this.encodingBadgeEl.toggleClass("code-space-encoding-non-utf8", this.activeEncoding !== "utf-8");
+		const tooltip = t("ENCODING_BADGE_TOOLTIP").replace("{0}", label)
+			+ (this.activeHadBOM ? t("ENCODING_BADGE_BOM_SUFFIX") : "");
+		this.encodingBadgeEl.setAttribute("aria-label", tooltip);
 	}
 
 	// 切换搜索面板（供命令调用）
@@ -839,6 +1038,12 @@ export class CodeSpaceView extends TextFileView {
 	async save(): Promise<void> {
 		if (!this.isDirty || !this.file || !this.editorView) return;
 
+		// 等待未完成的解码，避免把框架代读的 UTF-8 占位文本写盘
+		if (this.pendingDecode) {
+			await this.pendingDecode.catch(() => {});
+			if (!this.isDirty || !this.file || !this.editorView) return;
+		}
+
 		if (this.savePromise) {
 			this.saveRequested = true;
 			await this.savePromise;
@@ -875,6 +1080,15 @@ export class CodeSpaceView extends TextFileView {
 			this.externalConflict = false;
 		}
 
+		// 非 UTF-8 编码的文件保存前需确认转为 UTF-8（一期不做原编码回写）
+		const plugin = this.getPlugin();
+		if (this.activeEncoding !== "utf-8" && plugin && !plugin.encodingConversionPrompted.has(this.file.path)) {
+			const encodingName = t(getEncodingDisplayNameKey(this.activeEncoding));
+			const confirmed = await requestEncodingConvertConfirm(this.app, this.file.name, encodingName);
+			if (!confirmed) return false; // 保持 dirty，不静默转码
+			plugin.encodingConversionPrompted.add(this.file.path);
+		}
+
 		const snapshot = this.editorView.state.doc;
 		const content = snapshot.toString();
 		this.expectedSelfWrite = { content, expiresAt: Date.now() + 2000 };
@@ -887,7 +1101,6 @@ export class CodeSpaceView extends TextFileView {
 			this.isDirty = !this.editorView.state.doc.eq(snapshot);
 			this.updateTitle();
 
-			const plugin = this.getPlugin();
 			if (plugin) {
 				void plugin.updateOutline(this.file, content);
 			}
@@ -906,7 +1119,7 @@ export class CodeSpaceView extends TextFileView {
 		if (!this.file || !this.baselineMtime || this.file.stat.mtime === this.baselineMtime) return;
 
 		try {
-			const diskContent = await this.app.vault.read(this.file);
+			const { text: diskContent } = await readFileDecoded(this.app, this.file);
 			if (diskContent !== this.data) {
 				this.externalConflict = true;
 				return;
@@ -992,6 +1205,13 @@ export class CodeSpaceView extends TextFileView {
 			this.savedDoc = this.editorView.state.doc;
 		}
 		this.updateTitle();
+
+		// 编码状态复位（框架传入的是 UTF-8 占位文本），交由解码管线校正
+		this.decodeSeq++;
+		this.activeEncoding = "utf-8";
+		this.activeHadBOM = false;
+		this.syncEncodingBadge();
+		this.scheduleDecodedLoad();
 	}
 
 	async onOpen(): Promise<void> {
@@ -1037,6 +1257,7 @@ export class CodeSpaceView extends TextFileView {
 			baseTheme,
 			this.fontSizeCompartment.of(this.getFontSizeExtension()), // 字体大小管理
 			this.lineNumbersCompartment.of(this.getLineNumbersExtension()),
+			this.lineWrappingCompartment.of(this.getWordWrapExtension()),
 			this.languageCompartment.of([]), // Start with empty, will be updated in onLoadFile
 			highlightSpecialChars(),
 			history(),
@@ -1114,6 +1335,8 @@ export class CodeSpaceView extends TextFileView {
 			parent: root
 		});
 		this.cleanupScrollbarVisibility = setupScrollbarVisibility(this.editorView.scrollDOM);
+
+		this.syncEncodingBadge();
 
 		console.debug("Code Space: Editor created with state");
 
@@ -1235,7 +1458,7 @@ export class CodeSpaceView extends TextFileView {
 		if (expectedWrite) {
 			if (Date.now() <= expectedWrite.expiresAt) {
 				try {
-					const diskContent = await this.app.vault.read(file);
+					const { text: diskContent } = await readFileDecoded(this.app, file);
 					if (diskContent === expectedWrite.content) {
 						this.expectedSelfWrite = null;
 						this.baselineMtime = file.stat.mtime;
@@ -1263,8 +1486,15 @@ export class CodeSpaceView extends TextFileView {
 		if (!this.file) return;
 
 		try {
-			// 读取文件内容
-			const content = await this.app.vault.read(this.file);
+			// 以编码感知方式读取文件内容
+			const decoded = await readFileDecoded(this.app, this.file);
+			const content = decoded.text;
+			this.activeEncoding = decoded.encoding;
+			this.activeHadBOM = decoded.hadBOM;
+			const plugin = this.getPlugin();
+			if (plugin) {
+				this.rememberEncoding(plugin, this.file.path, decoded.encoding, false);
+			}
 
 			// 检查内容是否发生变化
 			const currentContent = this.editorView.state.doc.toString();
@@ -1277,6 +1507,7 @@ export class CodeSpaceView extends TextFileView {
 				this.isDirty = false;
 				this.externalConflict = false;
 				this.updateTitle();
+				this.syncEncodingBadge();
 				console.debug("Code Space: File content matches editor content, skipping reload to preserve cursor");
 				return;
 			}
@@ -1304,6 +1535,7 @@ export class CodeSpaceView extends TextFileView {
 			this.isDirty = false;
 			this.externalConflict = false;
 			this.updateTitle();
+			this.syncEncodingBadge();
 
 			console.debug("Code Space: File content reloaded from disk");
 		} catch (error) {
@@ -1367,6 +1599,11 @@ export class CodeSpaceView extends TextFileView {
 			this.externalConflict = false;
 			this.isDirty = false;
 			this.updateTitle();
+		}
+
+		// 框架代读的是 UTF-8 文本，交由解码管线校正（幂等，decodeSeq 防过期）
+		if (this.file) {
+			this.scheduleDecodedLoad();
 		}
 	}
 

@@ -1,10 +1,11 @@
-import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, TFile, TFolder, normalizePath, Platform } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, TFile, TFolder, normalizePath, Platform, debounce } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
 import { IgnoreManagerModal } from "./ignore_manager_modal";
 import { CodeSpaceSettings, CodeSpaceSettingTab, FolderSuggestModal, normalizeCodeSpaceSettings } from "./settings";
 import { refreshAllCodeEmbeds, registerCodeEmbedProcessor } from "./code_embed";
+import type { EncodingLabel } from "./encoding";
 import { registerNativePdfExportPatch } from "./native_pdf_export_patch";
 import { TerminalManager } from "./terminal/session_manager";
 import { CodeTerminalView, VIEW_TYPE_CODE_TERMINAL } from "./terminal/terminal_view";
@@ -112,6 +113,16 @@ class CreateCodeFileModal extends Modal {
 export default class CodeSpacePlugin extends Plugin {
 	settings: CodeSpaceSettings;
 	terminalManager: TerminalManager | null = null;
+	// 会话级记忆：已提示过"保存转 UTF-8"的文件（每文件每会话只问一次）
+	encodingConversionPrompted = new Set<string>();
+	private persistFileEncodings = debounce(() => {
+		void this.saveSettings("none");
+	}, 300, true);
+
+	/** 每文件编码记忆变更后防抖持久化 */
+	scheduleEncodingPersist(): void {
+		this.persistFileEncodings();
+	}
 	private registeredExtensions: string[] = [];
 
 	async onload() {
@@ -228,6 +239,22 @@ export default class CodeSpacePlugin extends Plugin {
 					return true;
 				}
 				return false;
+			}
+		});
+
+		// 以指定编码重新打开当前代码文件
+		this.addCommand({
+			id: 'reopen-with-encoding',
+			name: t('CMD_REOPEN_WITH_ENCODING'),
+			checkCallback: (checking: boolean) => {
+				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
+				if (!activeView || !activeView.file) {
+					return false;
+				}
+				if (!checking) {
+					activeView.openEncodingPicker();
+				}
+				return true;
 			}
 		});
 
@@ -516,26 +543,32 @@ export default class CodeSpacePlugin extends Plugin {
 	private async handleIgnoredPathRename(file: TFile | TFolder, oldPath: string): Promise<void> {
 		const normalizedOldPath = this.normalizeIgnoredPath(oldPath);
 		const normalizedNewPath = this.normalizeIgnoredPath(file.path);
-		let changed = false;
+		let ignoredChanged = false;
 		const updatedPaths = this.settings.ignoredFiles.map((path) => {
 			if (path === normalizedOldPath) {
-				changed = true;
+				ignoredChanged = true;
 				return normalizedNewPath;
 			}
 
 			if (file instanceof TFolder && path.startsWith(`${normalizedOldPath}/`)) {
-				changed = true;
+				ignoredChanged = true;
 				return `${normalizedNewPath}/${path.slice(normalizedOldPath.length + 1)}`;
 			}
 
 			return path;
 		});
 
-		if (!changed) {
+		if (ignoredChanged) {
+			this.settings.ignoredFiles = this.normalizeIgnoredFiles(updatedPaths);
+		}
+
+		// 编码记忆迁移必须与忽略列表变更独立进行（文件可能不在忽略列表中）
+		const encodingsChanged = this.migrateFileEncodingsOnRename(normalizedOldPath, normalizedNewPath, file instanceof TFolder);
+
+		if (!ignoredChanged && !encodingsChanged) {
 			return;
 		}
 
-		this.settings.ignoredFiles = this.normalizeIgnoredFiles(updatedPaths);
 		await this.persistIgnoredFiles();
 	}
 
@@ -549,12 +582,70 @@ export default class CodeSpacePlugin extends Plugin {
 			return !(file instanceof TFolder && path.startsWith(`${normalizedPath}/`));
 		});
 
-		if (filtered.length === this.settings.ignoredFiles.length) {
+		const ignoredChanged = filtered.length !== this.settings.ignoredFiles.length;
+		if (ignoredChanged) {
+			this.settings.ignoredFiles = this.normalizeIgnoredFiles(filtered);
+		}
+
+		const encodingsChanged = this.removeFileEncodingsOnDelete(normalizedPath, file instanceof TFolder);
+
+		if (!ignoredChanged && !encodingsChanged) {
 			return;
 		}
 
-		this.settings.ignoredFiles = this.normalizeIgnoredFiles(filtered);
 		await this.persistIgnoredFiles();
+	}
+
+	/** 重命名/移动时同步迁移每文件编码记忆（文件与文件夹前缀两种形态），返回是否有变更 */
+	private migrateFileEncodingsOnRename(oldPath: string, newPath: string, isFolder: boolean): boolean {
+		const encodings = this.settings.fileEncodings;
+		if (!encodings || Object.keys(encodings).length === 0) {
+			return false;
+		}
+
+		let changed = false;
+		const updated: Record<string, string> = {};
+		for (const [path, encoding] of Object.entries(encodings)) {
+			if (path === oldPath) {
+				updated[newPath] = encoding;
+				changed = true;
+				continue;
+			}
+			if (isFolder && path.startsWith(`${oldPath}/`)) {
+				updated[`${newPath}/${path.slice(oldPath.length + 1)}`] = encoding;
+				changed = true;
+				continue;
+			}
+			updated[path] = encoding;
+		}
+
+		if (changed) {
+			this.settings.fileEncodings = updated as Record<string, EncodingLabel>;
+		}
+		return changed;
+	}
+
+	/** 删除时同步清理每文件编码记忆，返回是否有变更 */
+	private removeFileEncodingsOnDelete(path: string, isFolder: boolean): boolean {
+		const encodings = this.settings.fileEncodings;
+		if (!encodings || Object.keys(encodings).length === 0) {
+			return false;
+		}
+
+		let changed = false;
+		const updated: Record<string, string> = {};
+		for (const [key, encoding] of Object.entries(encodings)) {
+			if (key === path || (isFolder && key.startsWith(`${path}/`))) {
+				changed = true;
+				continue;
+			}
+			updated[key] = encoding;
+		}
+
+		if (changed) {
+			this.settings.fileEncodings = updated as Record<string, EncodingLabel>;
+		}
+		return changed;
 	}
 
 	private isIgnoredPathMatch(path: string, ignoredPath: string): boolean {

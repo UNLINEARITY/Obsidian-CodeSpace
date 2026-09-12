@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, TFile, setIcon } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import CodeSpacePlugin from "./main";
+import { readFileDecoded } from "./encoding";
 import { parseCodeSymbols, CodeSymbol } from "./code_parser";
 import { CodeSpaceView } from "./code_view";
 import { t } from "./lang/helpers";
@@ -144,7 +145,7 @@ export class CodeOutlineView extends ItemView {
 		this.currentFile = file;
 
 		try {
-			const fileContent = content !== undefined ? content : await this.app.vault.read(file);
+			const fileContent = content !== undefined ? content : (await readFileDecoded(this.app, file)).text;
 			this.symbols = parseCodeSymbols(file, fileContent);
 		} catch (error) {
 			console.error("Failed to parse symbols:", error);
