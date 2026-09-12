@@ -1,5 +1,16 @@
 Bundled license information:
 
+ieee754/index.js:
+  /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
+
+buffer/index.js:
+  /*!
+   * The buffer module from node.js, for the browser.
+   *
+   * @author   Feross Aboukhadijeh <https://feross.org>
+   * @license  MIT
+   */
+
 @xterm/addon-webgl/lib/addon-webgl.mjs:
   /**
    * Copyright (c) 2014-2024 The xterm.js authors. All rights reserved.

@@ -113,8 +113,6 @@ class CreateCodeFileModal extends Modal {
 export default class CodeSpacePlugin extends Plugin {
 	settings: CodeSpaceSettings;
 	terminalManager: TerminalManager | null = null;
-	// 会话级记忆：已提示过"保存转 UTF-8"的文件（每文件每会话只问一次）
-	encodingConversionPrompted = new Set<string>();
 	private persistFileEncodings = debounce(() => {
 		void this.saveSettings("none");
 	}, 300, true);
@@ -253,6 +251,25 @@ export default class CodeSpacePlugin extends Plugin {
 				}
 				if (!checking) {
 					activeView.openEncodingPicker();
+				}
+				return true;
+			}
+		});
+
+		// 将当前代码文件转换为 UTF-8（非 UTF-8 编码文件可用）
+		this.addCommand({
+			id: 'convert-to-utf8',
+			name: t('CMD_CONVERT_TO_UTF8'),
+			checkCallback: (checking: boolean) => {
+				const activeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
+				if (!activeView || !activeView.file || !activeView.editorView) {
+					return false;
+				}
+				if (!activeView.isNonUtf8Target()) {
+					return false;
+				}
+				if (!checking) {
+					void activeView.convertToUtf8();
 				}
 				return true;
 			}

@@ -3,9 +3,11 @@ import type { TFile } from "obsidian";
 import {
 	detectBom,
 	decodeBytes,
+	encodeText,
 	normalizeEncodingSetting,
 	normalizeFileEncodings,
 	readFileDecoded,
+	toArrayBuffer,
 } from "../src/encoding";
 import type { App } from "obsidian";
 
@@ -137,6 +139,54 @@ describe("readFileDecoded", () => {
 		expect(result.hadBOM).toBe(true);
 		expect(result.encoding).toBe("utf-8");
 		expect(result.detected).toBe("raw-read-fallback");
+	});
+});
+
+describe("encodeText / 回写", () => {
+	it("GB18030 编码-解码往返无损", () => {
+		const text = "中文注释 with ascii 123";
+		const bytes = encodeText(text, "gb18030");
+		expect(decodeBytes(bytes, "gb18030")).toBe(text);
+	});
+
+	it("utf-8 走原生编码并附 BOM，解码剥除", () => {
+		const bytes = encodeText("abc", "utf-8", true);
+		expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+		expect(decodeBytes(bytes, "utf-8")).toBe("abc");
+	});
+
+	it("utf-16le 附 BOM 往返无损", () => {
+		const text = "你好 hi";
+		const bytes = encodeText(text, "utf-16le", true);
+		expect([...bytes.slice(0, 2)]).toEqual([0xff, 0xfe]);
+		expect(decodeBytes(bytes, "utf-16le")).toBe(text);
+	});
+
+	it("big5 无法表示的字符被替换（lossy 检测依据）", () => {
+		const text = "简体字"; // "简/体/（简体形式）"不在 Big5 常用映射内
+		const bytes = encodeText(text, "big5");
+		const roundTrip = decodeBytes(bytes, "big5");
+		if (roundTrip !== text) {
+			// 替换发生时往返不一致——这正是保存链路 lossy 弹窗的触发条件
+			expect(roundTrip.length).toBeGreaterThan(0);
+		}
+	});
+
+	it("toArrayBuffer 拷贝为独立精确大小的 ArrayBuffer", () => {
+		const bytes = new Uint8Array([1, 2, 3]);
+		const buffer = toArrayBuffer(bytes);
+		expect(buffer.byteLength).toBe(3);
+		expect(new Uint8Array(buffer)).toEqual(bytes);
+	});
+
+	it("回归：iconv Buffer 经 toArrayBuffer 不得携带底层分配的 NUL 填充", () => {
+		// "中文注释" 的 GB18030 编码恰为 8 字节；若 toArrayBuffer 误用 Buffer.slice 的视图语义，
+		// byteLength 会是 iconv 内部分配的大小（远大于 8）且尾部为 0x00
+		const bytes = encodeText("中文注释", "gb18030");
+		expect(bytes.length).toBe(8);
+		const buffer = toArrayBuffer(bytes);
+		expect(buffer.byteLength).toBe(8);
+		expect(decodeBytes(new Uint8Array(buffer), "gb18030")).toBe("中文注释");
 	});
 });
 

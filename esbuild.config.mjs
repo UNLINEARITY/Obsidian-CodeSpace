@@ -20,7 +20,8 @@ const context = await esbuild.context({
 	external: [
 		"obsidian",
 		"electron",
-		...builtinModules],
+		// buffer 不外置：iconv-lite 依赖它，移动端没有 Node require，必须打包 polyfill
+		...builtinModules.filter((module) => module !== "buffer")],
 	format: "cjs",
 	target: "es2018",
 	logLevel: "info",

@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform, Modal, ButtonComponent, FuzzySuggestModal } from "obsidian";
+import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform, Modal, ButtonComponent, FuzzySuggestModal, normalizePath } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment, Extension, Prec, Transaction, Text } from "@codemirror/state";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
@@ -17,7 +17,7 @@ import {
 import { LANGUAGE_PACKAGES } from "./language_registry";
 import { setupScrollbarVisibility } from "./scrollbar_visibility";
 import { TerminalPanel } from "./terminal/terminal_panel";
-import { ENCODING_LABELS, getEncodingDisplayNameKey, readFileDecoded } from "./encoding";
+import { ENCODING_LABELS, decodeBytes, encodeText, getEncodingDisplayNameKey, readFileDecoded, toArrayBuffer } from "./encoding";
 import type { EncodingLabel } from "./encoding";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
@@ -573,50 +573,79 @@ function requestExternalConflictResolution(app: App, fileName: string): Promise<
 	});
 }
 
-class EncodingConvertModal extends Modal {
+type LossyEncodingResolution = "utf8" | "keep" | "cancel";
+
+class LossyEncodingModal extends Modal {
 	private settled = false;
 
 	constructor(
 		app: App,
 		fileName: string,
 		encodingName: string,
-		private resolve: (confirmed: boolean) => void,
+		sampleChars: string,
+		private resolve: (resolution: LossyEncodingResolution) => void,
 	) {
 		super(app);
-		this.setTitle(t("MODAL_ENCODING_CONVERT_TITLE"));
+		this.setTitle(t("MODAL_LOSSY_ENCODING_TITLE"));
 		this.contentEl.createDiv({
 			cls: "setting-item-description",
-			text: t("MODAL_ENCODING_CONVERT_DESC").replace("{0}", fileName).replace("{1}", encodingName),
+			text: t("MODAL_LOSSY_ENCODING_DESC")
+				.replace("{0}", fileName)
+				.replace("{1}", encodingName)
+				.replace("{2}", sampleChars),
 		});
 
 		const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
 		new ButtonComponent(buttons)
-			.setButtonText(t("MODAL_ENCODING_CONVERT_CONFIRM"))
+			.setButtonText(t("MODAL_LOSSY_ENCODING_UTF8"))
 			.setCta()
-			.onClick(() => this.choose(true));
+			.onClick(() => this.choose("utf8"));
 		new ButtonComponent(buttons)
-			.setButtonText(t("MODAL_ENCODING_CONVERT_CANCEL"))
-			.onClick(() => this.choose(false));
+			.setButtonText(t("MODAL_LOSSY_ENCODING_KEEP").replace("{0}", encodingName))
+			.onClick(() => this.choose("keep"));
+		new ButtonComponent(buttons)
+			.setButtonText(t("MODAL_LOSSY_ENCODING_CANCEL"))
+			.onClick(() => this.choose("cancel"));
 	}
 
-	private choose(confirmed: boolean): void {
+	private choose(resolution: LossyEncodingResolution): void {
 		this.settled = true;
-		this.resolve(confirmed);
+		this.resolve(resolution);
 		this.close();
 	}
 
 	onClose(): void {
 		super.onClose();
 		if (!this.settled) {
-			this.resolve(false);
+			this.resolve("cancel");
 		}
 	}
 }
 
-function requestEncodingConvertConfirm(app: App, fileName: string, encodingName: string): Promise<boolean> {
+function requestLossyEncodingResolution(
+	app: App,
+	fileName: string,
+	encodingName: string,
+	sampleChars: string,
+): Promise<LossyEncodingResolution> {
 	return new Promise((resolve) => {
-		new EncodingConvertModal(app, fileName, encodingName, resolve).open();
+		new LossyEncodingModal(app, fileName, encodingName, sampleChars, resolve).open();
 	});
+}
+
+/** 找出保存时会被替换字符的原文样例（最多 3 个） */
+function findLostCharacters(original: string, substituted: string, max = 3): string {
+	let samples = "";
+	const seen = new Set<string>();
+	for (let i = 0; i < original.length && seen.size < max; i++) {
+		const ch = original[i];
+		if (ch === undefined) break;
+		if (ch !== substituted[i] && !seen.has(ch)) {
+			seen.add(ch);
+			samples += ch;
+		}
+	}
+	return samples;
 }
 
 class EncodingPickerModal extends FuzzySuggestModal<EncodingLabel> {
@@ -888,16 +917,53 @@ export class CodeSpaceView extends TextFileView {
 			const resolution = await requestExternalConflictResolution(this.app, this.file.name);
 			if (resolution === "cancel") return;
 			if (resolution === "overwrite") {
-				await this.save();
-				// 保存已把非 UTF-8 文件转为 UTF-8，按常规检测重新打开即可
-				this.scheduleDecodedLoad();
-				return;
+				await this.save(); // 保存保留原编码
+			} else {
+				await this.loadFileContent();
 			}
-			await this.loadFileContent();
 		}
 
 		new Notice(t("NOTICE_REOPENED_WITH_ENCODING").replace("{0}", t(getEncodingDisplayNameKey(label))));
 		this.scheduleDecodedLoad(label);
+	}
+
+	/** 当前文件是否需要编码回写（非 UTF-8 或带 BOM） */
+	isNonUtf8Target(): boolean {
+		return this.activeEncoding !== "utf-8" || this.activeHadBOM;
+	}
+
+	/** 将当前文件转换为 UTF-8 并写盘（含未保存修改）；随后钉住 UTF-8 编码 */
+	async convertToUtf8(): Promise<void> {
+		if (!this.file || !this.editorView) return;
+		if (!this.isNonUtf8Target()) {
+			new Notice(t("NOTICE_ALREADY_UTF8"));
+			return;
+		}
+
+		const snapshot = this.editorView.state.doc;
+		const content = snapshot.toString();
+		this.expectedSelfWrite = { content, expiresAt: Date.now() + 5000 };
+
+		try {
+			await this.app.vault.modify(this.file, content);
+		} catch (error) {
+			console.error("Code Space: Failed to convert file to UTF-8:", error);
+			new Notice(t('NOTICE_SAVE_FAIL'));
+			return;
+		}
+
+		this.activeEncoding = "utf-8";
+		this.activeHadBOM = false;
+		const plugin = this.getPlugin();
+		if (plugin) this.rememberEncoding(plugin, this.file.path, "utf-8", true);
+		this.savedDoc = snapshot;
+		this.data = content;
+		this.baselineMtime = this.file.stat.mtime;
+		this.isDirty = false;
+		this.externalConflict = false;
+		this.updateTitle();
+		this.syncEncodingBadge();
+		new Notice(t("NOTICE_CONVERTED_TO_UTF8"));
 	}
 
 	/** 打开编码选择器（标题栏徽标与命令共用） */
@@ -1080,23 +1146,52 @@ export class CodeSpaceView extends TextFileView {
 			this.externalConflict = false;
 		}
 
-		// 非 UTF-8 编码的文件保存前需确认转为 UTF-8（一期不做原编码回写）
 		const plugin = this.getPlugin();
-		if (this.activeEncoding !== "utf-8" && plugin && !plugin.encodingConversionPrompted.has(this.file.path)) {
-			const encodingName = t(getEncodingDisplayNameKey(this.activeEncoding));
-			const confirmed = await requestEncodingConvertConfirm(this.app, this.file.name, encodingName);
-			if (!confirmed) return false; // 保持 dirty，不静默转码
-			plugin.encodingConversionPrompted.add(this.file.path);
-		}
-
 		const snapshot = this.editorView.state.doc;
 		const content = snapshot.toString();
-		this.expectedSelfWrite = { content, expiresAt: Date.now() + 2000 };
+
+		// 非 UTF-8（或带 BOM）文件按原编码写回；存在无法编码的字符时由用户选择处理方式
+		let binaryBytes: ArrayBuffer | null = null;
+		let diskText = content;
+		if (this.activeEncoding !== "utf-8" || this.activeHadBOM) {
+			const encodingName = t(getEncodingDisplayNameKey(this.activeEncoding));
+			const bytes = encodeText(content, this.activeEncoding, this.activeHadBOM);
+			const roundTrip = decodeBytes(bytes, this.activeEncoding);
+			if (roundTrip !== content) {
+				const resolution = await requestLossyEncodingResolution(
+					this.app,
+					this.file.name,
+					encodingName,
+					findLostCharacters(content, roundTrip),
+				);
+				if (resolution === "cancel") return false; // 保持 dirty，不写盘
+				if (resolution === "utf8") {
+					// 转为 UTF-8 保存：走下方 vault.modify 分支，并把文件钉为 UTF-8
+					this.activeEncoding = "utf-8";
+					this.activeHadBOM = false;
+					if (plugin) this.rememberEncoding(plugin, this.file.path, "utf-8", true);
+					this.syncEncodingBadge();
+				} else {
+					// 仍按原编码保存（不可表示字符将被替换）；磁盘回读文本以 roundTrip 为准
+					binaryBytes = toArrayBuffer(bytes);
+					diskText = roundTrip;
+				}
+			} else {
+				binaryBytes = toArrayBuffer(bytes);
+			}
+		}
+
+		// 自写标记以磁盘解码后的文本为基准，避免编码回写后的回读差异误报外部冲突
+		this.expectedSelfWrite = { content: diskText, expiresAt: Date.now() + 5000 };
 
 		try {
-			await this.app.vault.modify(this.file, content);
+			if (binaryBytes) {
+				await this.app.vault.adapter.writeBinary(normalizePath(this.file.path), binaryBytes);
+			} else {
+				await this.app.vault.modify(this.file, content);
+			}
 			this.savedDoc = snapshot;
-			this.data = content;
+			this.data = diskText;
 			this.baselineMtime = this.file.stat.mtime;
 			this.isDirty = !this.editorView.state.doc.eq(snapshot);
 			this.updateTitle();

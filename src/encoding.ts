@@ -1,8 +1,10 @@
-// 编码解码统一管线（一期：读取解码，零运行时依赖）
+// 编码解码统一管线（一期：读取解码；二期：iconv-lite 编码回写）
 // - 所有读取路径（编辑器/嵌入/大纲/PDF 导出）经 readFileDecoded 取得文本
 // - 检测顺序：每文件记忆/显式指定 → BOM → UTF-8 严格试解码 → 回退编码（auto 兜底 gb18030）
+// - 保存按文件当前编码写回（encodeText + adapter.writeBinary），无法表示的字符由调用方检测处理
 // - 对 obsidian 仅 type import，便于在 vitest 中用 plain object 测试
 
+import iconv from "iconv-lite";
 import type { App, TFile } from "obsidian";
 import type en from "./lang/locale/en";
 
@@ -89,6 +91,42 @@ function tryDecodeStrictUtf8(bytes: Uint8Array): string | null {
 	} catch {
 		return null;
 	}
+}
+
+const BOM_BYTES: Partial<Record<EncodingLabel, readonly number[]>> = {
+	"utf-8": [0xef, 0xbb, 0xbf],
+	"utf-16le": [0xff, 0xfe],
+	"utf-16be": [0xfe, 0xff],
+};
+
+/**
+ * 将文本编码为指定编码字节（保存回写用）。
+ * - utf-8 走原生 TextEncoder；其余编码走 iconv-lite（纯 JS，全平台可用）
+ * - utf-8 / utf-16 可附 BOM（与原文件保持一致）
+ * - 无法表示的字符按编码默认替换符写盘，调用方应先做编解码回读比对（lossy 检测）
+ */
+export function encodeText(text: string, label: EncodingLabel, addBOM = false): Uint8Array {
+	const body = label === "utf-8" ? new TextEncoder().encode(text) : iconv.encode(text, label);
+	if (!addBOM) {
+		return body;
+	}
+	const bom = BOM_BYTES[label];
+	if (!bom) {
+		return body;
+	}
+	const result = new Uint8Array(bom.length + body.length);
+	result.set(bom, 0);
+	result.set(body, bom.length);
+	return result;
+}
+
+/** 拷贝为独立且精确大小的 ArrayBuffer。
+ * 注意：不能用 bytes.slice()——Buffer.prototype.slice 是视图语义（共享底层内存），
+ * 会把 iconv 分配缓冲区中的 NUL 填充一并写入文件。 */
+export function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+	const copy = new Uint8Array(bytes.length);
+	copy.set(bytes);
+	return copy.buffer;
 }
 
 export function normalizeEncodingSetting(raw: unknown): EncodingSetting {
