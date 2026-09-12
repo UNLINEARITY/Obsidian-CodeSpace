@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-codespace",
-	"version": "2.5.1",
+	"version": "2.6.0",
 	"description": "Professional code file management with visual dashboard, syntax highlighting editor, Markdown embedding, external folder mounts, and terminal integration.",
 	"author": "unlinearity <unlinearity@gmail.com>",
 	"main": "main.js",
