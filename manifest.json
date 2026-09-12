@@ -3,7 +3,7 @@
 	"name": "Code Space",
 	"version": "2.5.1",
 	"minAppVersion": "1.7.2",
-	"description": "Professional code file management with visual dashboard, syntax highlighting editor, and Markdown embedding.",
+	"description": "Professional code file management with visual dashboard, syntax highlighting editor, Markdown embedding, external folder mounts, and terminal integration.",
 	"author": "unlinearity",
 	"authorUrl": "https://github.com/UNLINEARITY",
 	"isDesktopOnly": false

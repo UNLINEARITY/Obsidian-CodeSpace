@@ -2,6 +2,8 @@
 
 <h1 align="center">Professional code file support for Obsidian</h1>
 
+<p align="center">Editing, embedding, external mounts, and terminal integration.</p>
+
 <p align="center"><a href="README.md">English</a> | <a href="README_CN.md">简体中文</a></p>
 
 <p align="center">
@@ -14,6 +16,9 @@
   </a>
   <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/stargazers">
     <img alt="Stars" src="https://img.shields.io/github/stars/UNLINEARITY/Obsidian-CodeSpace?label=Stars&style=for-the-badge&logo=github&color=0891b2&labelColor=1c1917">
+  </a>
+  <a href="https://obsidian.md/plugins?id=code-space">
+    <img alt="Downloads" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&query=%24%5B%27code-space%27%5D.downloads&label=Downloads&style=for-the-badge&logo=obsidian&color=0891b2&labelColor=1c1917&cacheSeconds=21600">
   </a>
   <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/blob/main/LICENSE">
     <img alt="License" src="https://img.shields.io/github/license/UNLINEARITY/Obsidian-CodeSpace?label=License&style=for-the-badge&logo=opensourceinitiative&color=0891b2&labelColor=1c1917">
@@ -35,10 +40,6 @@ Obsidian's native workflow is centered on Markdown notes, so its support for cen
 3. **Embedding space**: Works with Obsidian's native features to support references, embedded code previews, and native PDF export as real code blocks.
 4. **Mount space**: Mount external folders into the Vault via system symlinks/junctions for cross-project code management.
 5. **Terminal space**: Run a real system shell (PowerShell, zsh, bash) inside the editor, on desktop.
-
-<!-- star-history:start -->
-[![Star History](https://raw.githubusercontent.com/UNLINEARITY/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#UNLINEARITY/Obsidian-CodeSpace&Date)
-<!-- star-history:end -->
 
 ---
 
@@ -408,6 +409,14 @@ This project is built upon the following excellent projects:
 - [node-pty](https://github.com/microsoft/node-pty): Pseudo-terminal backend by Microsoft; its Windows patch inside Obsidian is adapted from [lean-obsidian-terminal](https://github.com/sdkasper/lean-obsidian-terminal).
 - [TypeScript](https://www.typescriptlang.org/): Provides robust type safety.
 - [esbuild](https://esbuild.github.io/): Extremely fast JavaScript bundler.
+
+---
+
+## Star history
+
+<!-- star-history:start -->
+[![Star History](https://raw.githubusercontent.com/UNLINEARITY/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#UNLINEARITY/Obsidian-CodeSpace&Date)
+<!-- star-history:end -->
 
 ---
 

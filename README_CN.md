@@ -2,6 +2,8 @@
 
 <h1 align="center">为 Obsidian 提供专业的代码文件支持</h1>
 
+<p align="center">编辑、嵌入、外部挂载与终端集成</p>
+
 <p align="center"><a href="README.md">English</a> | <a href="README_CN.md">简体中文</a></p>
 
 <p align="center">
@@ -14,6 +16,9 @@
   </a>
   <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/stargazers">
     <img alt="Stars" src="https://img.shields.io/github/stars/UNLINEARITY/Obsidian-CodeSpace?label=Stars&style=for-the-badge&logo=github&color=0891b2&labelColor=1c1917">
+  </a>
+  <a href="https://obsidian.md/plugins?id=code-space">
+    <img alt="Downloads" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&query=%24%5B%27code-space%27%5D.downloads&label=Downloads&style=for-the-badge&logo=obsidian&color=0891b2&labelColor=1c1917&cacheSeconds=21600">
   </a>
   <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/blob/main/LICENSE">
     <img alt="License" src="https://img.shields.io/github/license/UNLINEARITY/Obsidian-CodeSpace?label=License&style=for-the-badge&logo=opensourceinitiative&color=0891b2&labelColor=1c1917">
@@ -33,11 +38,6 @@ Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中�
 3. **嵌入空间**：与 Obsidian 原生功能深度融合，支持代码文件的引用、嵌入式预览和原生 PDF 导出
 4. **挂载空间**：通过系统符号链接/目录联接将外部文件夹挂载到 Vault 内，实现跨项目代码管理
 5. **终端空间**：在桌面端于编辑器内运行真实系统 shell（PowerShell、zsh、bash）
-
-
-<!-- star-history:start -->
-[![Star History](https://raw.githubusercontent.com/UNLINEARITY/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#UNLINEARITY/Obsidian-CodeSpace&Date)
-<!-- star-history:end -->
 
 ---
 
@@ -406,6 +406,14 @@ obsidian-codespace/
 - [node-pty](https://github.com/microsoft/node-pty): 微软出品的伪终端后端；其在 Obsidian 内的 Windows 补丁改编自 [lean-obsidian-terminal](https://github.com/sdkasper/lean-obsidian-terminal)。
 - [TypeScript](https://www.typescriptlang.org/): 提供稳健的类型安全保障。
 - [esbuild](https://esbuild.github.io/): 极速的 JavaScript 打包工具。
+
+---
+
+## Star history
+
+<!-- star-history:start -->
+[![Star History](https://raw.githubusercontent.com/UNLINEARITY/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#UNLINEARITY/Obsidian-CodeSpace&Date)
+<!-- star-history:end -->
 
 ---
 
