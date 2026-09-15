@@ -41,6 +41,8 @@ Obsidian's native workflow is centered on Markdown notes, so its support for cen
 4. **Mount space**: Mount external folders into the Vault via system symlinks/junctions for cross-project code management.
 5. **Terminal space**: Run a real system shell (PowerShell, zsh, bash) inside the editor, on desktop.
 
+<p align='center'><img src='docs\img\pre0.png' width=95%></p> 
+
 ---
 
 ## Core features

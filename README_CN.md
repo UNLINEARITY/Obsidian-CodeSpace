@@ -39,6 +39,8 @@ Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中�
 4. **挂载空间**：通过系统符号链接/目录联接将外部文件夹挂载到 Vault 内，实现跨项目代码管理
 5. **终端空间**：在桌面端于编辑器内运行真实系统 shell（PowerShell、zsh、bash）
 
+<p align='center'><img src='docs\img\pre0.png' width=95%></p> 
+
 ---
 
 ## 核心功能
