@@ -401,6 +401,16 @@ obsidian-codespace/
 ---
 ## 致谢
 
+### 感谢支持
+
+> 感谢 issue 反馈者和 PR 贡献者。
+
+创作不易，如果觉得它有帮助或有意思，可以请喝杯奶茶。❤️ （以下是微信赞赏码）
+
+<p align='center'><img src='docs/img/wechat-tip.png' width=60%></p>
+
+### 参考项目
+
 本项目构建于以下优秀项目之上：
 - [Obsidian API](https://github.com/obsidianmd/obsidian-api): 提供强大的插件扩展能力。
 - [CodeMirror 6](https://codemirror.net/): 灵活且现代的代码编辑器引擎。
@@ -409,6 +419,7 @@ obsidian-codespace/
 - [node-pty](https://github.com/microsoft/node-pty): 微软出品的伪终端后端；其在 Obsidian 内的 Windows 补丁改编自 [lean-obsidian-terminal](https://github.com/sdkasper/lean-obsidian-terminal)。
 - [TypeScript](https://www.typescriptlang.org/): 提供稳健的类型安全保障。
 - [esbuild](https://esbuild.github.io/): 极速的 JavaScript 打包工具。
+
 
 ---
 

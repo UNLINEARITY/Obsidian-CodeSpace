@@ -404,6 +404,16 @@ Known limitations:
 
 ## Acknowledgments
 
+### Thanks for the support
+
+> Thanks to everyone who reported issues and contributed pull requests.
+
+If you find this plugin helpful or fun to use, you can buy me a bubble tea. ❤️ (WeChat tip QR code below)
+
+<p align='center'><img src='docs/img/wechat-tip.png' width=60%></p>
+
+### Referenced projects
+
 This project is built upon the following excellent projects:
 - [Obsidian API](https://github.com/obsidianmd/obsidian-api): Provides powerful plugin extensibility.
 - [CodeMirror 6](https://codemirror.net/): Flexible and modern code editor engine.
