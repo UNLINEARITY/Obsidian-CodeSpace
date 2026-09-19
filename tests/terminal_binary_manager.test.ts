@@ -14,6 +14,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -49,9 +50,11 @@ class FakeIo implements BinaryIo {
 		this.files.set(`${root}/lib/index.js`, "module.exports = {};");
 		const prebuild = `${root}/prebuilds/${platform}-${arch}`;
 		this.files.set(`${prebuild}/pty.node`, new Uint8Array([1, 2, 3]));
+		// 与真实 release 资产布局一致：win32 附 ConPTY/winpty，仅 darwin 附 spawn-helper，linux 只有 pty.node
 		if (platform === "win32") {
 			this.files.set(`${prebuild}/winpty.dll`, new Uint8Array([4, 5, 6]));
-		} else {
+			this.files.set(`${prebuild}/conpty.node`, new Uint8Array([10, 11, 12]));
+		} else if (platform === "darwin") {
 			this.files.set(`${prebuild}/spawn-helper`, new Uint8Array([7, 8, 9]));
 		}
 	}
@@ -228,7 +231,7 @@ describe("TerminalBinaryManager.ensureInstalled", () => {
 		expect(io.exists(`${PLUGIN_DIR}/tmp/node-pty-win32-x64.zip`)).toBe(false);
 	});
 
-	it("chmods spawn-helper on unix instead of patching", async () => {
+	it("chmods spawn-helper on darwin instead of patching", async () => {
 		const io = new FakeIo("darwin", "arm64");
 		serveHappyPath(io, "darwin", "arm64");
 		const chmodSpy = vi.spyOn(io, "chmod");
@@ -241,6 +244,20 @@ describe("TerminalBinaryManager.ensureInstalled", () => {
 			0o755
 		);
 		expect(io.files.get(`${PLUGIN_DIR}/node_modules/node-pty/lib/windowsConoutConnection.js`)).toBeUndefined();
+	});
+
+	it("installs on linux although the asset ships no spawn-helper", async () => {
+		const io = new FakeIo("linux", "x64");
+		serveHappyPath(io, "linux", "x64");
+		const chmodSpy = vi.spyOn(io, "chmod");
+		const manager = managerWith(io, "linux", "x64");
+
+		await manager.ensureInstalled();
+
+		expect(manager.status).toBe("ready");
+		// 真实 linux 资产只有 pty.node：不应 chmod，也不应因缺少 spawn-helper 判定布局无效
+		expect(chmodSpy).not.toHaveBeenCalled();
+		expect(io.files.get(`${PLUGIN_DIR}/node_modules/node-pty/prebuilds/linux-x64/pty.node`)).toBeTruthy();
 	});
 
 	it("installs from the local dev source without network", async () => {
@@ -397,5 +414,16 @@ describe("TerminalBinaryManager.checkInstalledSync", () => {
 		io.files.delete(`${PLUGIN_DIR}/node_modules/node-pty/prebuilds/win32-x64/pty.node`);
 		const manager = managerWith(io, "win32", "x64");
 		expect(manager.checkInstalledSync()).toBe(false);
+	});
+
+	it("requires spawn-helper on darwin but not on linux", () => {
+		const darwinIo = new FakeIo("darwin", "arm64");
+		darwinIo.writeLayout("darwin", "arm64");
+		darwinIo.files.delete(`${PLUGIN_DIR}/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper`);
+		expect(managerWith(darwinIo, "darwin", "arm64").checkInstalledSync()).toBe(false);
+
+		const linuxIo = new FakeIo("linux", "x64");
+		linuxIo.writeLayout("linux", "x64");
+		expect(managerWith(linuxIo, "linux", "x64").checkInstalledSync()).toBe(true);
 	});
 });

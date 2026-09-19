@@ -14,6 +14,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 // node-pty 原生二进制管理器
 // 首次使用时从 GitHub Releases 下载平台对应的预编译 zip（N-API 产物），
 // SHA-256 校验后解压到 <pluginDir>/node_modules/node-pty/，
@@ -221,9 +222,17 @@ export class TerminalBinaryManager {
 			return false;
 		}
 		if (this.platform === "win32") {
-			return this.io.exists(joinPath(prebuildDir, "winpty.dll"));
+			// ConPTY 是现代 Windows 的主路径，winpty.dll 为旧系统回退，缺一即视为布局无效
+			return (
+				this.io.exists(joinPath(prebuildDir, "conpty.node")) &&
+				this.io.exists(joinPath(prebuildDir, "winpty.dll"))
+			);
 		}
-		return this.io.exists(joinPath(prebuildDir, "spawn-helper"));
+		// spawn-helper 仅随 darwin 资产分发：node-pty 只在 macOS 使用它（Linux 走 forkpty，无需该文件）
+		if (this.platform === "darwin") {
+			return this.io.exists(joinPath(prebuildDir, "spawn-helper"));
+		}
+		return true;
 	}
 
 	/** 刷新状态（供设置页显示，无副作用） */
@@ -373,7 +382,8 @@ export class TerminalBinaryManager {
 				joinPath(this.installedDir, "lib", "windowsConoutConnection.js"),
 				WINDOWSCONOUT_PATCH
 			);
-		} else {
+		} else if (this.platform === "darwin" && this.io.exists(joinPath(this.prebuildDir, "spawn-helper"))) {
+			// 仅 darwin 资产携带 spawn-helper；缺失时留给随后的布局校验报类型化错误
 			this.io.chmod(joinPath(this.prebuildDir, "spawn-helper"), 0o755);
 		}
 
