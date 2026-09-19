@@ -1,3 +1,19 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Code Space - professional code file support for Obsidian.
+// Copyright (C) 2026 unlinearity
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any
+// later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
 // node-pty 原生二进制管理器
 // 首次使用时从 GitHub Releases 下载平台对应的预编译 zip（N-API 产物），
 // SHA-256 校验后解压到 <pluginDir>/node_modules/node-pty/，

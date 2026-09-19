@@ -24,7 +24,7 @@
 		"code-management",
 		"obsidian-plugin"
 	],
-	"license": "MIT",
+	"license": "AGPL-3.0-or-later",
 	"devDependencies": {
 		"@eslint/js": "^9.39.2",
 		"@types/node": "^20.19.25",

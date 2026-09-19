@@ -1,3 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Code Space - professional code file support for Obsidian.
+// Copyright (C) 2026 unlinearity
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any
+// later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 // 终端会话管理：TerminalManager 为共享服务（二进制/shell/工厂/设置下发），
 // 每个宿主（终端页面 / 内嵌面板）通过 createGroup() 拥有独立的一组会话；
 // 组随宿主销毁而关闭（无记忆模型：重开即全新一组）

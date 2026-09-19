@@ -394,7 +394,7 @@ Please ensure:
 For issues or suggestions, please use [GitHub Issues](https://github.com/unlinearity/Obsidian-Codespace/issues).
 - Author: unlinearity
 - Email: unlinearity@gmail.com
-- [MIT License](LICENSE) - Copyright (c) 2026 unlinearity
+- [AGPL-3.0-or-later](LICENSE) - Copyright (c) 2026 unlinearity
 
 Known limitations:
 - Code file contents are currently not indexed by Obsidian's global search engine. Use the Code Space search and replace panel for the current file.

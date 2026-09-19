@@ -1,3 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Code Space - professional code file support for Obsidian.
+// Copyright (C) 2026 unlinearity
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any
+// later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 // 桌面端 Node.js API 访问层
 // 复用 external_mount.ts 的惰性 window.require 模式（不修改原文件）
 // 所有 Node 访问必须走本模块，避免静态导入（ESLint obsidianmd/no-nodejs-modules）

@@ -392,7 +392,7 @@ obsidian-codespace/
 如有问题或建议，请使用 [GitHub Issues](https://github.com/unlinearity/Obsidian-Codespace/issues)。
 - 作者：unlinearity
 - 邮箱：unlinearity@gmail.com
-- [MIT License](LICENSE) - Copyright (c) 2026 unlinearity
+- [AGPL-3.0-or-later 许可证](LICENSE) - Copyright (c) 2026 unlinearity
 
 已知限制：
 - 代码文件内容目前不被 Obsidian 的全局搜索引擎索引；在 Code Space 编辑器内可以使用搜索与替换面板处理当前文件。

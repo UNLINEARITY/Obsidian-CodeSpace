@@ -1,3 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Code Space - professional code file support for Obsidian.
+// Copyright (C) 2026 unlinearity
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any
+// later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 // 编码解码统一管线（一期：读取解码；二期：iconv-lite 编码回写）
 // - 所有读取路径（编辑器/嵌入/大纲/PDF 导出）经 readFileDecoded 取得文本
 // - 检测顺序：每文件记忆/显式指定 → BOM → UTF-8 严格试解码 → 回退编码（auto 兜底 gb18030）
