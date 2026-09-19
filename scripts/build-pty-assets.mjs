@@ -14,6 +14,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 // 本地构建当前平台的 node-pty 下载资产（与 CI build-node-pty.yml 产物布局一致）
 // 产出：dev-assets/node-pty-<platform>-<arch>.zip + dev-assets/checksums.json
 // 配合 scripts/copy-to-vault.mjs 携带至 <vault>/plugins/code-space/dev-source/，
@@ -100,13 +101,13 @@ cpSync(path.join(ptyDir, "lib"), path.join(stagePtyDir, "lib"), { recursive: tru
 cpSync(prebuildDir, path.join(stagePtyDir, "prebuilds", `${platform}-${arch}`), { recursive: true });
 removePdbFiles(stagePtyDir);
 
-// 5. 压缩（优先 zip，Windows 回退 PowerShell Compress-Archive）
+// 5. 压缩（优先 zip；Windows 回退系统自带 bsdtar，其 zip 使用规范正斜杠分隔符）
 const zipPath = path.join(stageDir, assetName);
 if (zipAvailable()) {
 	run("zip", ["-r", zipPath, "node-pty"], { cwd: stageDir });
 } else if (platform === "win32") {
-	run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
-		`Compress-Archive -Path '${stagePtyDir.replace(/'/g, "''")}' -DestinationPath '${zipPath.replace(/'/g, "''")}' -Force`]);
+	// Compress-Archive 会写入反斜杠分隔符，不符合 zip 规范，第三方解压工具会出错
+	run("tar", ["-a", "-c", "-f", zipPath, "node-pty"], { cwd: stageDir });
 } else {
 	throw new Error("zip is required on this platform");
 }

@@ -123,7 +123,9 @@ jobs:
           if command -v zip >/dev/null 2>&1; then
             (cd stage && zip -r "../${ASSET}" node-pty)
           else
-            powershell.exe -NoProfile -NonInteractive -Command "Compress-Archive -Path 'stage/node-pty' -DestinationPath '${ASSET}' -Force"
+            # Windows runner 无 Info-ZIP；用自带 bsdtar 产 zip（-a 按扩展名选格式，正斜杠分隔符合规范）。
+            # 不要用 Compress-Archive：它写入反斜杠分隔符，不符合 zip 规范，第三方解压工具会出错
+            (cd stage && tar -acf "../${ASSET}" node-pty)
           fi
           ls -lh "${ASSET}"
 
