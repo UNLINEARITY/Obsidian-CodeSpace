@@ -277,6 +277,25 @@ describe("TerminalBinaryManager.ensureInstalled", () => {
 		expect(io.extractCalls.length).toBe(1);
 	});
 
+	it("falls back to GitHub when dev-source checksums lacks the platform entry", async () => {
+		// 复现：darwin 开发机的 dev-source 被同步到 linux 测试机
+		const io = new FakeIo("linux", "x64");
+		const macZip = new Uint8Array([7, 7, 7]);
+		io.files.set(`${PLUGIN_DIR}/dev-source/node-pty-darwin-arm64.zip`, macZip);
+		io.files.set(
+			`${PLUGIN_DIR}/dev-source/checksums.json`,
+			JSON.stringify({ "node-pty-darwin-arm64.zip": createHash("sha256").update(macZip).digest("hex") })
+		);
+		serveHappyPath(io, "linux", "x64");
+		const manager = managerWith(io, "linux", "x64");
+
+		await manager.ensureInstalled();
+
+		expect(manager.status).toBe("ready");
+		// checksums 与 zip 均改走 GitHub（本地源无 linux 条目也无 linux zip）
+		expect(io.downloads.size).toBe(2);
+	});
+
 	it("rejects a checksum mismatch", async () => {
 		const io = new FakeIo("linux", "x64");
 		const zipBytes = new Uint8Array([1, 1, 2, 3]);

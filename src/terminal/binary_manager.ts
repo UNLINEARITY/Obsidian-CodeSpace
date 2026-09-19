@@ -270,12 +270,26 @@ export class TerminalBinaryManager {
 		return this.io.exists(localPath) ? localPath : null;
 	}
 
-	private async fetchAssetText(url: string): Promise<string> {
-		const localPath = this.resolveLocalAsset(url);
-		if (localPath) {
-			return this.io.readTextFile(localPath);
+	/**
+	 * checksums.json 获取：dev-source 本地源仅在其含当前平台资产条目时使用，
+	 * 否则回退 GitHub release。本地源按单平台构建（如 darwin 开发机产出），
+	 * 跨平台同步的 vault 不应因缺失条目而安装失败。
+	 */
+	private async fetchChecksumsText(assetName: string): Promise<string> {
+		const localPath = joinPath(this.pluginDir, "dev-source", "checksums.json");
+		if (this.io.exists(localPath)) {
+			try {
+				const text = this.io.readTextFile(localPath);
+				const entry = (JSON.parse(text) as Record<string, unknown>)[assetName];
+				if (typeof entry === "string" && /^[0-9a-f]{64}$/i.test(entry)) {
+					return text;
+				}
+				console.debug(`Code Space: dev-source checksums lacks ${assetName}, falling back to GitHub release`);
+			} catch (error) {
+				console.debug("Code Space: dev-source checksums unreadable, falling back to GitHub:", error);
+			}
 		}
-		return this.io.downloadText(url);
+		return this.io.downloadText(this.checksumsUrl());
 	}
 
 	private async fetchAssetBytes(url: string): Promise<Uint8Array> {
@@ -325,7 +339,7 @@ export class TerminalBinaryManager {
 		let checksumsText: string;
 		let zipBytes: Uint8Array;
 		try {
-			checksumsText = await this.fetchAssetText(this.checksumsUrl());
+			checksumsText = await this.fetchChecksumsText(assetName);
 			zipBytes = await this.fetchAssetBytes(this.assetUrl());
 		} catch (error) {
 			this.statusValue = "error";
