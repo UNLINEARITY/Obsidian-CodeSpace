@@ -401,6 +401,9 @@ obsidian-codespace/
 ---
 ## 致谢
 
+<p align="center">Code Space 同时托管于国内的 <a href="https://atomgit.com/UNLINEARITY/Obsidian-CodeSpace">AtomGit</a> 平台，可在该平台查看项目源码。</p>
+<p align="center"><a href="https://atomgit.com/UNLINEARITY/Obsidian-CodeSpace"><img alt="AtomGit G-Star" src="https://atomgit.com/UNLINEARITY/Obsidian-CodeSpace/star/new_badge.svg"></a></p>
+
 ### 感谢支持
 
 > 感谢 issue 反馈者和 PR 贡献者。

@@ -404,6 +404,9 @@ Known limitations:
 
 ## Acknowledgments
 
+<p align="center">Code Space is also hosted on <a href="https://atomgit.com/UNLINEARITY/Obsidian-CodeSpace">AtomGit</a>, where you can browse the source code.</p>
+<p align="center"><a href="https://atomgit.com/UNLINEARITY/Obsidian-CodeSpace"><img alt="AtomGit G-Star" src="https://atomgit.com/UNLINEARITY/Obsidian-CodeSpace/star/new_badge.svg"></a></p>
+
 ### Thanks for the support
 
 > Thanks to everyone who reported issues and contributed pull requests.
