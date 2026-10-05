@@ -865,13 +865,17 @@ export class CodeSpaceView extends TextFileView {
 			if (!this.file) return;
 			const decoded = await readFileDecoded(this.app, this.file, encodingOverride ? { encodingOverride } : undefined);
 			if (seq !== this.decodeSeq || this.isClosed) return;
-
 			this.activeEncoding = decoded.encoding;
 			this.activeHadBOM = decoded.hadBOM;
 
 			const plugin = this.getPlugin();
 			if (plugin) {
 				this.rememberEncoding(plugin, this.file.path, decoded.encoding, Boolean(encodingOverride));
+			}
+			if (this.isDirty) {
+				this.externalConflict = true;
+				this.syncEncodingBadge();
+				return;
 			}
 
 			// 编辑器尚未创建（首次打开）：落到占位文本，initCodeMirror 会以它为初值
@@ -952,23 +956,29 @@ export class CodeSpaceView extends TextFileView {
 	/** 将当前文件转换为 UTF-8 并写盘（含未保存修改）；随后钉住 UTF-8 编码 */
 	async convertToUtf8(): Promise<void> {
 		if (!this.file || !this.editorView) return;
+		if (this.pendingDecode) await this.pendingDecode;
+		if (this.savePromise) await this.savePromise;
+		if (!this.file || !this.editorView || this.isClosed) return;
 		if (!this.isNonUtf8Target()) {
 			new Notice(t("NOTICE_ALREADY_UTF8"));
 			return;
 		}
 
+		const file = this.file;
+		const filePath = file.path;
 		const snapshot = this.editorView.state.doc;
 		const content = snapshot.toString();
 		this.expectedSelfWrite = { content, expiresAt: Date.now() + 5000 };
 
 		try {
-			await this.app.vault.modify(this.file, content);
+			await this.app.vault.modify(file, content);
 		} catch (error) {
 			console.error("Code Space: Failed to convert file to UTF-8:", error);
 			new Notice(t('NOTICE_SAVE_FAIL'));
 			return;
 		}
 
+		if (this.file !== file || this.file.path !== filePath || this.isClosed) return;
 		this.activeEncoding = "utf-8";
 		this.activeHadBOM = false;
 		const plugin = this.getPlugin();
@@ -976,7 +986,7 @@ export class CodeSpaceView extends TextFileView {
 		this.savedDoc = snapshot;
 		this.data = content;
 		this.baselineMtime = this.file.stat.mtime;
-		this.isDirty = false;
+		this.isDirty = !this.editorView.state.doc.eq(snapshot);
 		this.externalConflict = false;
 		this.updateTitle();
 		this.syncEncodingBadge();
@@ -1596,10 +1606,20 @@ export class CodeSpaceView extends TextFileView {
 
 	async loadFileContent() {
 		if (!this.file) return;
+		const file = this.file;
+		const filePath = file.path;
+		const seq = ++this.decodeSeq;
+		const snapshot = this.editorView?.state.doc;
 
 		try {
 			// 以编码感知方式读取文件内容
-			const decoded = await readFileDecoded(this.app, this.file);
+			const decoded = await readFileDecoded(this.app, file);
+			if (seq !== this.decodeSeq || this.isClosed || this.file !== file || this.file.path !== filePath || !this.editorView) return;
+			if (snapshot && !this.editorView.state.doc.eq(snapshot)) {
+				if (!this.externalConflict) new Notice(t('NOTICE_MODIFIED_EXTERNALLY'), 5000);
+				this.externalConflict = true;
+				return;
+			}
 			const content = decoded.text;
 			this.activeEncoding = decoded.encoding;
 			this.activeHadBOM = decoded.hadBOM;

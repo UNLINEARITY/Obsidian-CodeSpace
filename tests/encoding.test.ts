@@ -80,6 +80,32 @@ describe("decodeBytes", () => {
 });
 
 describe("readFileDecoded", () => {
+	it.each(["utf-16le", "utf-16be"] as const)("记忆 %s 时保留 BOM", async (encoding) => {
+		const bytes = encodeText("你好", encoding, true);
+		const app = fakeVaultApp(() => bytes, undefined, {
+			settings: { fileEncodings: { [FILE.path]: encoding } },
+		});
+		const result = await readFileDecoded(app, FILE);
+		expect(result).toMatchObject({ encoding, hadBOM: true, text: "你好" });
+		expect(encodeText(result.text, result.encoding, result.hadBOM)).toEqual(bytes);
+	});
+
+	it("显式 UTF-8 不得回退到记忆编码或自动检测", async () => {
+		const app = fakeVaultApp(() => GB_BYTES, undefined, {
+			settings: { fileEncodings: { [FILE.path]: "gb18030" } },
+		});
+		const result = await readFileDecoded(app, FILE, { encodingOverride: "utf-8" });
+		expect(result.encoding).toBe("utf-8");
+		expect(result.text).toBe(new TextDecoder("utf-8").decode(GB_BYTES));
+	});
+
+	it("显式 UTF-8 不得被 UTF-16 BOM 覆盖", async () => {
+		const app = fakeVaultApp(() => encodeText("A", "utf-16le", true));
+		const result = await readFileDecoded(app, FILE, { encodingOverride: "utf-8" });
+		expect(result.encoding).toBe("utf-8");
+		expect(result.hadBOM).toBe(false);
+	});
+
 	it("合法 UTF-8 直接通过严格解码", async () => {
 		const app = fakeVaultApp(() => utf8Bytes("# 中文注释\nprint(1)\n"));
 		const result = await readFileDecoded(app, FILE);

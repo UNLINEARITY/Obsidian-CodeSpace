@@ -191,14 +191,14 @@ export async function readFileDecoded(
 
 	const settings = getEncodingSettings(app);
 
-	// 1) 每文件记忆 / 显式指定 —— 用户意图最高优先（utf-8 记忆不短路，仍走嗅探以识别 BOM）
+	const bom = detectBom(bytes);
+	// 显式指定优先于自动检测；编码记忆同样保留匹配编码的 BOM。
 	const remembered = opts?.encodingOverride ?? settings.fileEncodings?.[file.path];
-	if (remembered && remembered !== "utf-8") {
-		return { text: decodeBytes(bytes, remembered), encoding: remembered, hadBOM: false, detected: "memory" };
+	if (remembered && (opts?.encodingOverride || remembered !== "utf-8")) {
+		return { text: decodeBytes(bytes, remembered), encoding: remembered, hadBOM: bom?.encoding === remembered, detected: "memory" };
 	}
 
 	// 2) BOM 嗅探
-	const bom = detectBom(bytes);
 	if (bom) {
 		return { text: decodeBytes(bytes, bom.encoding), encoding: bom.encoding, hadBOM: true, detected: "bom" };
 	}
