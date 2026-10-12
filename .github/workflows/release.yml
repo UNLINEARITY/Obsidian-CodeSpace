@@ -1,7 +1,8 @@
 name: Release
 
 # 推送纯 SemVer tag（如 2.5.1）自动发布：
-# - 标题 = 版本号；说明优先取 docs/releases/<tag>.md（缺失回退自动生成）
+# - 标题 = 版本号；说明优先取 docs/releases/<tag>.md（缺失回退自动生成），
+#   正文顶部自动拼接 docs/img/Code.webp 预览图横幅（raw URL 指向该 tag）
 # - 已存在同名 release 时跳过发布（防重推 tag / 重复运行导致重复发布）
 
 on:
@@ -78,11 +79,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          # 正文顶部自动拼接预览图横幅；release 页不解析仓库相对路径，
+          # 故使用指向当前 tag 的 raw 绝对 URL，保证图片与发布快照一致
+          BODY="$(mktemp)"
+          printf '<p align="center">\n  <img src="https://raw.githubusercontent.com/%s/%s/docs/img/Code.webp" alt="Code Space Preview" width="80%%">\n</p>\n\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" > "$BODY"
           NOTES="docs/releases/${GITHUB_REF_NAME}.md"
           if [ -f "$NOTES" ]; then
+            cat "$NOTES" >> "$BODY"
             gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css \
-              --title "$GITHUB_REF_NAME" --notes-file "$NOTES" --verify-tag
+              --title "$GITHUB_REF_NAME" --notes-file "$BODY" --verify-tag
           else
             gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css \
               --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
           fi
+          rm -f "$BODY"

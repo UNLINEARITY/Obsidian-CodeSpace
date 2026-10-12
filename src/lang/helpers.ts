@@ -17,16 +17,29 @@
 
 import en from './locale/en';
 import zhCN from './locale/zh-cn';
+import ja from './locale/ja';
+import ko from './locale/ko';
+import de from './locale/de';
+import es from './locale/es';
+import ptBR from './locale/pt-br';
 
 const localeMap: { [key: string]: typeof en } = {
   'en': en,
   'zh-cn': zhCN,
+  'ja': ja,
+  'ko': ko,
+  'de': de,
+  'es': es,
+  'pt-br': ptBR,
+  // 葡萄牙葡语回落到巴西葡语（当前唯一葡语翻译）
+  'pt': ptBR,
 };
 
-const locale = window.moment.locale();
+// 归一化匹配：先整体匹配（zh-cn、pt-br），再按主子标签匹配（ja-jp → ja、de-at → de、es-mx → es、ko-kr → ko）
+const rawLocale = (window.moment.locale() || 'en').toLowerCase();
+const primaryLocale = rawLocale.split('-')[0] ?? '';
+const lang = localeMap[rawLocale] ?? localeMap[primaryLocale] ?? en;
 
 export function t(str: keyof typeof en): string {
-  const lang = localeMap[locale] || en;
-
   return lang[str] || en[str];
 }
