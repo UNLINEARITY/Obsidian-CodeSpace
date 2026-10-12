@@ -20,6 +20,7 @@ import { lstat, mkdtemp, mkdir, readlink, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { suggestMountPath } from "../src/external_mount";
 
 const require = createRequire(import.meta.url);
 const createdRoots: string[] = [];
@@ -105,5 +106,65 @@ describe("external mount safety", () => {
 		expect((await manager.getStatus(mount)).state).toBe("linked");
 		await manager.removeMount(mount);
 		await expect(lstat(path.join(root, "vault", "External", "source"))).rejects.toThrow();
+	});
+
+	it("rejects hidden mount paths (dot-prefixed segments)", async () => {
+		const { manager, root } = await createManager();
+		const sourcePath = path.join(root, "source");
+		await mkdir(sourcePath);
+
+		await expect(manager.createMount({ id: "1", sourcePath, mountPath: ".hidden/plugins/x" }, "junction"))
+			.rejects.toThrow(/hidden folders/i);
+		await expect(manager.createMount({ id: "1", sourcePath, mountPath: ".trash/dump" }, "junction"))
+			.rejects.toThrow(/hidden folders/i);
+	});
+
+	it.skipIf(process.platform !== "win32")("rejects Windows reserved names and invalid characters", async () => {
+		const { manager, root } = await createManager();
+		const sourcePath = path.join(root, "source");
+		await mkdir(sourcePath);
+
+		await expect(manager.createMount({ id: "1", sourcePath, mountPath: "External/com1" }, "junction"))
+			.rejects.toThrow(/reserved name|invalid character/i);
+		await expect(manager.createMount({ id: "1", sourcePath, mountPath: "External/fo<o" }, "junction"))
+			.rejects.toThrow(/reserved name|invalid character/i);
+		await expect(manager.createMount({ id: "1", sourcePath, mountPath: "External/foo." }, "junction"))
+			.rejects.toThrow(/reserved name|invalid character/i);
+	});
+
+	it("removes a mount even when the source folder no longer exists", async () => {
+		const { manager, root, vaultPath } = await createManager();
+		const sourcePath = path.join(root, "source");
+		await mkdir(sourcePath);
+		const mount = { id: "1", sourcePath, mountPath: "External/source" };
+
+		await manager.createMount(mount, "junction");
+		await rm(sourcePath, { recursive: true, force: true });
+
+		await expect(manager.removeMount(mount)).resolves.toBeUndefined();
+		await expect(lstat(path.join(vaultPath, "External", "source"))).rejects.toThrow();
+	});
+
+	// 大小写不敏感卷（macOS/Windows）上源删除后配置大小写漂移，仍应可卸载；
+	// Linux 区分大小写，不同大小写即不同路径，拒绝才是正确保护，故跳过
+	it.skipIf(process.platform === "linux")("removes a mount after case drift once the source folder is gone", async () => {
+		const { manager, root, vaultPath } = await createManager();
+		const sourcePath = path.join(root, "Source");
+		await mkdir(sourcePath);
+		const mount = { id: "1", sourcePath, mountPath: "External/Source" };
+
+		await manager.createMount(mount, "junction");
+		await rm(sourcePath, { recursive: true, force: true });
+
+		const drifted = { ...mount, sourcePath: path.join(root, "source") };
+		await expect(manager.removeMount(drifted)).resolves.toBeUndefined();
+		await expect(lstat(path.join(vaultPath, "External", "Source"))).rejects.toThrow();
+	});
+
+	it("suggests a unique mount path when the default is taken", async () => {
+		const { manager } = await createManager();
+		expect(manager.normalizeMountPath(suggestMountPath("/somewhere/source"))).toBe("External/source");
+		expect(suggestMountPath("/somewhere/source", ["External/source"])).toBe("External/source-2");
+		expect(suggestMountPath("/somewhere/source", ["External/source", "External/source-2"])).toBe("External/source-3");
 	});
 });

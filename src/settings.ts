@@ -51,10 +51,12 @@ class ExternalMountModal extends Modal {
 	private sourcePath = "";
 	private mountPath = "";
 	private onSubmit: (sourcePath: string, mountPath: string) => void;
+	private existingMountPaths: string[];
 
-	constructor(app: App, onSubmit: (sourcePath: string, mountPath: string) => void) {
+	constructor(app: App, onSubmit: (sourcePath: string, mountPath: string) => void, existingMountPaths: string[] = []) {
 		super(app);
 		this.onSubmit = onSubmit;
+		this.existingMountPaths = existingMountPaths;
 		this.setTitle(t("SETTINGS_EXTERNAL_MOUNT_MODAL_TITLE"));
 	}
 
@@ -91,7 +93,7 @@ class ExternalMountModal extends Modal {
 						this.sourcePath = picked.path;
 						sourceInput?.setValue(picked.path);
 						if (!this.mountPath) {
-							const suggested = suggestMountPath(picked.path);
+							const suggested = suggestMountPath(picked.path, this.existingMountPaths);
 							this.mountPath = suggested;
 							mountInput?.setValue(suggested);
 						}
@@ -515,18 +517,19 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 						this.plugin.settings.enableExternalMounts = value;
 						let failedMounts = 0;
 
-						// 关闭时自动取消所有挂载，但保留配置
+						// 关闭时自动取消所有挂载，但保留配置；
+						// 个别链接删除失败不再回弹开关（否则一条坏挂载会永远关不掉），改为提示手动清理
 						if (previousState && !value && Platform.isDesktopApp) {
 							const mounts = this.plugin.settings.externalMounts ?? [];
 							for (const mount of mounts) {
 								try {
 									await mountManager.removeMount(mount);
-								} catch {
+								} catch (error) {
 									failedMounts += 1;
+									console.error("Code Space: Failed to remove external mount link:", error);
 								}
 							}
 							if (failedMounts > 0) {
-								this.plugin.settings.enableExternalMounts = true;
 								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_REMOVE_PARTIAL").replace("{0}", String(failedMounts)));
 							} else {
 								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_REMOVED"));
@@ -635,15 +638,20 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					.setClass("mod-warning")
 					.onClick(() => {
 						void (async () => {
+							// 守卫式删除失败（如链接已指向别处）时仍移除条目，避免列表被锁死；链接保留给用户手动处理
+							let linkRemoved = true;
 							try {
 								await mountManager.removeMount(mount);
-								this.plugin.settings.externalMounts = this.plugin.settings.externalMounts.filter((item) => item.id !== mount.id);
-								await this.plugin.saveSettings("dashboard");
-								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_REMOVED"));
-										this.refreshSettingsView();
 							} catch (error) {
-								new Notice(`${t("SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED")}: ${String(error)}`);
+								linkRemoved = false;
+								console.error("Code Space: Failed to remove external mount link:", error);
 							}
+							this.plugin.settings.externalMounts = this.plugin.settings.externalMounts.filter((item) => item.id !== mount.id);
+							await this.plugin.saveSettings("dashboard");
+							new Notice(linkRemoved
+								? t("SETTINGS_EXTERNAL_MOUNT_NOTICE_REMOVED")
+								: t("SETTINGS_EXTERNAL_MOUNT_NOTICE_ENTRY_REMOVED_LINK_KEPT").replace("{0}", mount.mountPath));
+							this.refreshSettingsView();
 						})();
 					});
 			});
@@ -690,7 +698,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 									new Notice(`${t("SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED")}: ${String(error)}`);
 								}
 							})();
-						}).open();
+						}, this.plugin.settings.externalMounts.map((item) => item.mountPath)).open();
 					});
 			});
 	}

@@ -25,6 +25,7 @@ type FsPromises = {
 	mkdir(path: string, options: { recursive: boolean }): Promise<void>;
 	symlink(target: string, path: string, type?: SymlinkType): Promise<void>;
 	unlink(path: string): Promise<void>;
+	rmdir(path: string): Promise<void>;
 };
 
 type PathModule = {
@@ -89,6 +90,29 @@ export interface ExternalMountStatus {
 
 type SymlinkType = "file" | "dir" | "junction";
 
+// Windows 保留设备名（带或不带扩展名均非法，如 COM1.txt）
+const WINDOWS_RESERVED_SEGMENTS = new Set([
+	"con", "prn", "aux", "nul",
+	"com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+	"lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+]);
+
+function isInvalidWindowsSegment(segment: string): boolean {
+	// 控制字符用码点判断，避免正则里的控制字符字面量
+	const hasControlChars = Array.from(segment).some((char) => {
+		const code = char.charCodeAt(0);
+		return code < 0x20 || code === 0x7f;
+	});
+	if (hasControlChars || /[<>:"|?*]/.test(segment)) {
+		return true;
+	}
+	if (/[. ]$/.test(segment)) {
+		return true;
+	}
+	const stem = segment.split(".")[0] ?? segment;
+	return WINDOWS_RESERVED_SEGMENTS.has(stem.toLowerCase());
+}
+
 export class ExternalMountManager {
 	constructor(private app: App) {}
 
@@ -128,16 +152,13 @@ export class ExternalMountManager {
 		if (segments.some((segment) => segment === ".." || segment === ".")) {
 			throw new Error("Mount path cannot contain . or ..");
 		}
-		if (Platform.isWin && segments.some((segment) => segment.includes(":"))) {
-			throw new Error("Mount path contains an invalid character");
+		// 隐藏目录（点开头的 segment）Obsidian 不索引，且建进配置/回收站目录有副作用
+		if (segments.some((segment) => segment.startsWith("."))) {
+			throw new Error("Mount path cannot use hidden folders (segments starting with a dot)");
 		}
-	}
-
-	getTargetPath(mountPath: string): string {
-		const pathModule = getPath();
-		const basePath = this.getVaultBasePath();
-		const segments = mountPath.split("/").filter(Boolean);
-		return pathModule.join(basePath, ...segments);
+		if (Platform.isWin && segments.some((segment) => isInvalidWindowsSegment(segment))) {
+			throw new Error("Mount path contains a reserved name or invalid character for Windows");
+		}
 	}
 
 	async createMount(mount: ExternalMount, linkType: ExternalMountLinkType = "auto"): Promise<void> {
@@ -180,8 +201,15 @@ export class ExternalMountManager {
 		}
 
 		const fsPromises = getFs();
-		await fsPromises.mkdir(pathModule.dirname(targetPath), { recursive: true });
-		await this.createLink(sourceRealPath, targetPath, linkType);
+		const parentPath = pathModule.dirname(targetPath);
+		await fsPromises.mkdir(parentPath, { recursive: true });
+		try {
+			await this.createLink(sourceRealPath, targetPath, linkType);
+		} catch (error) {
+			// 链接创建失败时回收本次新建的空父目录，不在 vault 里留残渣
+			await this.pruneEmptyParents(parentPath, vaultRealPath);
+			throw error;
+		}
 	}
 
 	async removeMount(mount: ExternalMount): Promise<void> {
@@ -206,11 +234,27 @@ export class ExternalMountManager {
 		if (!existing.isSymbolicLink()) {
 			throw new Error("Mount path is not a symlink");
 		}
-		const configuredSource = await this.safeStat(mount.sourcePath.trim())
-			? await this.getRealPath(mount.sourcePath.trim())
-			: pathModule.resolve(mount.sourcePath.trim());
+		const sourceTrimmed = mount.sourcePath.trim();
+		const sourceExists = await this.safeStat(sourceTrimmed);
+		let configuredSource: string;
+		if (sourceExists) {
+			configuredSource = await this.getRealPath(sourceTrimmed);
+		} else {
+			// 源已删除/移动：resolve 不解析符号链接前缀（如 macOS /var → /private/var），
+			// 会与链接存储的 realpath 目标不一致而锁死卸载；规范化仍存在的祖先后拼接
+			try {
+				configuredSource = pathModule.join(
+					await this.getRealPath(pathModule.dirname(sourceTrimmed)),
+					pathModule.basename(sourceTrimmed)
+				);
+			} catch {
+				configuredSource = pathModule.resolve(sourceTrimmed);
+			}
+		}
 		const linkTarget = await this.resolveLinkDestination(targetPath);
-		if (!this.pathsEqual(linkTarget, configuredSource)) {
+		// 祖先也丢失时无法规范化大小写，在不区分大小写的卷上放宽比较，避免锁死
+		const lenient = !sourceExists && (Platform.isWin || Platform.isMacOS);
+		if (!this.pathsEqual(linkTarget, configuredSource, lenient)) {
 			throw new Error("Mount path points to a different folder");
 		}
 		const fsPromises = getFs();
@@ -320,11 +364,31 @@ export class ExternalMountManager {
 		return relativePath === "" || (!relativePath.startsWith("..") && !pathModule.isAbsolute(relativePath));
 	}
 
-	private pathsEqual(firstPath: string, secondPath: string): boolean {
+	private pathsEqual(firstPath: string, secondPath: string, ignoreCase = false): boolean {
 		const pathModule = getPath();
 		const first = pathModule.resolve(firstPath);
 		const second = pathModule.resolve(secondPath);
-		return Platform.isWin ? first.toLowerCase() === second.toLowerCase() : first === second;
+		if (first === second) {
+			return true;
+		}
+		const caseInsensitive = ignoreCase || Platform.isWin;
+		return caseInsensitive ? first.toLowerCase() === second.toLowerCase() : false;
+	}
+
+	// 自底向上删除空目录，直到遇到非空目录或到达 vault 根（用于回滚 mkdir 残留）
+	private async pruneEmptyParents(dirPath: string, stopPath: string): Promise<void> {
+		const pathModule = getPath();
+		const fsPromises = getFs();
+		let currentPath = dirPath;
+		while (this.isSameOrInside(currentPath, stopPath) && !this.pathsEqual(currentPath, stopPath)) {
+			try {
+				await fsPromises.rmdir(currentPath);
+			} catch {
+				// 目录非空或被并发占用：停止回滚
+				return;
+			}
+			currentPath = pathModule.dirname(currentPath);
+		}
 	}
 
 	private async resolveLinkDestination(targetPath: string): Promise<string> {
@@ -360,6 +424,11 @@ export class ExternalMountManager {
 	private async createLink(sourcePath: string, targetPath: string, linkType: ExternalMountLinkType): Promise<void> {
 		const fsPromises = getFs();
 		if (Platform.isWin) {
+			// junction 无法指向 UNC 网络路径，提前给出可读错误而不是原始 OS 报错
+			const isUncSource = sourcePath.startsWith("\\\\");
+			if (isUncSource && linkType === "junction") {
+				throw new Error("Junctions cannot target network (UNC) paths; use the symlink link type instead");
+			}
 			if (linkType === "junction") {
 				await fsPromises.symlink(sourcePath, targetPath, "junction");
 				return;
@@ -370,7 +439,10 @@ export class ExternalMountManager {
 			}
 			try {
 				await fsPromises.symlink(sourcePath, targetPath, "dir");
-			} catch {
+			} catch (error) {
+				if (isUncSource) {
+					throw new Error(`Creating a symlink to the network path failed (Developer Mode or administrator rights may be required): ${String(error)}`);
+				}
 				await fsPromises.symlink(sourcePath, targetPath, "junction");
 			}
 			return;
@@ -427,13 +499,24 @@ export async function pickExternalFolder(): Promise<ExternalFolderPickResult> {
 	}
 }
 
-export function suggestMountPath(sourcePath: string): string {
+export function suggestMountPath(sourcePath: string, existingPaths: string[] = []): string {
 	const trimmed = sourcePath.replace(/[\\/]+$/, "");
 	try {
 		const pathModule = getPath();
 		const baseName = pathModule.basename(trimmed);
 		const defaultName = baseName || "External";
-		return normalizePath(`External/${defaultName}`);
+		const taken = new Set(existingPaths.map((existing) => normalizePath(existing).toLowerCase()));
+		let candidate = normalizePath(`External/${defaultName}`);
+		if (!taken.has(candidate.toLowerCase())) {
+			return candidate;
+		}
+		for (let suffix = 2; suffix < 100; suffix += 1) {
+			candidate = normalizePath(`External/${defaultName}-${suffix}`);
+			if (!taken.has(candidate.toLowerCase())) {
+				return candidate;
+			}
+		}
+		return candidate;
 	} catch {
 		return normalizePath("External");
 	}

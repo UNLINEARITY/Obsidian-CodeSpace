@@ -133,7 +133,7 @@ Work across Vault boundaries to manage external project code.
 - **Permission differences**: On Windows, symlinks may require Developer Mode or administrator privileges. Auto mode tries symlink first, then falls back to junction
 - **Performance issues**: You can use this for lightweight repositories or multi-repository coordination, but avoid mounting too many files or very large directories
 - **Path stability**: Moving or renaming external folders will break the mount and require reconfiguration
-- **Sync issues**: If external folders are in cloud-synced directories (e.g., Dropbox, OneDrive), ensure Obsidian and external folders are in sync to avoid conflicts
+- **Sync issues**: If external folders are in cloud-synced directories (e.g., Dropbox, OneDrive), ensure Obsidian and external folders are in sync to avoid conflicts. Also note that some cloud services follow the symlinks inside the Vault and upload the entire mounted folder to the cloud; if that is unwanted, exclude the mount folders from that sync service
 
 ### 5. Integrated terminal (desktop only)
 
