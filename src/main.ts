@@ -310,6 +310,39 @@ export default class CodeSpacePlugin extends Plugin {
 			}
 		});
 
+		// 在当前终端视图/内嵌面板中新建会话；两者皆无时回退到打开终端视图
+		this.addCommand({
+			id: 'new-terminal-session',
+			name: t('CMD_NEW_TERMINAL_SESSION'),
+			checkCallback: (checking: boolean) => {
+				if (!Platform.isDesktopApp || !this.settings.terminalEnabled) {
+					return false;
+				}
+				if (!this.terminalManager?.binaryManager.checkInstalledSync()) {
+					return false;
+				}
+				const terminalView = this.app.workspace.getActiveViewOfType(CodeTerminalView);
+				if (terminalView) {
+					if (!checking) {
+						void terminalView.newSession();
+					}
+					return true;
+				}
+				const codeView = this.app.workspace.getActiveViewOfType(CodeSpaceView);
+				if (codeView?.isTerminalPanelVisible()) {
+					if (!checking) {
+						void codeView.newTerminalSession();
+					}
+					return true;
+				}
+				// 回退：新开终端标签页（打开即新建首个会话）
+				if (!checking) {
+					void this.activateTerminalView();
+				}
+				return true;
+			}
+		});
+
 		// 切换当前代码编辑器中的内嵌终端面板
 		this.addCommand({
 			id: 'toggle-terminal-panel',

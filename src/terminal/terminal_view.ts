@@ -91,6 +91,11 @@ export class CodeTerminalView extends ItemView {
 		this.panel = null;
 	}
 
+	// 在本视图内新建终端会话（供命令调用，行为与面板 + 按钮一致，含上限提示）
+	async newSession(): Promise<void> {
+		await this.panel?.newSession();
+	}
+
 	getPlugin(): CodeSpacePlugin | null {
 		type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
 		const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");

@@ -1062,6 +1062,16 @@ export class CodeSpaceView extends TextFileView {
 		}
 	}
 
+	// 内嵌终端面板是否可见（供命令判断当前编辑器是否挂着面板）
+	isTerminalPanelVisible(): boolean {
+		return this.terminalPanel?.isVisible ?? false;
+	}
+
+	// 在内嵌终端面板中新建会话（供命令调用，行为与面板 + 按钮一致，含上限提示）
+	async newTerminalSession(): Promise<void> {
+		await this.terminalPanel?.newSession();
+	}
+
 	private getSelectedTextForSearch(): string | null {
 		if (!this.editorView) return null;
 

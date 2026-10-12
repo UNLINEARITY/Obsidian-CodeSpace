@@ -228,6 +228,7 @@ export default {
 
     // Terminal
     CMD_OPEN_TERMINAL: 'Open terminal',
+    CMD_NEW_TERMINAL_SESSION: 'New terminal session',
     CMD_TOGGLE_TERMINAL_PANEL: 'Toggle terminal panel',
     CMD_KILL_TERMININALS: 'Close all terminal sessions',
     HEADER_ACTION_TERMINAL: 'Toggle terminal panel',

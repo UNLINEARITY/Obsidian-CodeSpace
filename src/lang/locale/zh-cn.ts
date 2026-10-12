@@ -226,6 +226,7 @@ export default {
 
     // Terminal
     CMD_OPEN_TERMINAL: '打开终端',
+    CMD_NEW_TERMINAL_SESSION: '新建终端会话',
     CMD_TOGGLE_TERMINAL_PANEL: '切换终端面板',
     CMD_KILL_TERMININALS: '关闭所有终端会话',
     HEADER_ACTION_TERMINAL: '切换终端面板',
