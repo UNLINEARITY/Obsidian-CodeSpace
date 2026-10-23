@@ -32,6 +32,7 @@ import {
 	isTerminalDesktop,
 	resolvePluginDir,
 } from "./node_access";
+import { formatDroppedPaths, hasDroppableFiles, quoteStyleForShell, resolveDroppedPaths } from "./drop_paths";
 import { buildPtyEnv, getDefaultLocaleEnv, loadPtyFactory, PtyProcess } from "./pty_host";
 import { resolveShell, type ResolvedShell } from "./shell_detector";
 import { TerminalComponent } from "./terminal_component";
@@ -401,6 +402,12 @@ export class TerminalManager {
 		pty.onData((data) => component.write(data));
 		component.onInput((data) => pty.write(data));
 		component.onResize((cols, rows) => pty.resize(cols, rows));
+		const quoteStyle = quoteStyleForShell(shell.file);
+		const app = this.plugin.app;
+		component.onDrop({
+			canAccept: (event) => hasDroppableFiles(app, event),
+			resolve: async (event) => formatDroppedPaths(await resolveDroppedPaths(app, event), quoteStyle),
+		});
 		pty.onExit((exitCode) => {
 			session.info.exited = true;
 			session.info.exitCode = exitCode;

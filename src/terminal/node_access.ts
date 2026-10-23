@@ -128,6 +128,23 @@ export function getNodeProcess(): NodeProcessApi {
 	return nodeProcessCache;
 }
 
+/**
+ * 系统拖入文件（Finder/资源管理器）的磁盘路径。
+ * Electron 32+ 移除了 File.path，改用 webUtils.getPathForFile；旧版本回退 File.path。
+ */
+export function getDroppedFilePath(file: File): string {
+	try {
+		const electron = getNodeModule<{ webUtils?: { getPathForFile?(file: File): string } }>("electron");
+		const path = electron.webUtils?.getPathForFile?.(file);
+		if (path) {
+			return path;
+		}
+	} catch {
+		// electron 模块不可用：走 File.path 兜底
+	}
+	return (file as File & { path?: string }).path ?? "";
+}
+
 export function isTerminalDesktop(): boolean {
 	return Platform.isDesktopApp;
 }

@@ -26,6 +26,12 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { TerminalId } from "./types";
 import { buildTerminalFontFamily, readMonospaceFont, readThemeVars, themeFromVars } from "./terminal_theme";
 
+/** 拖放接线：dragover 判定是否接管，drop 解析为要粘贴的文本（null 表示忽略） */
+export interface TerminalDropHandler {
+	canAccept(event: DragEvent): boolean;
+	resolve(event: DragEvent): Promise<string | null>;
+}
+
 export interface TerminalComponentOptions {
 	fontSize: number;
 	scrollback: number;
@@ -50,6 +56,9 @@ export class TerminalComponent {
 	private resizeHandler: ((cols: number, rows: number) => void) | null = null;
 	private fontSize: number;
 	private wheelListener: ((event: WheelEvent) => void) | null = null;
+	private dropHandler: TerminalDropHandler | null = null;
+	private dragOverListener: ((event: DragEvent) => void) | null = null;
+	private dropListener: ((event: DragEvent) => void) | null = null;
 
 	constructor(sessionId: TerminalId, options: TerminalComponentOptions) {
 		this.sessionId = sessionId;
@@ -101,6 +110,11 @@ export class TerminalComponent {
 		this.resizeHandler = handler;
 	}
 
+	/** 拖放回调（由会话管理器接线：文件 → 加引号路径） */
+	onDrop(handler: TerminalDropHandler): void {
+		this.dropHandler = handler;
+	}
+
 	/** 输出数据（pty → 终端），未挂载时写入缓冲区，回溯不丢失 */
 	write(data: string): void {
 		if (this.disposed) {
@@ -139,6 +153,36 @@ export class TerminalComponent {
 				this.scheduleFit();
 			};
 			this.container.addEventListener("wheel", this.wheelListener, { passive: false });
+			// 拖入文件：阻止 Obsidian 默认处理（打开文件/插入链接），以粘贴方式写入路径
+			this.dragOverListener = (event: DragEvent): void => {
+				if (!this.dropHandler?.canAccept(event)) {
+					return;
+				}
+				event.preventDefault();
+				event.stopPropagation();
+				if (event.dataTransfer) {
+					event.dataTransfer.dropEffect = "copy";
+				}
+			};
+			this.dropListener = (event: DragEvent): void => {
+				const handler = this.dropHandler;
+				if (!handler?.canAccept(event)) {
+					return;
+				}
+				event.preventDefault();
+				event.stopPropagation();
+				void handler.resolve(event).then((text) => {
+					if (text && !this.disposed) {
+						// paste 走括号粘贴模式，shell/TUI 不会把路径当作回车执行
+						this.term.paste(text);
+						this.term.focus();
+					}
+				}).catch((error) => {
+					console.debug("Code Space: terminal drop failed:", error);
+				});
+			};
+			this.container.addEventListener("dragover", this.dragOverListener);
+			this.container.addEventListener("drop", this.dropListener);
 			this.term.open(this.container);
 			this.loadWebglAddon();
 			this.fit();
@@ -161,8 +205,8 @@ export class TerminalComponent {
 		this.startResizeObserver();
 		this.startWebglRetryWatch();
 		// 挂载后若此前 WebGL 上下文已丢失（如同窗口内切换标签后切回），
-		// 立即尝试恢复；冷却机制防止重复加载
-		this.scheduleWebglRetry();
+		// 立即尝试恢复；冷却机制防止重复加载；仍在用 WebGL 则重建字形缓存
+		this.recoverWebgl();
 		this.term.focus();
 	}
 
@@ -234,6 +278,17 @@ export class TerminalComponent {
 			this.container.removeEventListener("wheel", this.wheelListener);
 			this.wheelListener = null;
 		}
+		if (this.container) {
+			if (this.dragOverListener) {
+				this.container.removeEventListener("dragover", this.dragOverListener);
+			}
+			if (this.dropListener) {
+				this.container.removeEventListener("drop", this.dropListener);
+			}
+		}
+		this.dragOverListener = null;
+		this.dropListener = null;
+		this.dropHandler = null;
 		this.term.dispose();
 		this.container?.remove();
 		this.container = null;
@@ -274,10 +329,30 @@ export class TerminalComponent {
 		}
 		try {
 			this.webglAddon.dispose();
-		} catch {
-			// 上下文已丢失时 dispose 可能抛错，忽略
+		} catch (error) {
+			// 上下文已丢失时 dispose 可能抛错，记录后继续
+			console.debug("Code Space: terminal webgl renderer dispose failed:", error);
 		}
 		this.webglAddon = null;
+	}
+
+	/**
+	 * 恢复 WebGL 渲染：已丢失则重试加载，仍在用则清空纹理图集。
+	 * 图集损坏时格子会画成别的字形（底层文本正确），重建后按缓冲区重绘。
+	 */
+	private recoverWebgl(): void {
+		if (this.disposed || !this.container) {
+			return;
+		}
+		if (!this.webglAddon) {
+			this.scheduleWebglRetry();
+			return;
+		}
+		try {
+			this.webglAddon.clearTextureAtlas();
+		} catch (error) {
+			console.debug("Code Space: terminal texture atlas clear failed:", error);
+		}
 	}
 
 	private startResizeObserver(): void {
@@ -302,8 +377,8 @@ export class TerminalComponent {
 	}
 
 	/**
-	 * 监听可见性/焦点恢复事件，在 WebGL 上下文丢失后自动重试加载
-	 * （macOS 上自动显卡切换、窗口遮挡都可能触发上下文丢失）。
+	 * 监听可见性/焦点恢复事件，在 WebGL 上下文丢失后自动重试加载、
+	 * 未丢失时重建字形缓存（macOS 上自动显卡切换、窗口遮挡都可能触发上下文丢失）。
 	 */
 	private startWebglRetryWatch(): void {
 		if (!this.container || this.webglRetryHandler) {
@@ -315,7 +390,7 @@ export class TerminalComponent {
 		}
 		const handler = (): void => {
 			if (!view.document.hidden) {
-				this.scheduleWebglRetry();
+				this.recoverWebgl();
 			}
 		};
 		this.webglRetryHandler = handler;

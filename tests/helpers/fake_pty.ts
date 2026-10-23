@@ -85,6 +85,8 @@ export class FakeTerminalComponent {
 		this.resizeHandler = handler;
 	}
 
+	onDrop(): void { /* noop */ }
+
 	write(data: string): void {
 		this.written.push(data);
 	}
