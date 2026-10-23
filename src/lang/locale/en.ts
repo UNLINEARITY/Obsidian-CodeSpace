@@ -278,4 +278,11 @@ export default {
     SETTINGS_TERMINAL_STATUS_ERROR: 'Error',
     SETTINGS_TERMINAL_STATUS_UNSUPPORTED: 'Unsupported platform',
     SETTINGS_TERMINAL_STATUS_REMOVE_PENDING: 'Removal scheduled; restart Obsidian to finish',
+
+    // Code block editing
+    CMD_EDIT_CODE_BLOCK: 'Edit code block in Code Space',
+    MODAL_CODE_BLOCK_TITLE: 'Edit code block',
+    MODAL_CODE_BLOCK_SAVE: 'Save',
+    MODAL_CODE_BLOCK_CANCEL: 'Cancel',
+    NOTICE_CODE_BLOCK_CHANGED: 'The code block in the note changed, so your edits were not applied. They were copied to the clipboard.',
 };

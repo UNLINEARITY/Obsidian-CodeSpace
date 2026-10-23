@@ -278,4 +278,11 @@ export default {
     SETTINGS_TERMINAL_STATUS_ERROR: '오류',
     SETTINGS_TERMINAL_STATUS_UNSUPPORTED: '지원되지 않는 플랫폼',
     SETTINGS_TERMINAL_STATUS_REMOVE_PENDING: '제거 예정 — Obsidian을 다시 시작하면 완료됩니다',
+
+    // Code block editing
+    CMD_EDIT_CODE_BLOCK: 'Code Space에서 코드 블록 편집',
+    MODAL_CODE_BLOCK_TITLE: '코드 블록 편집',
+    MODAL_CODE_BLOCK_SAVE: '저장',
+    MODAL_CODE_BLOCK_CANCEL: '취소',
+    NOTICE_CODE_BLOCK_CHANGED: '노트의 코드 블록이 변경되어 수정 내용을 반영하지 못했습니다. 클립보드에 복사했습니다.',
 };

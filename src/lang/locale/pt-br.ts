@@ -278,4 +278,11 @@ export default {
     SETTINGS_TERMINAL_STATUS_ERROR: 'Erro',
     SETTINGS_TERMINAL_STATUS_UNSUPPORTED: 'Plataforma sem suporte',
     SETTINGS_TERMINAL_STATUS_REMOVE_PENDING: 'Remoção agendada; reinicie o Obsidian para concluir',
+
+    // Code block editing
+    CMD_EDIT_CODE_BLOCK: 'Editar bloco de código no Code Space',
+    MODAL_CODE_BLOCK_TITLE: 'Editar bloco de código',
+    MODAL_CODE_BLOCK_SAVE: 'Salvar',
+    MODAL_CODE_BLOCK_CANCEL: 'Cancelar',
+    NOTICE_CODE_BLOCK_CHANGED: 'O bloco de código na nota mudou, então suas alterações não foram aplicadas. Elas foram copiadas para a área de transferência.',
 };

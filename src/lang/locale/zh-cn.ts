@@ -276,4 +276,11 @@ export default {
     SETTINGS_TERMINAL_STATUS_ERROR: '错误',
     SETTINGS_TERMINAL_STATUS_UNSUPPORTED: '平台不支持',
     SETTINGS_TERMINAL_STATUS_REMOVE_PENDING: '已计划移除，重启 Obsidian 后完成',
+
+    // Code block editing
+    CMD_EDIT_CODE_BLOCK: '在 Code Space 中编辑代码块',
+    MODAL_CODE_BLOCK_TITLE: '编辑代码块',
+    MODAL_CODE_BLOCK_SAVE: '保存',
+    MODAL_CODE_BLOCK_CANCEL: '取消',
+    NOTICE_CODE_BLOCK_CHANGED: '笔记中的代码块已变化，修改未写回，已复制到剪贴板。',
 };

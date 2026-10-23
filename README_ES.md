@@ -83,6 +83,7 @@ Incrusta y previsualiza código en Markdown, incluidos fragmentos concretos de a
 - **Sincronización de vistas previas**: Cuando cambia un archivo de código fuente, las vistas previas incrustadas relacionadas se vuelven a renderizar.
 - **Exportación nativa a PDF**: Usa el **Exportar a PDF** oficial de Obsidian y las referencias a archivos de código se exportan como bloques de código reales en lugar de tarjetas grises de archivo.
 - **Mayor compatibilidad de hosts**: Las vistas previas de código incrustado se comportan de forma más fiable en modo lectura, ventanas emergentes y otros hosts que reutilizan la canalización de Markdown de Obsidian.
+- **Editar bloques de código en Code Space**: Coloca el cursor dentro de un bloque de código cercado de una nota y selecciona el botón de código en la cabecera de la nota (a la izquierda del conmutador de lectura/edición), o ejecuta **Editar bloque de código en Code Space** desde la paleta de comandos o el menú contextual del editor. El bloque se abre en una ventana del editor de Code Space con resaltado de sintaxis. Al guardar o cerrar la ventana, el código se escribe de vuelta en la nota, donde se puede deshacer. La línea de la cerca se conserva tal cual, y se admiten bloques de código dentro de callouts, citas y listas.
 
 <p align='center'><img src='docs\img\pre3.png' width=95%></p>
 
@@ -145,6 +146,7 @@ Ejecuta un shell real del sistema dentro de Code Space, basado en xterm.js y nod
 - **Sigue tu contexto**: Los nuevos terminales empiezan en la carpeta del archivo abierto actualmente (los montajes externos se resuelven a su ubicación real en disco), con la raíz de la bóveda como alternativa
 - **Consciente del tema**: Los colores y la fuente monoespaciada siguen tu tema de Obsidian, también en ventanas emergentes
 - **Panel redimensionable**: Arrastra el asa sobre el panel incrustado para ajustar su altura
+- **Arrastrar archivos como rutas**: Arrastra archivos o carpetas desde la lista de archivos de Obsidian o el gestor de archivos del sistema a un terminal para pegar sus rutas absolutas reales, entrecomilladas según el shell actual (los montajes externos se resuelven a su ubicación real en disco)
 
 **Uso:**
 1. Activa el terminal en **Ajustes > Code Space > Terminal** (desactivado por defecto)
@@ -247,6 +249,7 @@ Si añades las siguientes extensiones a la lista gestionada, estos archivos tamb
 | `Ctrl+P` → «Recargar complemento» | Recarga el complemento |
 | `Ctrl+P` → «Alternar esquema de código» | Alterna la vista de esquema de código |
 | `Ctrl+P` → «Buscar y reemplazar» | Abre el panel de búsqueda y sustitución en el editor de Code Space actual |
+| `Ctrl+P` → «Editar bloque de código en Code Space» | Edita el bloque de código del cursor en una ventana del editor de Code Space (disponible cuando el cursor está dentro de un bloque de código) |
 | `Ctrl+P` → «Abrir terminal» | Abre una pestaña de terminal nueva (disponible tras activar el terminal y descargar los archivos de soporte) |
 | `Ctrl+P` → «Alternar panel de terminal» | Alterna el panel de terminal incrustado en el editor actual |
 | `Ctrl+P` → «Cerrar todas las sesiones de terminal» | Detiene todos los terminales |

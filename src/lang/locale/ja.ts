@@ -278,4 +278,11 @@ export default {
     SETTINGS_TERMINAL_STATUS_ERROR: 'エラー',
     SETTINGS_TERMINAL_STATUS_UNSUPPORTED: '未対応のプラットフォーム',
     SETTINGS_TERMINAL_STATUS_REMOVE_PENDING: '削除予約済み。Obsidian の再起動で完了します',
+
+    // Code block editing
+    CMD_EDIT_CODE_BLOCK: 'Code Space でコードブロックを編集',
+    MODAL_CODE_BLOCK_TITLE: 'コードブロックを編集',
+    MODAL_CODE_BLOCK_SAVE: '保存',
+    MODAL_CODE_BLOCK_CANCEL: 'キャンセル',
+    NOTICE_CODE_BLOCK_CHANGED: 'ノート内のコードブロックが変更されたため、編集内容は反映されませんでした。クリップボードにコピーしました。',
 };

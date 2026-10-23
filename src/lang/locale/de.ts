@@ -278,4 +278,11 @@ export default {
     SETTINGS_TERMINAL_STATUS_ERROR: 'Fehler',
     SETTINGS_TERMINAL_STATUS_UNSUPPORTED: 'Nicht unterstützte Plattform',
     SETTINGS_TERMINAL_STATUS_REMOVE_PENDING: 'Entfernen geplant; Obsidian-Neustart zum Abschließen',
+
+    // Code block editing
+    CMD_EDIT_CODE_BLOCK: 'Codeblock in Code Space bearbeiten',
+    MODAL_CODE_BLOCK_TITLE: 'Codeblock bearbeiten',
+    MODAL_CODE_BLOCK_SAVE: 'Speichern',
+    MODAL_CODE_BLOCK_CANCEL: 'Abbrechen',
+    NOTICE_CODE_BLOCK_CHANGED: 'Der Codeblock in der Notiz hat sich geändert, daher wurden Ihre Änderungen nicht übernommen. Sie wurden in die Zwischenablage kopiert.',
 };

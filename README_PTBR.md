@@ -83,6 +83,7 @@ Incorpore e pré-visualize código em Markdown, inclusive trechos específicos d
 - **Sincronização de pré-visualização**: Quando um arquivo de código-fonte muda, as pré-visualizações incorporadas relacionadas são renderizadas novamente.
 - **Exportação nativa para PDF**: Use o **Exportar para PDF** oficial do Obsidian e as referências a arquivos de código serão exportadas como blocos de código reais em vez de cartões cinzentos de arquivo.
 - **Compatibilidade mais ampla de hosts**: As pré-visualizações de código incorporado se comportam de forma mais confiável no modo de leitura, janelas destacadas e outros hosts que reutilizam o pipeline de Markdown do Obsidian.
+- **Editar blocos de código no Code Space**: Coloque o cursor dentro de um bloco de código cercado de uma nota e selecione o botão de código no cabeçalho da nota (à esquerda do alternador de leitura/edição), ou execute **Editar bloco de código no Code Space** pela paleta de comandos ou pelo menu de contexto do editor. O bloco abre em uma janela do editor do Code Space com realce de sintaxe. Ao salvar ou fechar a janela, o código é gravado de volta na nota, onde pode ser desfeito. A linha da cerca é mantida como está, e blocos de código dentro de callouts, citações e listas são suportados.
 
 <p align='center'><img src='docs\img\pre3.png' width=95%></p>
 
@@ -145,6 +146,7 @@ Execute um shell real do sistema dentro do Code Space, movido por xterm.js e nod
 - **Segue seu contexto**: Novos terminais iniciam na pasta do arquivo aberto no momento (montagens externas resolvem para o local real no disco), com fallback para a raiz do cofre
 - **Ciente do tema**: Cores e a fonte monoespaçada seguem seu tema do Obsidian, inclusive em janelas destacadas
 - **Painel redimensionável**: Arraste a alça acima do painel incorporado para ajustar a altura
+- **Arrastar arquivos como caminhos**: Arraste arquivos ou pastas da lista de arquivos do Obsidian ou do gerenciador de arquivos do sistema para um terminal para colar seus caminhos absolutos reais, entre aspas conforme o shell atual (montagens externas são resolvidas para o local real no disco)
 
 **Uso:**
 1. Ative o terminal em **Configurações > Code Space > Terminal** (desativado por padrão)
@@ -247,6 +249,7 @@ Se você adicionar as seguintes extensões à lista gerenciada, esses arquivos t
 | `Ctrl+P` → "Recarregar plugin" | Recarrega o plugin |
 | `Ctrl+P` → "Alternar estrutura de código" | Alterna a visão de estrutura de código |
 | `Ctrl+P` → "Buscar e substituir" | Abre o painel de busca e substituição no editor do Code Space atual |
+| `Ctrl+P` → "Editar bloco de código no Code Space" | Edita o bloco de código no cursor em uma janela do editor do Code Space (disponível quando o cursor está dentro de um bloco de código) |
 | `Ctrl+P` → "Abrir terminal" | Abre uma nova aba de terminal (disponível após ativar o terminal e baixar os arquivos de suporte) |
 | `Ctrl+P` → "Alternar painel de terminal" | Alterna o painel de terminal incorporado no editor atual |
 | `Ctrl+P` → "Fechar todas as sessões de terminal" | Para todos os terminais |

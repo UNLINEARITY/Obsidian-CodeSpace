@@ -342,7 +342,7 @@ class CustomSearchPanel {
 
 
 // 1. 定义亮色模式高亮 (VS Code Light 风格)
-const myLightHighlightStyle = HighlightStyle.define([
+export const myLightHighlightStyle = HighlightStyle.define([
 	{ tag: tags.keyword, color: "#af00db" },
 	{ tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName], color: "#000000" },
 	{ tag: [tags.function(tags.variableName), tags.labelName], color: "#795e26" },
@@ -357,7 +357,7 @@ const myLightHighlightStyle = HighlightStyle.define([
 ]);
 
 // 2. 定义暗色模式高亮 (One Dark 风格)
-const myDarkHighlightStyle = HighlightStyle.define([
+export const myDarkHighlightStyle = HighlightStyle.define([
 	{ tag: tags.keyword, color: "#c678dd" },
 	{ tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName], color: "#abb2bf" },
 	{ tag: [tags.function(tags.variableName), tags.labelName], color: "#61afef" },
@@ -372,7 +372,7 @@ const myDarkHighlightStyle = HighlightStyle.define([
 ]);
 
 // 3. 定义基础界面主题
-const baseTheme = EditorView.theme({
+export const baseTheme = EditorView.theme({
 	"&": {
 		height: "100%",
 		backgroundColor: "transparent !important",

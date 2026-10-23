@@ -177,3 +177,35 @@ export const EMBED_RENDERABLE_EXTENSIONS = new Set([
 	"svg", "xsd", "xsl", "xslt", "wsdl", "plist", "csproj", "vcxproj", "props", "targets", "config", "toml",
 	"ini", "cfg", "conf", "f", "for", "f90", "f95", "f03", "f08",
 ]);
+
+/** 代码块语言名 → 扩展名别名（其余名称直接按扩展名查找，如 ts / json / sql） */
+const FENCE_LANGUAGE_ALIASES: Record<string, string> = {
+	python: "py",
+	javascript: "js",
+	node: "js",
+	typescript: "ts",
+	shell: "sh",
+	console: "sh",
+	rust: "rs",
+	ruby: "rb",
+	golang: "go",
+	kotlin: "kt",
+	csharp: "cs",
+	"c#": "cs",
+	"c++": "cpp",
+	objc: "mm",
+	"objective-c": "mm",
+	powershell: "ps1",
+	pwsh: "ps1",
+	perl: "pl",
+	docker: "dockerfile",
+	markdown: "md",
+	text: "txt",
+	plaintext: "txt",
+};
+
+/** 按代码块语言名取语法扩展；未知语言返回空扩展（纯文本） */
+export function resolveFenceLanguage(name: string): Extension {
+	const key = name.trim().toLowerCase();
+	return LANGUAGE_PACKAGES[FENCE_LANGUAGE_ALIASES[key] ?? key] ?? [];
+}

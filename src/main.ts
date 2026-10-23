@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, TFile, TFolder, normalizePath, Platform, debounce } from 'obsidian';
+import { Plugin, WorkspaceLeaf, MarkdownView, Modal, Notice, TextComponent, ButtonComponent, App, TFile, TFolder, normalizePath, Platform, debounce } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
@@ -27,6 +27,8 @@ import { registerNativePdfExportPatch } from "./native_pdf_export_patch";
 import { TerminalManager } from "./terminal/session_manager";
 import { CodeTerminalView, VIEW_TYPE_CODE_TERMINAL } from "./terminal/terminal_view";
 import { t } from "./lang/helpers";
+import { getCodeBlockAtCursor, openCodeBlockEditor } from "./code_block_modal";
+import { registerCodeBlockHeaderAction } from "./code_block_header_action";
 
 // 文件创建模态框
 class CreateCodeFileModal extends Modal {
@@ -238,6 +240,35 @@ export default class CodeSpacePlugin extends Plugin {
 				void this.toggleOutline();
 			}
 		});
+
+		// 在 Code Space 编辑器中编辑笔记里光标所在的代码块
+		this.addCommand({
+			id: 'edit-code-block',
+			name: t('CMD_EDIT_CODE_BLOCK'),
+			editorCheckCallback: (checking, editor, view) => {
+				if (!(view instanceof MarkdownView) || !getCodeBlockAtCursor(editor)) {
+					return false;
+				}
+				if (!checking) {
+					openCodeBlockEditor(this, editor, view);
+				}
+				return true;
+			}
+		});
+
+		registerCodeBlockHeaderAction(this);
+
+		this.registerEvent(this.app.workspace.on("editor-menu", (menu, editor, view) => {
+			if (!(view instanceof MarkdownView) || !getCodeBlockAtCursor(editor)) {
+				return;
+			}
+			menu.addItem((item) => item
+				.setTitle(t('CMD_EDIT_CODE_BLOCK'))
+				.setIcon('code-glyph')
+				.onClick(() => {
+					openCodeBlockEditor(this, editor, view);
+				}));
+		}));
 
 		// 添加代码编辑器搜索和替换命令（开关模式）
 		this.addCommand({

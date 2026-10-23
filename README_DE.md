@@ -83,6 +83,7 @@ Code in Markdown einbetten und in der Vorschau ansehen, einschließlich bestimmt
 - **Vorschau-Synchronisation**: Ändert sich eine Quelldatei, werden zugehörige eingebettete Vorschauen neu gerendert.
 - **Nativer PDF-Export**: Nutze Obsidians offiziellen **Als PDF exportieren**, und Codedateiverweise werden als echte Codeblöcke statt als graue Dateikarten exportiert.
 - **Breitere Host-Kompatibilität**: Eingebettete Codevorschauen verhalten sich im Lesemodus, in ausgekoppelten Fenstern und anderen Hosts, die Obsidians Markdown-Renderpipeline wiederverwenden, zuverlässiger.
+- **Codeblöcke in Code Space bearbeiten**: Setze den Cursor in einen umzäunten Codeblock einer Notiz und wähle die Code-Schaltfläche in der Kopfzeile der Notiz (links neben dem Umschalter für Lese-/Bearbeitungsmodus), oder führe **Codeblock in Code Space bearbeiten** über die Befehlspalette oder das Kontextmenü des Editors aus. Der Block öffnet sich in einem Code-Space-Editorfenster mit Syntaxhervorhebung. Beim Speichern oder Schließen des Fensters wird der Code in die Notiz zurückgeschrieben und lässt sich dort rückgängig machen. Die Zaunzeile bleibt unverändert, und Codeblöcke in Callouts, Zitaten und Listen werden unterstützt.
 
 <p align='center'><img src='docs\img\pre3.png' width=95%></p>
 
@@ -145,6 +146,7 @@ Führe eine echte System-Shell in Code Space aus, basierend auf xterm.js und nod
 - **Folgt deinem Kontext**: Neue Terminals starten im Ordner der aktuell geöffneten Datei (externe Einbindungen werden zu ihrem echten Speicherort aufgelöst), andernfalls im Vault-Stammverzeichnis
 - **Theme-bewusst**: Farben und die Monospace-Schrift folgen deinem Obsidian-Theme, auch in ausgekoppelten Fenstern
 - **Größenänderbares Bedienfeld**: Ziehe den Griff über dem eingebetteten Bedienfeld, um dessen Höhe anzupassen
+- **Dateien als Pfade hineinziehen**: Ziehe Dateien oder Ordner aus der Obsidian-Dateiliste oder dem Dateimanager des Systems auf ein Terminal, um ihre echten absoluten Pfade einzufügen, passend für die aktuelle Shell in Anführungszeichen gesetzt (externe Einhängepunkte werden zu ihrem Speicherort auf der Festplatte aufgelöst)
 
 **Verwendung:**
 1. Aktiviere das Terminal unter **Einstellungen > Code Space > Terminal** (standardmäßig deaktiviert)
@@ -247,6 +249,7 @@ Fügst du die folgenden Dateiendungen zur verwalteten Liste hinzu, lassen sich d
 | `Ctrl+P` → „Plugin neu laden" | Plugin neu laden |
 | `Ctrl+P` → „Code-Gliederung umschalten" | Code-Gliederungsansicht umschalten |
 | `Ctrl+P` → „Suchen und ersetzen" | Such- und Ersetzen-Feld im aktuellen Code-Space-Editor öffnen |
+| `Ctrl+P` → „Codeblock in Code Space bearbeiten" | Den Codeblock am Cursor in einem Code-Space-Editorfenster bearbeiten (verfügbar, wenn der Cursor in einem Codeblock steht) |
 | `Ctrl+P` → „Terminal öffnen" | Neuen Terminal-Tab öffnen (verfügbar nach Aktivierung des Terminals und Download der Unterstützungsdateien) |
 | `Ctrl+P` → „Terminal-Bedienfeld umschalten" | Eingebettetes Terminal-Bedienfeld im aktuellen Editor umschalten |
 | `Ctrl+P` → „Alle Terminalsitzungen schließen" | Jedes Terminal stoppen |

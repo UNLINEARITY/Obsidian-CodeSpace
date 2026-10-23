@@ -2001,3 +2001,17 @@ body.pdf-export .code-embed-static-fallback pre {
     color: var(--text-accent);
     font-weight: var(--font-semibold);
 }
+
+/* ================================================================= */
+/* Code block editing modal                                           */
+/* ================================================================= */
+
+.code-space-code-block-modal {
+    width: min(960px, 90vw);
+}
+
+.code-space-container.code-space-code-block-editor {
+    height: min(60vh, 640px);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+}

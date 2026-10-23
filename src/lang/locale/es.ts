@@ -278,4 +278,11 @@ export default {
     SETTINGS_TERMINAL_STATUS_ERROR: 'Error',
     SETTINGS_TERMINAL_STATUS_UNSUPPORTED: 'Plataforma no compatible',
     SETTINGS_TERMINAL_STATUS_REMOVE_PENDING: 'Eliminación programada; reinicia Obsidian para terminar',
+
+    // Code block editing
+    CMD_EDIT_CODE_BLOCK: 'Editar bloque de código en Code Space',
+    MODAL_CODE_BLOCK_TITLE: 'Editar bloque de código',
+    MODAL_CODE_BLOCK_SAVE: 'Guardar',
+    MODAL_CODE_BLOCK_CANCEL: 'Cancelar',
+    NOTICE_CODE_BLOCK_CHANGED: 'El bloque de código de la nota cambió, así que no se aplicaron tus cambios. Se copiaron al portapapeles.',
 };
