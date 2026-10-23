@@ -20,6 +20,9 @@
   <a href="https://obsidian.md/plugins?id=code-space">
     <img alt="Downloads" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&query=%24%5B%27code-space%27%5D.downloads&label=Downloads&style=for-the-badge&logo=obsidian&color=0891b2&labelColor=1c1917&cacheSeconds=21600">
   </a>
+  <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/issues?q=is%3Aissue%20is%3Aclosed">
+    <img alt="Closed issues" src="https://img.shields.io/github/issues-closed/UNLINEARITY/Obsidian-CodeSpace?label=Issues&style=for-the-badge&logo=github&color=0891b2&labelColor=1c1917">
+  </a>
   <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/blob/main/LICENSE">
     <img alt="License" src="https://img.shields.io/github/license/UNLINEARITY/Obsidian-CodeSpace?label=License&style=for-the-badge&logo=opensourceinitiative&color=0891b2&labelColor=1c1917">
   </a>
